@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { db } from '../firebase';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const ProductContext = createContext();
 
@@ -80,29 +82,77 @@ const INITIAL_MOCK_PRODUCTS = [
 ];
 
 export const ProductProvider = ({ children }) => {
-  const [products, setProducts] = useState(INITIAL_MOCK_PRODUCTS);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Load from local storage to keep custom products across reloads
   useEffect(() => {
-    const saved = localStorage.getItem('fresveg_products_v6');
-    if (saved) {
+    const fetchProducts = async () => {
       try {
-        setProducts(JSON.parse(saved));
-      } catch (err) {
-        console.error('Failed to parse products', err);
+        const querySnapshot = await getDocs(collection(db, 'products'));
+        const productsData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        if (productsData.length === 0) {
+          // If no products in Firestore, add mock products
+          for (const product of INITIAL_MOCK_PRODUCTS) {
+            await addDoc(collection(db, 'products'), product);
+          }
+          setProducts(INITIAL_MOCK_PRODUCTS);
+        } else {
+          setProducts(productsData);
+        }
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        // Fallback to mock data if Firestore fails
+        setProducts(INITIAL_MOCK_PRODUCTS);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+
+    fetchProducts();
   }, []);
 
-  const addProduct = (product) => {
-    const newProducts = [...products, { ...product, id: Date.now() }];
-    setProducts(newProducts);
-    localStorage.setItem('fresveg_products_v6', JSON.stringify(newProducts));
+  const addProduct = async (product) => {
+    try {
+      const docRef = await addDoc(collection(db, 'products'), product);
+      setProducts(prev => [...prev, { ...product, id: docRef.id }]);
+    } catch (error) {
+      console.error('Error adding product:', error);
+    }
+  };
+
+  const updateProduct = async (id, updatedProduct) => {
+    try {
+      const productRef = doc(db, 'products', id);
+      await updateDoc(productRef, updatedProduct);
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updatedProduct } : p));
+    } catch (error) {
+      console.error('Error updating product:', error);
+    }
+  };
+
+  const deleteProduct = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'products', id));
+      setProducts(prev => prev.filter(p => p.id !== id));
+    } catch (error) {
+      console.error('Error deleting product:', error);
+    }
   };
 
   return (
-    <ProductContext.Provider value={{ products, addProduct, searchQuery, setSearchQuery }}>
+    <ProductContext.Provider value={{ 
+      products, 
+      loading,
+      addProduct, 
+      updateProduct,
+      deleteProduct,
+      searchQuery, 
+      setSearchQuery 
+    }}>
       {children}
     </ProductContext.Provider>
   );

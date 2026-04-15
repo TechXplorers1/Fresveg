@@ -1,4 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { db } from '../firebase';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { useAuth } from './AuthContext';
 import { CheckCircle } from 'lucide-react';
 
 const CartContext = createContext();
@@ -15,18 +18,66 @@ export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
   const [address, setAddress] = useState('');
   const [snackbarItem, setSnackbarItem] = useState(null);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      loadCartFromFirestore();
+    } else {
+      setCartItems([]);
+      setAddress('');
+    }
+  }, [user]);
+
+  const loadCartFromFirestore = async () => {
+    if (!user) return;
+    try {
+      const cartRef = doc(db, 'carts', user.uid);
+      const cartSnap = await getDoc(cartRef);
+      if (cartSnap.exists()) {
+        const data = cartSnap.data();
+        setCartItems(data.items || []);
+        setAddress(data.address || '');
+      }
+    } catch (error) {
+      console.error('Error loading cart:', error);
+      // If offline or network error, don't show error to user
+      // Cart will work with local state until connection is restored
+      if (error.code !== 'unavailable' && error.code !== 'failed-precondition') {
+        console.warn('Cart data may not be synced. Check your internet connection.');
+      }
+    }
+  };
+
+  const saveCartToFirestore = async (items, addr) => {
+    if (!user) return;
+    try {
+      const cartRef = doc(db, 'carts', user.uid);
+      await setDoc(cartRef, { items, address: addr });
+    } catch (error) {
+      console.error('Error saving cart:', error);
+      // If offline, data will be synced when connection is restored
+      if (error.code !== 'unavailable' && error.code !== 'failed-precondition') {
+        console.warn('Cart changes may not be saved. Check your internet connection.');
+      }
+    }
+  };
 
   const addToCart = (product) => {
     setCartItems(prev => {
       const existing = prev.find(item => item.id === product.id);
+      let newItems;
       if (existing) {
-        return prev.map(item =>
+        newItems = prev.map(item =>
           item.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
+      } else {
+        newItems = [...prev, { ...product, quantity: 1 }];
       }
-      return [...prev, { ...product, quantity: 1 }];
+      saveCartToFirestore(newItems, address);
+      return newItems;
     });
     
     // Trigger snackbar
@@ -37,7 +88,9 @@ export const CartProvider = ({ children }) => {
   };
 
   const removeFromCart = (id) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
+    const newItems = cartItems.filter(item => item.id !== id);
+    setCartItems(newItems);
+    saveCartToFirestore(newItems, address);
   };
 
   const updateQuantity = (id, quantity) => {
@@ -45,15 +98,21 @@ export const CartProvider = ({ children }) => {
       removeFromCart(id);
       return;
     }
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, quantity } : item
-      )
+    const newItems = cartItems.map(item =>
+      item.id === id ? { ...item, quantity } : item
     );
+    setCartItems(newItems);
+    saveCartToFirestore(newItems, address);
   };
 
   const clearCart = () => {
     setCartItems([]);
+    saveCartToFirestore([], address);
+  };
+
+  const updateAddress = (newAddress) => {
+    setAddress(newAddress);
+    saveCartToFirestore(cartItems, newAddress);
   };
 
   const getTotal = () => {
@@ -64,7 +123,7 @@ export const CartProvider = ({ children }) => {
     <CartContext.Provider value={{
       cartItems,
       address,
-      setAddress,
+      setAddress: updateAddress,
       addToCart,
       removeFromCart,
       updateQuantity,
