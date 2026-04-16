@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db, realtimeDb } from '../firebase';
+import { ref, onValue, push, set, update, remove } from 'firebase/database';
 
 const ProductContext = createContext();
 
@@ -82,64 +82,97 @@ const INITIAL_MOCK_PRODUCTS = [
 ];
 
 export const ProductProvider = ({ children }) => {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(INITIAL_MOCK_PRODUCTS);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Use Realtime Database to get products and listen for updates
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'products'));
-        const productsData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
+    const productsRef = ref(realtimeDb, 'products');
+    
+    const unsubscribe = onValue(productsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const dbProducts = Object.keys(data).map(key => ({
+          ...data[key],
+          id: key
         }));
-        if (productsData.length === 0) {
-          // If no products in Firestore, add mock products
-          for (const product of INITIAL_MOCK_PRODUCTS) {
-            await addDoc(collection(db, 'products'), product);
-          }
-          setProducts(INITIAL_MOCK_PRODUCTS);
-        } else {
-          setProducts(productsData);
-        }
-      } catch (error) {
-        console.error('Error fetching products:', error);
-        // Fallback to mock data if Firestore fails
+        // Merge mock products with actual DB products
+        const mergedProducts = [...INITIAL_MOCK_PRODUCTS, ...dbProducts];
+        setProducts(mergedProducts);
+        saveProductsToStorage(mergedProducts);
+      } else {
         setProducts(INITIAL_MOCK_PRODUCTS);
-      } finally {
-        setLoading(false);
+        saveProductsToStorage(INITIAL_MOCK_PRODUCTS);
       }
-    };
+      setLoading(false);
+    }, (error) => {
+      console.error('Error loading products from Firebase:', error);
+      // Fallback to localStorage
+      try {
+        const savedProducts = localStorage.getItem('fresveg_products');
+        if (savedProducts) {
+          setProducts(JSON.parse(savedProducts));
+        }
+      } catch (e) {
+        console.error('Error parsing local storage products:', e);
+      }
+      setLoading(false);
+    });
 
-    fetchProducts();
+    return () => unsubscribe();
   }, []);
+
+  const saveProductsToStorage = (newProducts) => {
+    try {
+      localStorage.setItem('fresveg_products', JSON.stringify(newProducts));
+    } catch (error) {
+      console.error('Error saving products to localStorage:', error);
+    }
+  };
 
   const addProduct = async (product) => {
     try {
-      const docRef = await addDoc(collection(db, 'products'), product);
-      setProducts(prev => [...prev, { ...product, id: docRef.id }]);
+      const newProductRef = push(ref(realtimeDb, 'products'));
+      await set(newProductRef, product);
+      // No need to manually update state, onValue will trigger and handle it automatically.
     } catch (error) {
-      console.error('Error adding product:', error);
+      console.error('Error adding product to Realtime DB:', error);
+      // Fallback for offline mode
+      setProducts(prev => {
+        const newProduct = { ...product, id: Date.now().toString() };
+        const newProducts = [...prev, newProduct];
+        saveProductsToStorage(newProducts);
+        return newProducts;
+      });
     }
   };
 
   const updateProduct = async (id, updatedProduct) => {
     try {
-      const productRef = doc(db, 'products', id);
-      await updateDoc(productRef, updatedProduct);
-      setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updatedProduct } : p));
+      await update(ref(realtimeDb, `products/${id}`), updatedProduct);
     } catch (error) {
-      console.error('Error updating product:', error);
+      console.error('Error updating product in Realtime DB:', error);
+      // Fallback to localStorage update
+      setProducts(prev => {
+        const newProducts = prev.map(p => p.id === id ? { ...p, ...updatedProduct } : p);
+        saveProductsToStorage(newProducts);
+        return newProducts;
+      });
     }
   };
 
   const deleteProduct = async (id) => {
     try {
-      await deleteDoc(doc(db, 'products', id));
-      setProducts(prev => prev.filter(p => p.id !== id));
+      await remove(ref(realtimeDb, `products/${id}`));
     } catch (error) {
-      console.error('Error deleting product:', error);
+      console.error('Error deleting product from Realtime DB:', error);
+      // Fallback to localStorage removal
+      setProducts(prev => {
+        const newProducts = prev.filter(p => p.id !== id);
+        saveProductsToStorage(newProducts);
+        return newProducts;
+      });
     }
   };
 
@@ -157,3 +190,4 @@ export const ProductProvider = ({ children }) => {
     </ProductContext.Provider>
   );
 };
+

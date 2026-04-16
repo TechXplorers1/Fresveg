@@ -9,7 +9,7 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber
 } from 'firebase/auth';
-import { ref, set, get } from 'firebase/database';
+import { ref, set, get, update } from 'firebase/database';
 
 const AuthContext = createContext();
 
@@ -108,11 +108,21 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (newData) => {
     try {
-      if (user) {
-        await updateFirebaseProfile(user, newData);
-        // Firebase will trigger onAuthStateChanged, updating the user state
+      if (!user) return;
+
+      const authData = {};
+      if (newData.displayName) authData.displayName = newData.displayName;
+      if (newData.photoURL) authData.photoURL = newData.photoURL;
+
+      if (Object.keys(authData).length > 0) {
+        await updateFirebaseProfile(user, authData);
       }
+
+      const userRef = ref(realtimeDb, `users/${user.uid}`);
+      await update(userRef, newData);
+      await loadUserProfile(user);
     } catch (error) {
+      console.error('Error updating profile:', error);
       throw error;
     }
   };

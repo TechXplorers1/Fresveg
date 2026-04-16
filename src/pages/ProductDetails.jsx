@@ -13,7 +13,7 @@ export default function ProductDetails() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    const foundProduct = products.find(p => p.id === parseInt(id));
+    const foundProduct = products.find(p => String(p.id) === String(id));
     if (foundProduct) {
       setProduct(foundProduct);
     }
@@ -32,7 +32,20 @@ export default function ProductDetails() {
 
   // Generate dynamic mockup content based on category/name
   const isOrganic = product.name.toLowerCase().includes('organic');
-  const dummyDescription = `The ${product.name} is sourced directly from certified farms to ensure maximum freshness and quality. Hand-picked at peak ripeness, this product guarantees exceptional taste and nutritional value. Whether you are cooking a hearty family meal or preparing a fresh salad, this versatile ingredient is perfect for all your culinary needs.`;
+  const dummyDescription = `The ${product.name} is sourced directly from certified farms to ensure maximum freshness and quality. Hand-picked at peak ripeness, this product guarantees exceptional taste and nutritional value.`;
+  
+  const displayDescription = product.description || dummyDescription;
+  const displayOffers = (product.offers && product.offers.length > 0) ? product.offers : [
+    "Bank Offer: Get 10% instant discount on FresVeg Credit Card, up to $20 on orders above $50.",
+    "Partner Offer: Sign up for FresVeg Wallet and get a flat $5 cashback directly into your account!"
+  ];
+  const displayFeatures = (product.features && product.features.length > 0) ? product.features : [
+    "Specially hand-picked to ensure maximum natural flavor and nutrient retention.",
+    "Rigorous 5-step quality screening before being dispatched from the farm.",
+    "Contains completely zero artificial colors, preservatives, or polishing waxes.",
+    "Rich source of natural vitamins and dietary fibers."
+  ];
+  const displayReturnPolicy = product.returnPolicy || "This product is eligible for return within 48 hours of delivery. if the item is delivered in a damaged or defective condition, you may request a refund natively through the Marketplace application.";
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen">
@@ -100,20 +113,20 @@ export default function ProductDetails() {
              <div className="flex items-center gap-4 mb-6">
                 <div className="flex items-center text-yellow-400 bg-yellow-50 px-2 py-1 rounded-md">
                    <Star size={16} className="fill-current" />
-                   <span className="ml-1 text-sm font-bold text-yellow-700">{product.rating || "4.5"} Rating</span>
+                   <span className="ml-1 text-sm font-bold text-yellow-700">{product.rating || "5.0"} Rating</span>
                 </div>
                 <div className="text-sm text-gray-500 hover:text-brand cursor-pointer">
-                   142 Reviews
+                   Verified Product
                 </div>
              </div>
 
              <div className="flex flex-col">
                <span className="text-sm text-gray-500 line-through mb-1">M.R.P: ${(product.price * 1.25).toFixed(2)}</span>
                <div className="flex items-baseline gap-2">
-                 <span className="text-4xl font-black text-gray-900">${product.price.toFixed(2)}</span>
+                 <span className="text-4xl font-black text-gray-900">${parseFloat(product.price).toFixed(2)}</span>
                  <span className="text-lg text-gray-500 font-medium">/ {product.unit}</span>
                </div>
-               <span className="text-green-600 font-bold text-sm mt-1">You Save: 20% (Inclusive of all taxes)</span>
+               <span className="text-green-600 font-bold text-sm mt-1">Inclusive of all taxes</span>
              </div>
            </div>
 
@@ -128,7 +141,6 @@ export default function ProductDetails() {
                     <p className="font-bold text-gray-900 text-lg">{product.vendor}</p>
                  </div>
               </div>
-              <button className="text-brand text-sm font-bold hover:underline">Visit Store</button>
            </div>
 
            {/* Offers */}
@@ -137,20 +149,12 @@ export default function ProductDetails() {
                <BadgePercent className="text-brand" /> Available Offers
              </h3>
              <ul className="space-y-3">
-               <li className="flex items-start gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
-                  <Tag className="text-green-500 flex-shrink-0 mt-0.5" size={18} />
-                  <div>
-                    <h4 className="font-bold text-sm text-gray-900">Bank Offer</h4>
-                    <p className="text-sm text-gray-600 mt-1">Get 10% instant discount on FresVeg Credit Card, up to $20 on orders above $50.</p>
-                  </div>
-               </li>
-               <li className="flex items-start gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
-                  <Tag className="text-green-500 flex-shrink-0 mt-0.5" size={18} />
-                  <div>
-                    <h4 className="font-bold text-sm text-gray-900">Partner Offer</h4>
-                    <p className="text-sm text-gray-600 mt-1">Sign up for FresVeg Wallet and get a flat $5 cashback directly into your account!</p>
-                  </div>
-               </li>
+               {displayOffers.map((offer, index) => (
+                 <li key={index} className="flex items-start gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+                    <Tag className="text-green-500 flex-shrink-0 mt-0.5" size={18} />
+                    <p className="text-sm text-gray-600 italic font-medium">"{offer}"</p>
+                 </li>
+               ))}
              </ul>
            </div>
 
@@ -161,11 +165,9 @@ export default function ProductDetails() {
              </h3>
              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-sm text-gray-600 leading-relaxed space-y-2">
                <ul className="list-disc pl-5 space-y-2">
-                 <li>Specially hand-picked to ensure maximum natural flavor and nutrient retention.</li>
-                 <li>Rigorous 5-step quality screening before being dispatched from the farm.</li>
-                 <li>Contains completely zero artificial colors, preservatives, or polishing waxes.</li>
-                 <li>Rich source of natural vitamins and dietary fibers.</li>
-                 <li>Recommended to store in a cool and dry place away from direct sunlight.</li>
+                 {displayFeatures.map((feature, index) => (
+                   <li key={index}>{feature}</li>
+                 ))}
                </ul>
              </div>
            </div>
@@ -175,8 +177,8 @@ export default function ProductDetails() {
              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                <Info className="text-brand" /> Description
              </h3>
-             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-sm text-gray-600 leading-relaxed">
-               <p>{dummyDescription}</p>
+             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+               <p>{displayDescription}</p>
              </div>
            </div>
 
@@ -184,19 +186,19 @@ export default function ProductDetails() {
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                  <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Country of Origin</p>
-                 <p className="font-bold text-gray-900">United States</p>
+                 <p className="font-bold text-gray-900">{product.origin || 'Not Specified'}</p>
               </div>
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                  <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Food Preference</p>
-                 <p className="font-bold text-gray-900">Vegetarian</p>
+                 <p className="font-bold text-gray-900">{product.preference || 'Vegetarian'}</p>
               </div>
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                  <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Maximum Shelf Life</p>
-                 <p className="font-bold text-gray-900">7-10 Days (Refrigerated)</p>
+                 <p className="font-bold text-gray-900">{product.shelfLife || 'Not Specified'}</p>
               </div>
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                  <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Unit / Net Weight</p>
-                 <p className="font-bold text-gray-900">{product.unit.toUpperCase()}</p>
+                 <p className="font-bold text-gray-900">{product.netWeight || product.unit?.toUpperCase() || 'N/A'}</p>
               </div>
            </div>
 
@@ -206,9 +208,7 @@ export default function ProductDetails() {
                <RefreshCw className="text-brand" /> Return Policy
              </h3>
              <div className="bg-orange-50/50 p-6 rounded-2xl border border-orange-100 shadow-sm text-sm text-gray-700 leading-relaxed">
-               <p>
-                 This product is eligible for return within <strong>48 hours</strong> of delivery. Our fresh produce strictly adheres to a robust quality framework. However, if the item is delivered in a damaged or defective condition, you may request a refund natively through the Marketplace application. Please keep the item in its original packaging when requesting the return agent.
-               </p>
+               <p>{displayReturnPolicy}</p>
              </div>
            </div>
 

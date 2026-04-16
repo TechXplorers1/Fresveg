@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { ref, set, get, child } from 'firebase/database';
+import { realtimeDb } from '../firebase';
 import { useAuth } from './AuthContext';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, ShoppingBag } from 'lucide-react';
 
 const CartContext = createContext();
 
@@ -22,44 +22,37 @@ export const CartProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      loadCartFromFirestore();
+      loadCartFromRTDB();
     } else {
       setCartItems([]);
       setAddress('');
     }
   }, [user]);
 
-  const loadCartFromFirestore = async () => {
+  const loadCartFromRTDB = async () => {
     if (!user) return;
     try {
-      const cartRef = doc(db, 'carts', user.uid);
-      const cartSnap = await getDoc(cartRef);
-      if (cartSnap.exists()) {
-        const data = cartSnap.data();
+      const cartRef = ref(realtimeDb);
+      const snapshot = await get(child(cartRef, `carts/${user.uid}`));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
         setCartItems(data.items || []);
         setAddress(data.address || '');
       }
     } catch (error) {
-      console.error('Error loading cart:', error);
-      // If offline or network error, don't show error to user
-      // Cart will work with local state until connection is restored
-      if (error.code !== 'unavailable' && error.code !== 'failed-precondition') {
-        console.warn('Cart data may not be synced. Check your internet connection.');
-      }
+      console.error('Error loading cart from RTDB:', error);
+      console.warn('Cart data may not be synced. Check your internet connection.');
     }
   };
 
-  const saveCartToFirestore = async (items, addr) => {
+  const saveCartToRTDB = async (items, addr) => {
     if (!user) return;
     try {
-      const cartRef = doc(db, 'carts', user.uid);
-      await setDoc(cartRef, { items, address: addr });
+      const cartRef = ref(realtimeDb, `carts/${user.uid}`);
+      await set(cartRef, { items, address: addr });
     } catch (error) {
-      console.error('Error saving cart:', error);
-      // If offline, data will be synced when connection is restored
-      if (error.code !== 'unavailable' && error.code !== 'failed-precondition') {
-        console.warn('Cart changes may not be saved. Check your internet connection.');
-      }
+      console.error('Error saving cart to RTDB:', error);
+      console.warn('Cart changes may not be saved. Check your internet connection.');
     }
   };
 
@@ -76,7 +69,7 @@ export const CartProvider = ({ children }) => {
       } else {
         newItems = [...prev, { ...product, quantity: 1 }];
       }
-      saveCartToFirestore(newItems, address);
+      saveCartToRTDB(newItems, address);
       return newItems;
     });
     
@@ -90,7 +83,7 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = (id) => {
     const newItems = cartItems.filter(item => item.id !== id);
     setCartItems(newItems);
-    saveCartToFirestore(newItems, address);
+    saveCartToRTDB(newItems, address);
   };
 
   const updateQuantity = (id, quantity) => {
@@ -102,17 +95,53 @@ export const CartProvider = ({ children }) => {
       item.id === id ? { ...item, quantity } : item
     );
     setCartItems(newItems);
-    saveCartToFirestore(newItems, address);
+    saveCartToRTDB(newItems, address);
   };
 
   const clearCart = () => {
     setCartItems([]);
-    saveCartToFirestore([], address);
+    saveCartToRTDB([], address);
   };
 
   const updateAddress = (newAddress) => {
     setAddress(newAddress);
-    saveCartToFirestore(cartItems, newAddress);
+    saveCartToRTDB(cartItems, newAddress);
+  };
+
+  const placeOrder = async (paymentMethod = 'Cash on Delivery') => {
+    if (!user || cartItems.length === 0) {
+      console.warn('PlaceOrder aborted: No user or empty cart');
+      return;
+    }
+    
+    try {
+      // Generate a unique order ID
+      const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const orderRef = ref(realtimeDb, `orders/${orderId}`);
+      
+      const orderData = {
+        orderId: orderId,
+        customerId: user.uid,
+        customerName: user.displayName || 'Customer',
+        customerEmail: user.email,
+        items: cartItems,
+        total: getTotal(),
+        address: address,
+        paymentMethod: paymentMethod,
+        status: 'pending',
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('Attempting to place order in RTDB:', orderId);
+      await set(orderRef, orderData);
+      console.log('Order successfully placed in Realtime Database');
+      
+      clearCart();
+      return orderId;
+    } catch (error) {
+      console.error('CRITICAL: Error placing order in Realtime Database:', error);
+      throw error;
+    }
   };
 
   const getTotal = () => {
@@ -128,7 +157,8 @@ export const CartProvider = ({ children }) => {
       removeFromCart,
       updateQuantity,
       clearCart,
-      getTotal
+      getTotal,
+      placeOrder
     }}>
       {children}
       
