@@ -9,6 +9,7 @@ import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Profile from './pages/Profile';
 import ProductDetails from './pages/ProductDetails';
+import OrderTracking from './pages/OrderTracking';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { ProductProvider } from './context/ProductContext';
@@ -40,6 +41,7 @@ function App() {
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/product/:id" element={<ProductDetails />} />
+                  <Route path="/order/:orderId" element={<OrderTracking />} />
                 </Routes>
               </main>
               <Footer />

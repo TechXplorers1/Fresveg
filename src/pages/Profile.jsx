@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { realtimeDb } from '../firebase';
 import { ref, onValue } from 'firebase/database';
-import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, RefreshCw } from 'lucide-react';
+import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, RefreshCw, ExternalLink, Navigation } from 'lucide-react';
 
 const CATEGORIES = ['Tomatoes','Potatoes','Onions','Brinjal','Carrots','Spinach','Capsicum','Broccoli','Garlic','Apples','Bananas','Strawberries','Oranges','Milk','Butter','Cheese','Yogurt','Paneer'];
 
 export default function Profile() {
   const { user, userProfile, updateProfile } = useAuth();
   const { products: allProducts, addProduct, updateProduct, deleteProduct } = useProducts();
+  const navigate = useNavigate();
 
   // Safely migrate existing users and define current shops array
   const vendorShops = userProfile?.shops || [];
@@ -96,6 +97,7 @@ export default function Profile() {
       ...newProduct, 
       price: parseFloat(newProduct.price), 
       vendor: selectedShop.shopName, 
+      shopLocation: selectedShop.location || '',
       rating: 5.0,
       offers: newProduct.offers.split('\n').filter(line => line.trim() !== ''),
       features: newProduct.features.split('\n').filter(line => line.trim() !== ''),
@@ -398,8 +400,11 @@ export default function Profile() {
                     <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold uppercase flex items-center gap-1.5">
                       <Clock size={12} /> {order.status}
                     </span>
-                    <button className="text-brand text-xs font-bold hover:bg-brand-light px-3 py-1 rounded-lg transition-colors border border-brand/20">
-                      View details
+                    <button
+                      onClick={() => navigate(`/order/${order.id}`)}
+                      className="flex items-center gap-1.5 text-brand text-xs font-bold hover:bg-brand-light px-3 py-1 rounded-lg transition-colors border border-brand/20"
+                    >
+                      <ArrowRight size={12} /> Track Order
                     </button>
                   </div>
                 </div>
@@ -472,8 +477,11 @@ export default function Profile() {
               <div className="relative"><Store className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input required type="text" value={shopSetup.shopName} onChange={(e) => setShopSetup({...shopSetup, shopName: e.target.value})} className={inputCls} placeholder="E.g. Fresh Valley Farms" /></div>
             </div>
             <div>
-              <label className={labelCls}>Location</label>
-              <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input required type="text" value={shopSetup.location} onChange={(e) => setShopSetup({...shopSetup, location: e.target.value})} className={inputCls} placeholder="E.g. Mumbai, Maharashtra" /></div>
+              <label className={labelCls}>Shop Location <span className="text-brand font-bold">*</span></label>
+              <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input required type="text" value={shopSetup.location} onChange={(e) => setShopSetup({...shopSetup, location: e.target.value})} className={inputCls} placeholder="E.g. Andheri West, Mumbai, Maharashtra" /></div>
+              <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
+                <Navigation size={11} /> Use a specific address (area + city + state) — this is shown to customers on Google Maps when they track their delivery.
+              </p>
             </div>
             <div>
               <label className={labelCls}>GST Number</label>
@@ -505,8 +513,11 @@ export default function Profile() {
                             <div className="relative"><Store className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} /><input required type="text" value={editShopForm.shopName} onChange={(e) => setEditShopForm({...editShopForm, shopName: e.target.value})} className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 focus:border-brand outline-none text-sm" /></div>
                           </div>
                           <div>
-                            <label className={labelCls}>Location</label>
-                            <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} /><input required type="text" value={editShopForm.location} onChange={(e) => setEditShopForm({...editShopForm, location: e.target.value})} className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 focus:border-brand outline-none text-sm" /></div>
+                            <label className={labelCls}>Location <span className="text-brand font-bold">*</span></label>
+                            <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} /><input required type="text" value={editShopForm.location} onChange={(e) => setEditShopForm({...editShopForm, location: e.target.value})} className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 focus:border-brand outline-none text-sm" placeholder="E.g. Andheri West, Mumbai, Maharashtra" /></div>
+                            <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                              <Navigation size={10} /> Enter your full address so customers can see your shop on Google Maps when tracking orders.
+                            </p>
                           </div>
                           <div>
                             <label className={labelCls}>GST Number</label>
@@ -520,15 +531,62 @@ export default function Profile() {
                       ) : (
                         /* ── Shop Card View ── */
                         <>
-                          <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-semibold text-gray-900">{shop.shopName}</h3>
+                          {/* Shop Header */}
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex items-center gap-2">
+                              <div className="bg-brand/10 p-1.5 rounded-lg">
+                                <Store size={14} className="text-brand" />
+                              </div>
+                              <h3 className="font-bold text-gray-900">{shop.shopName}</h3>
+                            </div>
                             <button onClick={() => handleEditShopClick(shop, i)} className="text-gray-400 hover:text-brand transition-colors p-1 rounded-lg hover:bg-brand-light/30" title="Edit Shop">
                               <Pencil size={14} />
                             </button>
                           </div>
-                          <div className="space-y-1 text-sm text-gray-600">
-                            <div className="flex items-center gap-2"><MapPin size={13} /><span>{shop.location}</span></div>
-                            <div className="flex items-center gap-2"><FileText size={13} /><span>GST: {shop.gstNumber}</span></div>
+
+                          {/* Location row */}
+                          <div className="flex items-center justify-between gap-2 mb-3">
+                            <div className="flex items-center gap-2 text-sm text-gray-600 min-w-0">
+                              <MapPin size={13} className="text-green-600 flex-shrink-0" />
+                              <span className="truncate font-medium">{shop.location || <span className="text-red-400 italic">No location set</span>}</span>
+                            </div>
+                            {shop.location && (
+                              <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.location)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-xs font-bold text-brand border border-brand/20 px-2 py-1 rounded-lg hover:bg-brand/5 transition-colors flex-shrink-0"
+                              >
+                                <ExternalLink size={11} /> Maps
+                              </a>
+                            )}
+                          </div>
+
+                          {/* Google Maps Embed Preview */}
+                          {shop.location ? (
+                            <div className="rounded-xl overflow-hidden border border-gray-200 mb-3" style={{ height: '160px' }}>
+                              <iframe
+                                title={`Map for ${shop.shopName}`}
+                                src={`https://maps.google.com/maps?q=${encodeURIComponent(shop.location + (shop.shopName ? ' ' + shop.shopName : ''))}&output=embed&z=14`}
+                                width="100%"
+                                height="100%"
+                                style={{ border: 0 }}
+                                loading="lazy"
+                                referrerPolicy="no-referrer-when-downgrade"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-red-200 bg-red-50 mb-3 py-5 px-3 text-center">
+                              <Navigation size={22} className="text-red-300 mb-1" />
+                              <p className="text-xs font-bold text-red-400">Shop location not set</p>
+                              <p className="text-xs text-red-300 mt-0.5">Click the pencil icon to add your location so customers can track their orders.</p>
+                            </div>
+                          )}
+
+                          {/* GST */}
+                          <div className="flex items-center gap-2 text-xs text-gray-400">
+                            <FileText size={12} />
+                            <span>GST: {shop.gstNumber}</span>
                           </div>
                         </>
                       )}
@@ -564,8 +622,11 @@ export default function Profile() {
                   <div className="relative"><Store className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input required type="text" value={newShop.shopName} onChange={(e) => setNewShop({...newShop, shopName: e.target.value})} className={inputCls} placeholder="E.g. Fresh Valley Farms" /></div>
                 </div>
                 <div>
-                  <label className={labelCls}>Location</label>
-                  <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input required type="text" value={newShop.location} onChange={(e) => setNewShop({...newShop, location: e.target.value})} className={inputCls} placeholder="E.g. Mumbai, Maharashtra" /></div>
+                  <label className={labelCls}>Shop Location <span className="text-brand font-bold">*</span></label>
+                  <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input required type="text" value={newShop.location} onChange={(e) => setNewShop({...newShop, location: e.target.value})} className={inputCls} placeholder="E.g. Andheri West, Mumbai, Maharashtra" /></div>
+                  <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
+                    <Navigation size={11} /> Use a specific address — customers see this on Google Maps when tracking their order.
+                  </p>
                 </div>
                 <div>
                   <label className={labelCls}>GST Number</label>
