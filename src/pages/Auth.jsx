@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { User, ArrowRight, Lock, Mail, ShoppingBag, Store, AlertCircle } from 'lucide-react';
+import { User, ArrowRight, Lock, Mail, ShoppingBag, Store, AlertCircle, Bike } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export default function Auth() {
   const { login, register, loading, saveRole } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectParam = searchParams.get('redirect');
+  const redirect = redirectParam ? (redirectParam.startsWith('/') ? redirectParam : `/${redirectParam}`) : '/';
 
   const [isLogin, setIsLogin] = useState(true);
   const [step, setStep] = useState(1); // 1: details, 2: role selection for signup
@@ -33,7 +36,7 @@ export default function Auth() {
       if (isLogin) {
         // Login with email and password
         await login(formData.email, formData.password);
-        navigate('/');
+        navigate(redirect);
       } else {
         if (step === 1) {
           // Signup: Create account
@@ -42,7 +45,7 @@ export default function Auth() {
         } else if (step === 2) {
           // Save role and redirect to home
           await saveRole(formData.role);
-          navigate('/');
+          navigate(redirect);
         }
       }
     } catch (err) {
@@ -115,26 +118,36 @@ export default function Auth() {
 
             {/* Step 2: Role Selection (Signup only) */}
             {!isLogin && step === 2 && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, role: 'customer' })}
-                  className={`p-4 border-2 rounded-xl flex flex-col items-center gap-2 transition-all ${
+                  className={`p-3 border-2 rounded-xl flex flex-col items-center gap-2 transition-all ${
                     formData.role === 'customer' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'
                   }`}
                 >
-                  <ShoppingBag size={32} className={formData.role === 'customer' ? 'text-brand' : 'text-gray-400'} />
-                  <span className={`font-semibold ${formData.role === 'customer' ? 'text-brand' : 'text-gray-600'}`}>Customer</span>
+                  <ShoppingBag size={28} className={formData.role === 'customer' ? 'text-brand' : 'text-gray-400'} />
+                  <span className={`font-semibold text-xs ${formData.role === 'customer' ? 'text-brand' : 'text-gray-600'}`}>Customer</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, role: 'vendor' })}
-                  className={`p-4 border-2 rounded-xl flex flex-col items-center gap-2 transition-all ${
+                  className={`p-3 border-2 rounded-xl flex flex-col items-center gap-2 transition-all ${
                     formData.role === 'vendor' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'
                   }`}
                 >
-                  <Store size={32} className={formData.role === 'vendor' ? 'text-brand' : 'text-gray-400'} />
-                  <span className={`font-semibold ${formData.role === 'vendor' ? 'text-brand' : 'text-gray-600'}`}>Vendor</span>
+                  <Store size={28} className={formData.role === 'vendor' ? 'text-brand' : 'text-gray-400'} />
+                  <span className={`font-semibold text-xs ${formData.role === 'vendor' ? 'text-brand' : 'text-gray-600'}`}>Vendor</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, role: 'delivery_person' })}
+                  className={`p-3 border-2 rounded-xl flex flex-col items-center gap-2 transition-all ${
+                    formData.role === 'delivery_person' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'
+                  }`}
+                >
+                  <Bike size={28} className={formData.role === 'delivery_person' ? 'text-brand' : 'text-gray-400'} />
+                  <span className={`font-semibold text-xs ${formData.role === 'delivery_person' ? 'text-brand' : 'text-gray-600'}`}>Delivery</span>
                 </button>
               </div>
             )}

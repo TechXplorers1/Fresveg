@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { MapPin, ExternalLink, Navigation, Store, Clock, Ruler, AlertCircle, Loader } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapPin, ExternalLink, Navigation, Store, Clock, Ruler, AlertCircle, Loader, Bike } from 'lucide-react';
 
 // ─── Haversine Distance Formula ───────────────────────────────────────────────
-// Returns straight-line distance between two lat/lng points in km
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -31,10 +30,10 @@ async function geocodeAddress(address) {
   return null;
 }
 
-// ─── Estimated delivery time (road factor ≈ 1.4× straight line, speed 30 km/h) ─
+// ─── Estimated delivery time (road factor ≈ 1.4×, city speed 30 km/h) ───────────
 function estimateDelivery(distKm) {
-  const roadKm = distKm * 1.4;          // approximate road distance
-  const minutes = (roadKm / 30) * 60;   // 30 km/h average city speed
+  const roadKm = distKm * 1.4;
+  const minutes = (roadKm / 30) * 60;
   if (minutes < 30) return { label: 'Under 30 mins', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' };
   if (minutes < 60) return { label: `${Math.round(minutes)} mins`, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' };
   const hrs = Math.floor(minutes / 60);
@@ -43,80 +42,199 @@ function estimateDelivery(distKm) {
   return { label, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
 }
 
-/**
- * OrderTrackingMap
- *
- * Props:
- *  - vendorLocation  {string}  Vendor shop address
- *  - vendorName      {string}  Shop display name
- *  - deliveryAddress {string}  Customer delivery address
- */
-export default function OrderTrackingMap({ vendorLocation, vendorName, deliveryAddress }) {
-  const [mapMode, setMapMode] = useState('directions'); // 'directions' | 'vendor' | 'delivery'
-  const [distanceInfo, setDistanceInfo] = useState(null); // { km, eta }
-  const [calcState, setCalcState] = useState('idle');    // 'idle' | 'loading' | 'done' | 'error'
+export default function OrderTrackingMap({ 
+  vendorLocation, 
+  vendorName, 
+  deliveryAddress,
+  deliveryBoyLocation,
+  deliveryBoyName
+}) {
+  const [distanceInfo, setDistanceInfo] = useState(null);
+  const [calcState, setCalcState] = useState('idle');
 
-  // ── Geocode both addresses & compute distance ────────────────────────────
+  // Coords states
+  const [vendorCoords, setVendorCoords] = useState(null);
+  const [deliveryCoords, setDeliveryCoords] = useState(null);
+
+  // Map DOM and Instance refs
+  const mapContainerRef = useRef(null);
+  const mapInstance = useRef(null);
+  
+  // Marker/Polyline tracking refs to update on changes
+  const markersRef = useRef({ vendor: null, delivery: null, deliveryBoy: null });
+  const polylineRef = useRef(null);
+
+  // ── 1. Geocode both addresses & compute distance ────────────────────────────
   useEffect(() => {
     if (!vendorLocation || !deliveryAddress) return;
 
     setCalcState('loading');
-
     const run = async () => {
-      // Stagger requests so Nominatim rate-limit (1 req/s) is respected
-      const vendorCoords = await geocodeAddress(vendorLocation);
-      await new Promise((r) => setTimeout(r, 1100));
-      const deliveryCoords = await geocodeAddress(deliveryAddress);
+      const vCoords = await geocodeAddress(vendorLocation);
+      // Nominatim rate limiting staggered wait
+      await new Promise((r) => setTimeout(r, 1200));
+      const dCoords = await geocodeAddress(deliveryAddress);
 
-      if (vendorCoords && deliveryCoords) {
-        const km = haversineKm(
-          vendorCoords.lat, vendorCoords.lon,
-          deliveryCoords.lat, deliveryCoords.lon
-        );
+      if (vCoords && dCoords) {
+        setVendorCoords(vCoords);
+        setDeliveryCoords(dCoords);
+
+        const km = haversineKm(vCoords.lat, vCoords.lon, dCoords.lat, dCoords.lon);
         setDistanceInfo({ km: km.toFixed(1), eta: estimateDelivery(km) });
         setCalcState('done');
       } else {
         setCalcState('error');
       }
     };
-
     run();
   }, [vendorLocation, deliveryAddress]);
 
-  // ── Map embed URLs ───────────────────────────────────────────────────────
-  const buildEmbedUrl = () => {
-    if (mapMode === 'directions' && vendorLocation && deliveryAddress) {
-      // Directions view (no API key needed)
-      return `https://maps.google.com/maps?saddr=${encodeURIComponent(vendorLocation)}&daddr=${encodeURIComponent(deliveryAddress)}&output=embed`;
-    }
-    const q = mapMode === 'delivery' ? deliveryAddress : vendorLocation;
-    if (!q) return null;
-    return `https://maps.google.com/maps?q=${encodeURIComponent(q)}&output=embed&z=14`;
-  };
+  // ── 2. Initialize Leaflet Map ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!window.L || !mapContainerRef.current) return;
 
+    if (!mapInstance.current) {
+      console.log("Initializing Leaflet map...");
+      mapInstance.current = window.L.map(mapContainerRef.current, {
+        zoomControl: true,
+        scrollWheelZoom: true,
+        attributionControl: false
+      }).setView([20.5937, 78.9629], 5); // Default center on India
+
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+      }).addTo(mapInstance.current);
+    }
+
+    // Cleanup map instance on unmount
+    return () => {
+      if (mapInstance.current) {
+        console.log("Cleaning up Leaflet map instance...");
+        mapInstance.current.remove();
+        mapInstance.current = null;
+        markersRef.current = { vendor: null, delivery: null, deliveryBoy: null };
+        polylineRef.current = null;
+      }
+    };
+  }, []);
+
+  // ── 3. Render and Update Map Markers & Route dynamically ─────────────────────
+  useEffect(() => {
+    if (!window.L || !mapInstance.current) return;
+
+    const L = window.L;
+    const activePositions = [];
+
+    // 3a. Shop Marker
+    if (vendorCoords) {
+      const pos = [vendorCoords.lat, vendorCoords.lon];
+      if (markersRef.current.vendor) {
+        markersRef.current.vendor.setLatLng(pos);
+      } else {
+        const shopHtml = `
+          <div class="pulse-ring-container">
+            <div class="w-10 h-10 rounded-full bg-green-600 border-2 border-white shadow-lg flex items-center justify-center text-white">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4-4h12l4 4"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg>
+            </div>
+          </div>
+        `;
+        const icon = L.divIcon({ html: shopHtml, className: 'custom-leaflet-marker', iconSize: [40, 40], iconAnchor: [20, 20] });
+        markersRef.current.vendor = L.marker(pos, { icon })
+          .addTo(mapInstance.current)
+          .bindPopup(`<strong>${vendorName || 'Shop Pickup'}</strong><br/><span class="text-xs text-gray-500">${vendorLocation}</span>`);
+      }
+      activePositions.push(pos);
+    }
+
+    // 3b. Customer Delivery Location Marker
+    if (deliveryCoords) {
+      const pos = [deliveryCoords.lat, deliveryCoords.lon];
+      if (markersRef.current.delivery) {
+        markersRef.current.delivery.setLatLng(pos);
+      } else {
+        const homeHtml = `
+          <div class="pulse-ring-container">
+            <div class="w-10 h-10 rounded-full bg-blue-600 border-2 border-white shadow-lg flex items-center justify-center text-white">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+          </div>
+        `;
+        const icon = L.divIcon({ html: homeHtml, className: 'custom-leaflet-marker', iconSize: [40, 40], iconAnchor: [20, 20] });
+        markersRef.current.delivery = L.marker(pos, { icon })
+          .addTo(mapInstance.current)
+          .bindPopup(`<strong>Your Address</strong><br/><span class="text-xs text-gray-500">${deliveryAddress}</span>`);
+      }
+      activePositions.push(pos);
+    }
+
+    // 3c. Live Delivery Boy pulsing marker
+    if (deliveryBoyLocation && deliveryBoyLocation.lat && deliveryBoyLocation.lng) {
+      const pos = [deliveryBoyLocation.lat, deliveryBoyLocation.lng];
+      if (markersRef.current.deliveryBoy) {
+        markersRef.current.deliveryBoy.setLatLng(pos);
+      } else {
+        const bikeHtml = `
+          <div class="pulse-ring-container">
+            <div class="pulse-ring"></div>
+            <div class="w-11 h-11 rounded-full bg-orange-500 border-2 border-white shadow-xl flex items-center justify-center text-white z-20">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="2.5"/><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14H7.5L4 10h5.5l1.5 2.5 3.5-3.5 1.5 1.5-1.5 2.5H19"/></svg>
+            </div>
+          </div>
+        `;
+        const icon = L.divIcon({ html: bikeHtml, className: 'custom-leaflet-marker', iconSize: [48, 48], iconAnchor: [24, 24] });
+        markersRef.current.deliveryBoy = L.marker(pos, { icon })
+          .addTo(mapInstance.current)
+          .bindPopup(`<strong>${deliveryBoyName || 'Delivery Rider'} (Live)</strong><br/><span class="text-xs text-gray-400">Sharing location live</span>`)
+          .openPopup();
+      }
+      activePositions.push(pos);
+    } else {
+      // Clean up bike marker if live coordinates stop
+      if (markersRef.current.deliveryBoy) {
+        markersRef.current.deliveryBoy.remove();
+        markersRef.current.deliveryBoy = null;
+      }
+    }
+
+    // 3d. Draw Dash Polyline connecting positions
+    if (activePositions.length > 1) {
+      if (polylineRef.current) {
+        polylineRef.current.setLatLngs(activePositions);
+      } else {
+        polylineRef.current = L.polyline(activePositions, {
+          color: '#4f46e5', // indigo route line
+          dashArray: '8, 8',
+          weight: 4,
+          opacity: 0.8
+        }).addTo(mapInstance.current);
+      }
+    } else {
+      if (polylineRef.current) {
+        polylineRef.current.remove();
+        polylineRef.current = null;
+      }
+    }
+
+    // 3e. Autocentering Bounds
+    if (activePositions.length > 0) {
+      mapInstance.current.fitBounds(activePositions, {
+        padding: [50, 50],
+        maxZoom: 16
+      });
+    }
+  }, [vendorCoords, deliveryCoords, deliveryBoyLocation, vendorName, vendorLocation, deliveryAddress, deliveryBoyName]);
+
+  // ── External Route Maps Redirect ──────────────────────────────────────────
   const buildExternalUrl = () => {
-    if (mapMode === 'directions' && vendorLocation && deliveryAddress) {
+    if (vendorLocation && deliveryAddress) {
       return `https://www.google.com/maps/dir/${encodeURIComponent(vendorLocation)}/${encodeURIComponent(deliveryAddress)}`;
     }
-    const q = mapMode === 'delivery' ? deliveryAddress : vendorLocation;
-    if (!q) return null;
+    const q = deliveryAddress || vendorLocation;
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
   };
 
-  const embedUrl    = buildEmbedUrl();
   const externalUrl = buildExternalUrl();
-  const hasRoute    = vendorLocation && deliveryAddress;
-
-  // ── No location fallback ─────────────────────────────────────────────────
-  if (!vendorLocation) {
-    return (
-      <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center py-12 text-center px-6">
-        <MapPin className="text-gray-300 mb-3" size={40} />
-        <p className="text-gray-500 font-medium text-sm">Shop location not available</p>
-        <p className="text-gray-400 text-xs mt-1">The vendor hasn't set a location yet</p>
-      </div>
-    );
-  }
+  const hasRoute = vendorLocation && deliveryAddress;
 
   return (
     <div className="rounded-3xl overflow-hidden border border-gray-200 shadow-lg bg-white">
@@ -162,108 +280,65 @@ export default function OrderTrackingMap({ vendorLocation, vendorName, deliveryA
           {calcState === 'error' && (
             <div className="flex items-center gap-2 text-xs text-orange-500 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2">
               <AlertCircle size={13} />
-              <span>Could not calculate distance — addresses may be too vague. Try the Directions view on Google Maps.</span>
+              <span>Could not calculate distance — addresses may be too vague. Open Google Maps for exact navigation.</span>
             </div>
           )}
         </div>
       )}
 
-      {/* ── Map Mode Toggle ────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 p-3 bg-white border-b border-gray-100 flex-wrap">
-        {hasRoute && (
-          <button
-            onClick={() => setMapMode('directions')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all
-              ${mapMode === 'directions' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-          >
-            <Navigation size={12} /> Route
-          </button>
-        )}
-        <button
-          onClick={() => setMapMode('vendor')}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all
-            ${mapMode === 'vendor' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-        >
-          <Store size={12} /> Vendor Shop
-        </button>
-        {deliveryAddress && (
-          <button
-            onClick={() => setMapMode('delivery')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all
-              ${mapMode === 'delivery' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-          >
-            <MapPin size={12} /> Delivery
-          </button>
-        )}
+      {/* ── Active Status and External Link controls ─────────────────────────── */}
+      <div className="flex items-center justify-between gap-2 p-3 bg-gray-50 border-b border-gray-100 flex-wrap">
+        <div className="flex items-center gap-1.5 text-xs text-gray-500 font-semibold px-2 py-1 bg-white border rounded-xl shadow-xs">
+          <span className={`w-2 h-2 rounded-full ${deliveryBoyLocation ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`} />
+          {deliveryBoyLocation ? 'Live Tracking Active' : 'Base Route Ready'}
+        </div>
 
-        {/* External link */}
         {externalUrl && (
           <a
             href={externalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-auto flex items-center gap-1 text-xs font-bold text-brand border border-brand/20 px-3 py-1.5 rounded-xl hover:bg-brand/5 transition-colors"
+            className="flex items-center gap-1 text-xs font-bold text-brand border border-brand/20 px-3 py-1.5 rounded-xl bg-white hover:bg-brand/5 transition-colors shadow-xs"
           >
             <ExternalLink size={11} />
-            {mapMode === 'directions' ? 'Get Directions' : 'Open Maps'}
+            Get Maps Directions
           </a>
         )}
       </div>
 
-      {/* ── Active Location Banner ─────────────────────────────────────────── */}
-      {mapMode !== 'directions' && (
-        <div className={`flex items-center gap-3 px-4 py-2.5 ${
-          mapMode === 'vendor' ? 'bg-green-50 border-b border-green-100' : 'bg-blue-50 border-b border-blue-100'
-        }`}>
-          <div className={`p-1.5 rounded-full ${mapMode === 'vendor' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-            {mapMode === 'vendor' ? <Store size={14} /> : <Navigation size={14} />}
+      {/* ── Interactive Map Container ──────────────────────────────────────── */}
+      <div className="relative" style={{ height: '350px' }}>
+        {/* DOM element where Leaflet initializes */}
+        <div 
+          ref={mapContainerRef} 
+          className="w-full h-full" 
+          style={{ background: '#f3f4f6' }}
+        />
+        
+        {/* Loading overlay if geocoding is ongoing */}
+        {calcState === 'loading' && (
+          <div className="absolute inset-0 bg-white/60 backdrop-blur-xs z-[500] flex flex-col items-center justify-center gap-2">
+            <Loader size={32} className="animate-spin text-brand" />
+            <p className="text-xs font-bold text-gray-500">Plotting live tracking points...</p>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className={`text-[10px] font-bold uppercase tracking-wider ${mapMode === 'vendor' ? 'text-green-600' : 'text-blue-600'}`}>
-              {mapMode === 'vendor' ? 'Vendor Shop' : 'Delivery Address'}
-            </p>
-            <p className="text-xs font-semibold text-gray-800 truncate">
-              {mapMode === 'vendor' ? `${vendorName} — ${vendorLocation}` : deliveryAddress}
-            </p>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Route label in directions mode */}
-      {mapMode === 'directions' && vendorLocation && deliveryAddress && (
-        <div className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 border-b border-indigo-100 text-xs">
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-            <span className="text-gray-600 font-semibold truncate">{vendorName}</span>
-          </div>
-          <span className="text-indigo-300 font-black flex-shrink-0">→</span>
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
-            <span className="text-gray-600 font-semibold truncate">Your Location</span>
-          </div>
+      {/* ── Legend Banner ─────────────────────────────────────────── */}
+      <div className="flex items-center justify-center gap-5 px-4 py-3 bg-white border-t border-gray-100 text-[10px] font-bold text-gray-500 flex-wrap uppercase tracking-wider">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-green-600 inline-block" /> Vendor Pickup
         </div>
-      )}
+        {deliveryBoyLocation && (
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block animate-pulse" /> Delivery Partner (Live)
+          </div>
+        )}
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" /> Your Location
+        </div>
+      </div>
 
-      {/* ── Google Maps iFrame ─────────────────────────────────────────────── */}
-      {embedUrl ? (
-        <div className="relative" style={{ height: '300px' }}>
-          <iframe
-            title="Order Location Map"
-            src={embedUrl}
-            width="100%"
-            height="100%"
-            style={{ border: 0 }}
-            allowFullScreen=""
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            className="w-full h-full"
-          />
-        </div>
-      ) : (
-        <div className="flex items-center justify-center h-56 bg-gray-50">
-          <p className="text-gray-400 text-sm">Unable to load map</p>
-        </div>
-      )}
     </div>
   );
 }

@@ -17,3 +17,65 @@
     scrollbar-width: none; /* Firefox */
   }
 }
+
+/* Premium Leaflet Map & Custom Marker Styles */
+.leaflet-container {
+  font-family: inherit;
+  z-index: 10;
+}
+
+.custom-leaflet-marker {
+  background: transparent !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Pulsing Ring Micro-animation for Live Delivery Boy Marker */
+.pulse-ring-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pulse-ring {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(249, 115, 22, 0.3); /* brand orange/amber */
+  border: 2px solid rgba(249, 115, 22, 0.5);
+  animation: marker-pulse 2s infinite cubic-bezier(0.25, 0, 0, 1);
+  pointer-events: none;
+}
+
+@keyframes marker-pulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* Elegant Popups */
+.leaflet-popup-content-wrapper {
+  border-radius: 16px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 4px !important;
+}
+
+.leaflet-popup-tip {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+  line-height: 1.4 !important;
+}
+

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ref, onValue, get } from 'firebase/database';
+import { ref, onValue, get, set } from 'firebase/database';
 import { realtimeDb } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import OrderTrackingMap from '../components/OrderTrackingMap';
@@ -14,7 +14,7 @@ import {
 const STATUS_STEPS = [
   { key: 'pending',     label: 'Order Placed',     icon: ShoppingBag, color: 'green'  },
   { key: 'confirmed',   label: 'Confirmed',         icon: CheckCircle, color: 'blue'   },
-  { key: 'processing',  label: 'Being Prepared',    icon: Package,     color: 'purple' },
+  { key: 'processing',  label: 'Packing',           icon: Package,     color: 'purple' },
   { key: 'dispatched',  label: 'Out for Delivery',  icon: Truck,       color: 'orange' },
   { key: 'delivered',   label: 'Delivered',         icon: Navigation,  color: 'green'  },
 ];
@@ -68,6 +68,22 @@ function TimelineStep({ step, isActive, isCompleted, isLast }) {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
+async function geocodeAddress(address) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&addressdetails=0`;
+    const res = await fetch(url, {
+      headers: { 'Accept-Language': 'en-US,en', 'User-Agent': 'FresVegApp/1.0' },
+    });
+    const data = await res.json();
+    if (data && data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    }
+  } catch (err) {
+    console.warn('Geocoding failed for:', address, err);
+  }
+  return null;
+}
+
 export default function OrderTracking() {
   const { orderId } = useParams();
   const navigate = useNavigate();
@@ -78,6 +94,87 @@ export default function OrderTracking() {
   const [error, setError] = useState(null);
   const [resolvedVendorLocation, setResolvedVendorLocation] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
+
+  // Simulation states
+  const [simulating, setSimulating] = useState(false);
+  const [simIntervalId, setSimIntervalId] = useState(null);
+
+  // Clean up simulator on unmount or status change
+  useEffect(() => {
+    return () => {
+      if (simIntervalId) {
+        clearInterval(simIntervalId);
+      }
+    };
+  }, [simIntervalId]);
+
+  const handleSimulateMovement = async () => {
+    if (simulating) {
+      if (simIntervalId) {
+        clearInterval(simIntervalId);
+        setSimIntervalId(null);
+      }
+      setSimulating(false);
+      return;
+    }
+
+    if (!resolvedVendorLocation || !order?.address) {
+      alert("Both vendor shop location and delivery address must be set to run simulation.");
+      return;
+    }
+
+    setSimulating(true);
+    const startCoords = await geocodeAddress(resolvedVendorLocation);
+    // Stagger geocoding requests to prevent Nominatim rate-limiting
+    await new Promise((r) => setTimeout(r, 1100));
+    const endCoords = await geocodeAddress(order.address);
+
+    if (!startCoords || !endCoords) {
+      alert("Failed to geocode addresses for simulation. Please enter detailed locations.");
+      setSimulating(false);
+      return;
+    }
+
+    // Generate 15 steps along the line
+    const totalSteps = 15;
+    const path = [];
+    for (let i = 0; i <= totalSteps; i++) {
+      const fraction = i / totalSteps;
+      const lat = startCoords.lat + (endCoords.lat - startCoords.lat) * fraction;
+      const lng = startCoords.lon + (endCoords.lon - startCoords.lon) * fraction;
+      path.push({ lat, lng });
+    }
+
+    let currentStep = 0;
+    const interval = setInterval(async () => {
+      if (currentStep >= path.length) {
+        clearInterval(interval);
+        setSimIntervalId(null);
+        setSimulating(false);
+        alert("Delivery simulation completed!");
+        return;
+      }
+
+      const point = path[currentStep];
+      const newLoc = {
+        lat: point.lat,
+        lng: point.lng,
+        timestamp: new Date().toISOString()
+      };
+
+      try {
+        const dbRef = ref(realtimeDb, `orders/${orderId}/deliveryBoyLocation`);
+        await set(dbRef, newLoc);
+        console.log(`Simulation step ${currentStep + 1}/${path.length} updated:`, newLoc);
+      } catch (err) {
+        console.error("Simulation database update failed:", err);
+      }
+
+      currentStep++;
+    }, 2000); // Update coordinates every 2 seconds
+
+    setSimIntervalId(interval);
+  };
 
   // Realtime listener on this specific order
   useEffect(() => {
@@ -344,7 +441,53 @@ export default function OrderTracking() {
                 vendorLocation={resolvedVendorLocation}
                 vendorName={vendorName}
                 deliveryAddress={order.address}
+                deliveryBoyLocation={order.deliveryBoyLocation}
+                deliveryBoyName={order.deliveryBoyName}
               />
+
+              {/* Developer Location Simulation Panel */}
+              {order.status === 'dispatched' && (
+                <div className="mt-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-inner">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                    <div>
+                      <p className="text-xs font-bold text-indigo-900">Testing Simulation Tools</p>
+                      <p className="text-[10px] text-gray-500">Test moving rider marker live on this device</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSimulateMovement}
+                    className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 active:scale-[0.98] w-full sm:w-auto text-white ${
+                      simulating ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-700'
+                    }`}
+                  >
+                    <RefreshCw size={12} className={simulating ? 'animate-spin' : ''} />
+                    {simulating ? 'Stop Simulator' : 'Start Mock Route'}
+                  </button>
+                </div>
+              )}
+
+              {/* Assigned Driver Details Card */}
+              {order.deliveryBoyName && (
+                <div className="mt-4 bg-orange-50 border border-orange-100 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-inner">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-orange-100 p-2.5 rounded-xl text-orange-600">
+                      <Truck size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-orange-600 font-bold uppercase tracking-wider">Assigned Delivery Partner</p>
+                      <p className="font-black text-gray-800 text-sm mt-0.5">{order.deliveryBoyName}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-bold bg-green-100 text-green-700 px-2.5 py-1 rounded-full uppercase flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                      On The Way
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Notice: vendor hasn't set location */}
               {!resolvedVendorLocation && !locationLoading && (

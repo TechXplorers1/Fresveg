@@ -24,7 +24,18 @@ export const CartProvider = ({ children }) => {
     if (user) {
       loadCartFromRTDB();
     } else {
-      setCartItems([]);
+      // Load guest cart from localStorage
+      const localCart = localStorage.getItem('guest_cart');
+      if (localCart) {
+        try {
+          setCartItems(JSON.parse(localCart));
+        } catch (e) {
+          console.error('Failed to parse guest cart:', e);
+          setCartItems([]);
+        }
+      } else {
+        setCartItems([]);
+      }
       setAddress('');
     }
   }, [user]);
@@ -34,11 +45,43 @@ export const CartProvider = ({ children }) => {
     try {
       const cartRef = ref(realtimeDb);
       const snapshot = await get(child(cartRef, `carts/${user.uid}`));
+      let dbItems = [];
+      let dbAddress = '';
       if (snapshot.exists()) {
         const data = snapshot.val();
-        setCartItems(data.items || []);
-        setAddress(data.address || '');
+        dbItems = data.items || [];
+        dbAddress = data.address || '';
       }
+
+      // Sync guest cart if there are items in localStorage
+      const localCart = localStorage.getItem('guest_cart');
+      if (localCart) {
+        try {
+          const guestItems = JSON.parse(localCart);
+          if (guestItems && guestItems.length > 0) {
+            const mergedItems = [...dbItems];
+            guestItems.forEach(gItem => {
+              const existingIdx = mergedItems.findIndex(item => item.id === gItem.id);
+              if (existingIdx > -1) {
+                mergedItems[existingIdx].quantity += gItem.quantity;
+              } else {
+                mergedItems.push(gItem);
+              }
+            });
+            await saveCartToRTDB(mergedItems, dbAddress);
+            setCartItems(mergedItems);
+            localStorage.removeItem('guest_cart');
+          } else {
+            setCartItems(dbItems);
+          }
+        } catch (e) {
+          console.error('Error merging guest cart with database cart:', e);
+          setCartItems(dbItems);
+        }
+      } else {
+        setCartItems(dbItems);
+      }
+      setAddress(dbAddress);
     } catch (error) {
       console.error('Error loading cart from RTDB:', error);
       console.warn('Cart data may not be synced. Check your internet connection.');
@@ -69,7 +112,12 @@ export const CartProvider = ({ children }) => {
       } else {
         newItems = [...prev, { ...product, quantity: 1 }];
       }
-      saveCartToRTDB(newItems, address);
+      
+      if (user) {
+        saveCartToRTDB(newItems, address);
+      } else {
+        localStorage.setItem('guest_cart', JSON.stringify(newItems));
+      }
       return newItems;
     });
     
@@ -83,7 +131,11 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = (id) => {
     const newItems = cartItems.filter(item => item.id !== id);
     setCartItems(newItems);
-    saveCartToRTDB(newItems, address);
+    if (user) {
+      saveCartToRTDB(newItems, address);
+    } else {
+      localStorage.setItem('guest_cart', JSON.stringify(newItems));
+    }
   };
 
   const updateQuantity = (id, quantity) => {
@@ -95,17 +147,27 @@ export const CartProvider = ({ children }) => {
       item.id === id ? { ...item, quantity } : item
     );
     setCartItems(newItems);
-    saveCartToRTDB(newItems, address);
+    if (user) {
+      saveCartToRTDB(newItems, address);
+    } else {
+      localStorage.setItem('guest_cart', JSON.stringify(newItems));
+    }
   };
 
   const clearCart = () => {
     setCartItems([]);
-    saveCartToRTDB([], address);
+    if (user) {
+      saveCartToRTDB([], address);
+    } else {
+      localStorage.removeItem('guest_cart');
+    }
   };
 
   const updateAddress = (newAddress) => {
     setAddress(newAddress);
-    saveCartToRTDB(cartItems, newAddress);
+    if (user) {
+      saveCartToRTDB(cartItems, newAddress);
+    }
   };
 
   const placeOrder = async (paymentMethod = 'Cash on Delivery') => {

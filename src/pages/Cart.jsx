@@ -2,17 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { Minus, Plus, Trash2, MapPin, PlusCircle, CheckCircle2 } from 'lucide-react';
+import { Minus, Plus, Trash2, MapPin, PlusCircle, CheckCircle2, Pencil } from 'lucide-react';
 
 export default function Cart() {
   const { cartItems, setAddress, removeFromCart, updateQuantity, getTotal } = useCart();
-  const { userProfile, updateProfile } = useAuth();
+  const { user, userProfile, updateProfile, loading } = useAuth();
   const navigate = useNavigate();
+  
+  // Redirect guest users to login
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth?redirect=cart');
+    }
+  }, [user, loading, navigate]);
   
   const savedAddresses = userProfile?.addresses || [];
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [editingAddressId, setEditingAddressId] = useState(null);
   const [saveToProfile, setSaveToProfile] = useState(true);
+  const [errors, setErrors] = useState({});
 
   // Initialize selected address when saved addresses are loaded
   useEffect(() => {
@@ -39,28 +48,85 @@ export default function Cart() {
       ...prev,
       [name]: value
     }));
+    // Clear error for this field when typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
   const handleSelectAddress = (addr) => {
     setSelectedAddressId(addr.id);
     setShowNewAddressForm(false);
+    setErrors({});
+  };
+
+  const handleEditAddressClick = (addr) => {
+    setEditingAddressId(addr.id);
+    setAddressForm({
+      label: addr.label || '',
+      street: addr.street || '',
+      city: addr.city || '',
+      state: addr.state || '',
+      zipCode: addr.zipCode || '',
+      country: addr.country || ''
+    });
+    setShowNewAddressForm(true);
+    setErrors({});
   };
 
   const handleSubmitAddress = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     let finalAddressString = '';
     
     if (showNewAddressForm) {
+      // Validate fields
+      const newErrors = {};
+      if (!addressForm.label.trim()) newErrors.label = 'Address label is required (e.g. Home, Work)';
+      if (!addressForm.street.trim()) newErrors.street = 'Street address is required';
+      if (!addressForm.city.trim()) newErrors.city = 'City is required';
+      if (!addressForm.state.trim()) newErrors.state = 'State is required';
+      if (!addressForm.zipCode.trim()) newErrors.zipCode = 'ZIP Code is required';
+      if (!addressForm.country.trim()) newErrors.country = 'Country is required';
+
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        return;
+      }
+
       finalAddressString = `${addressForm.street}, ${addressForm.city}, ${addressForm.state} ${addressForm.zipCode}, ${addressForm.country}`;
       
-      if (saveToProfile) {
-        const newAddrObject = { ...addressForm, id: Date.now() };
+      if (editingAddressId) {
+        // Edit mode
+        const updatedAddresses = savedAddresses.map(addr =>
+          addr.id === editingAddressId ? { ...addr, ...addressForm } : addr
+        );
+        await updateProfile({ addresses: updatedAddresses });
+        setSelectedAddressId(editingAddressId);
+        setEditingAddressId(null);
+      } else {
+        // Add mode
+        const newAddrId = Date.now();
+        const newAddrObject = { ...addressForm, id: newAddrId };
         await updateProfile({ addresses: [...savedAddresses, newAddrObject] });
+        setSelectedAddressId(newAddrId);
       }
+      
+      setShowNewAddressForm(false);
+      setAddressForm({ label: '', street: '', city: '', state: '', zipCode: '', country: '' });
     } else {
+      if (savedAddresses.length === 0) {
+        alert('Please add a new address first.');
+        return;
+      }
       const selected = savedAddresses.find(a => a.id === selectedAddressId);
       if (selected) {
         finalAddressString = `${selected.street}, ${selected.city}, ${selected.state} ${selected.zipCode}, ${selected.country}`;
+      } else {
+        alert('Please select a delivery address.');
+        return;
       }
     }
 
@@ -69,6 +135,18 @@ export default function Cart() {
       navigate('/checkout');
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   if (cartItems.length === 0) {
     return (
@@ -147,11 +225,23 @@ export default function Cart() {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <MapPin className="text-brand" size={24} />
-                <h2 className="text-xl font-semibold">Delivery To</h2>
+                <h2 className="text-xl font-semibold">
+                  {showNewAddressForm 
+                    ? editingAddressId ? 'Edit Address' : 'Delivery To'
+                    : 'Delivery To'
+                  }
+                </h2>
               </div>
               {savedAddresses.length > 0 && (
                 <button 
-                  onClick={() => setShowNewAddressForm(!showNewAddressForm)}
+                  onClick={() => { 
+                    setShowNewAddressForm(!showNewAddressForm); 
+                    setErrors({});
+                    if (showNewAddressForm) {
+                      setEditingAddressId(null);
+                      setAddressForm({ label: '', street: '', city: '', state: '', zipCode: '', country: '' });
+                    }
+                  }}
                   className="text-brand text-sm font-bold flex items-center gap-1 hover:underline"
                 >
                   {showNewAddressForm ? 'Select Saved' : 'Add New Address'}
@@ -176,7 +266,19 @@ export default function Cart() {
                       <span className="text-[10px] font-bold uppercase tracking-wider bg-white px-2 py-0.5 rounded-full border border-gray-100 mb-2 inline-block">
                         {addr.label || 'Other'}
                       </span>
-                      {selectedAddressId === addr.id && <CheckCircle2 size={18} className="text-brand" />}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditAddressClick(addr);
+                          }}
+                          className="text-gray-400 hover:text-brand transition-colors p-1 rounded-lg hover:bg-white"
+                          title="Edit Address"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        {selectedAddressId === addr.id && <CheckCircle2 size={18} className="text-brand" />}
+                      </div>
                     </div>
                     <p className="text-sm font-semibold text-gray-900">{addr.street}</p>
                     <p className="text-xs text-gray-500">{addr.city}, {addr.state} - {addr.zipCode}</p>
@@ -194,10 +296,12 @@ export default function Cart() {
                        name="label"
                        value={addressForm.label}
                        onChange={handleAddressChange}
-                       required
-                       className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/10 focus:border-brand outline-none"
+                       className={`w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-brand/10 focus:border-brand outline-none transition-all ${
+                         errors.label ? 'border-red-500 bg-red-50/20' : 'border-gray-200'
+                       }`}
                        placeholder="e.g. Home, Work"
                      />
+                     {errors.label && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.label}</p>}
                   </div>
                   <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
@@ -206,10 +310,12 @@ export default function Cart() {
                       name="street"
                       value={addressForm.street}
                       onChange={handleAddressChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/10 focus:border-brand outline-none"
+                      className={`w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-brand/10 focus:border-brand outline-none transition-all ${
+                        errors.street ? 'border-red-500 bg-red-50/20' : 'border-gray-200'
+                      }`}
                       placeholder="123 Main Street"
                     />
+                    {errors.street && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.street}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
@@ -218,10 +324,12 @@ export default function Cart() {
                       name="city"
                       value={addressForm.city}
                       onChange={handleAddressChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/10 focus:border-brand outline-none"
+                      className={`w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-brand/10 focus:border-brand outline-none transition-all ${
+                        errors.city ? 'border-red-500 bg-red-50/20' : 'border-gray-200'
+                      }`}
                       placeholder="Mumbai"
                     />
+                    {errors.city && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.city}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
@@ -230,10 +338,12 @@ export default function Cart() {
                       name="state"
                       value={addressForm.state}
                       onChange={handleAddressChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/10 focus:border-brand outline-none"
+                      className={`w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-brand/10 focus:border-brand outline-none transition-all ${
+                        errors.state ? 'border-red-500 bg-red-50/20' : 'border-gray-200'
+                      }`}
                       placeholder="MH"
                     />
+                    {errors.state && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.state}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
@@ -242,10 +352,12 @@ export default function Cart() {
                       name="zipCode"
                       value={addressForm.zipCode}
                       onChange={handleAddressChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/10 focus:border-brand outline-none"
+                      className={`w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-brand/10 focus:border-brand outline-none transition-all ${
+                        errors.zipCode ? 'border-red-500 bg-red-50/20' : 'border-gray-200'
+                      }`}
                       placeholder="400001"
                     />
+                    {errors.zipCode && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.zipCode}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
@@ -254,10 +366,12 @@ export default function Cart() {
                       name="country"
                       value={addressForm.country}
                       onChange={handleAddressChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand/10 focus:border-brand outline-none"
+                      className={`w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-brand/10 focus:border-brand outline-none transition-all ${
+                        errors.country ? 'border-red-500 bg-red-50/20' : 'border-gray-200'
+                      }`}
                       placeholder="India"
                     />
+                    {errors.country && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.country}</p>}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 py-2">
@@ -277,7 +391,10 @@ export default function Cart() {
               onClick={handleSubmitAddress}
               className="w-full bg-brand text-white py-4 px-4 rounded-xl font-bold hover:bg-brand-dark transition-all shadow-md active:scale-[0.98] mt-4"
             >
-              Confirm Address & Checkout
+              {showNewAddressForm 
+                ? editingAddressId ? 'Update & Confirm' : 'Confirm Address & Checkout'
+                : 'Confirm Address & Checkout'
+              }
             </button>
           </div>
         </div>

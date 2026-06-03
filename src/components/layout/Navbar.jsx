@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Store, User, Menu, X, Leaf, LogOut, Search } from 'lucide-react';
+import { ShoppingCart, Store, User, Menu, X, Leaf, LogOut, Search, Bike } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useProducts } from '../../context/ProductContext';
@@ -8,7 +8,7 @@ import { useProducts } from '../../context/ProductContext';
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { cartItems } = useCart();
-  const { user, logout } = useAuth();
+  const { user, userProfile, logout } = useAuth();
   const { searchQuery, setSearchQuery } = useProducts();
   const navigate = useNavigate();
   
@@ -62,7 +62,13 @@ export default function Navbar() {
             
             {user && (
               <Link to="/profile" className="text-gray-600 hover:text-brand font-medium transition-colors flex items-center gap-2">
-                {user.role === 'vendor' ? <Store size={18} /> : <User size={18} />}
+                {userProfile?.role === 'vendor' ? (
+                  <Store size={18} />
+                ) : userProfile?.role === 'delivery_person' ? (
+                  <Bike size={18} />
+                ) : (
+                  <User size={18} />
+                )}
                 Profile
               </Link>
             )}
@@ -79,7 +85,7 @@ export default function Navbar() {
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2 bg-brand-light/30 px-3 py-1.5 rounded-full border border-brand/20">
                     <User size={18} className="text-brand" />
-                    <span className="text-sm font-semibold text-brand-dark">{user.name}</span>
+                    <span className="text-sm font-semibold text-brand-dark">{userProfile?.displayName || user?.displayName || 'User'}</span>
                   </div>
                   <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50">
                     <LogOut size={20} />
@@ -118,8 +124,8 @@ export default function Navbar() {
             {user && (
               <div className="px-3 py-2 bg-brand-light/20 rounded-lg flex items-center justify-between">
                 <div>
-                  <span className="text-xs text-brand block font-semibold uppercase">{user.role}</span>
-                  <span className="font-medium text-gray-900">{user.name}</span>
+                  <span className="text-xs text-brand block font-semibold uppercase">{userProfile?.role || 'Customer'}</span>
+                  <span className="font-medium text-gray-900">{userProfile?.displayName || user?.displayName || 'User'}</span>
                 </div>
               </div>
             )}
@@ -136,7 +142,13 @@ export default function Navbar() {
             
             {user && (
               <Link to="/profile" className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-brand hover:bg-brand-light rounded-md font-medium transition-colors">
-                {user.role === 'vendor' ? <Store size={18} /> : <User size={18} />}
+                {userProfile?.role === 'vendor' ? (
+                  <Store size={18} />
+                ) : userProfile?.role === 'delivery_person' ? (
+                  <Bike size={18} />
+                ) : (
+                  <User size={18} />
+                )}
                 Profile
               </Link>
             )}

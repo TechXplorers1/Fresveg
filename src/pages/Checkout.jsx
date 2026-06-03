@@ -36,13 +36,31 @@ function loadRazorpayScript() {
 // ─── Main Checkout Page ────────────────────────────────────────────────────────
 export default function Checkout() {
   const { cartItems, address, getTotal, placeOrder } = useCart();
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth?redirect=checkout');
+    }
+  }, [user, loading, navigate]);
 
   const [selectedPayment, setSelectedPayment] = React.useState('Cash on Delivery');
   const [isProcessing,    setIsProcessing]    = React.useState(false);
   const [rzpLoading,      setRzpLoading]      = React.useState(false);
   const [rzpError,        setRzpError]        = React.useState('');
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2/10 border-b-brand"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   const PAYMENT_METHODS = [
     {

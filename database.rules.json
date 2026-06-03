@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "users": {
+      "$userId": {
+        ".read": "auth != null && auth.uid === $userId",
+        ".write": "auth != null && auth.uid === $userId"
+      }
+    },
+    "carts": {
+      "$userId": {
+        ".read": "auth != null && auth.uid === $userId",
+        ".write": "auth != null && auth.uid === $userId"
+      }
+    },
+    "products": {
+      ".read": "true",
+      ".write": "auth != null"
+    },
+    "orders": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}
