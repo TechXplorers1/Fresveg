@@ -280,7 +280,8 @@ export default function OrderTrackingMap({
           {calcState === 'error' && (
             <div className="flex items-center gap-2 text-xs text-orange-500 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2">
               <AlertCircle size={13} />
-              <span>Could not calculate distance — addresses may be too vague. Open Google Maps for exact navigation.</span>
+              <span>We couldn't calculate the distance. The addresses might be unclear. You can view the route on Google Maps.</span>
+              <a href={externalUrl} target="_blank" rel="noopener noreferrer" className="ml-2 underline text-blue-600 hover:text-blue-800">Open Maps</a>
             </div>
           )}
         </div>
