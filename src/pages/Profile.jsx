@@ -63,6 +63,41 @@ export default function Profile() {
   });
   const [deletingProductId, setDeletingProductId] = useState(null);
 
+  const [detectingShopLocation, setDetectingShopLocation] = useState(false);
+
+  const handleGetCurrentLocation = (setter, formState) => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    setDetectingShopLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          if (response.ok) {
+            const data = await response.json();
+            const address = data.display_name || `${latitude}, ${longitude}`;
+            setter({ ...formState, location: address });
+          } else {
+            setter({ ...formState, location: `${latitude}, ${longitude}` });
+          }
+        } catch (error) {
+          setter({ ...formState, location: `${latitude}, ${longitude}` });
+        } finally {
+          setDetectingShopLocation(false);
+        }
+      },
+      (error) => {
+        console.error(error);
+        alert("Unable to retrieve your location. Make sure location access is enabled.");
+        setDetectingShopLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
   // Protect route
   if (!user) return <Navigate to="/auth" replace />;
 
@@ -1282,7 +1317,23 @@ export default function Profile() {
             </div>
             <div>
               <label className={labelCls}>Shop Location <span className="text-brand font-bold">*</span></label>
-              <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input required type="text" value={shopSetup.location} onChange={(e) => setShopSetup({ ...shopSetup, location: e.target.value })} className={inputCls} placeholder="E.g. Andheri West, Mumbai, Maharashtra" /></div>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input required type="text" value={shopSetup.location} onChange={(e) => setShopSetup({ ...shopSetup, location: e.target.value })} className={inputCls} style={{ paddingRight: '160px' }} placeholder="E.g. Andheri West, Mumbai, Maharashtra" />
+                <button
+                  type="button"
+                  onClick={() => handleGetCurrentLocation(setShopSetup, shopSetup)}
+                  disabled={detectingShopLocation}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-brand/10 hover:bg-brand/20 disabled:bg-gray-100 disabled:text-gray-400 text-brand text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                >
+                  {detectingShopLocation ? (
+                    <span className="w-3 h-3 border-2 border-brand border-t-transparent rounded-full animate-spin"></span>
+                  ) : (
+                    <Navigation size={11} />
+                  )}
+                  {detectingShopLocation ? 'Detecting...' : 'Add current location'}
+                </button>
+              </div>
               <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
                 <Navigation size={11} /> Use a specific address (area + city + state) — this is shown to customers on Google Maps when they track their delivery.
               </p>
@@ -1318,7 +1369,23 @@ export default function Profile() {
                           </div>
                           <div>
                             <label className={labelCls}>Location <span className="text-brand font-bold">*</span></label>
-                            <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} /><input required type="text" value={editShopForm.location} onChange={(e) => setEditShopForm({ ...editShopForm, location: e.target.value })} className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 focus:border-brand outline-none text-sm" placeholder="E.g. Andheri West, Mumbai, Maharashtra" /></div>
+                            <div className="relative">
+                              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                              <input required type="text" value={editShopForm.location} onChange={(e) => setEditShopForm({ ...editShopForm, location: e.target.value })} className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 focus:border-brand outline-none text-sm" style={{ paddingRight: '150px' }} placeholder="E.g. Andheri West, Mumbai, Maharashtra" />
+                              <button
+                                type="button"
+                                onClick={() => handleGetCurrentLocation(setEditShopForm, editShopForm)}
+                                disabled={detectingShopLocation}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-brand/10 hover:bg-brand/20 disabled:bg-gray-100 disabled:text-gray-400 text-brand text-xs font-bold px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                              >
+                                {detectingShopLocation ? (
+                                  <span className="w-2.5 h-2.5 border-2 border-brand border-t-transparent rounded-full animate-spin"></span>
+                                ) : (
+                                  <Navigation size={10} />
+                                )}
+                                {detectingShopLocation ? 'Detecting...' : 'Add current location'}
+                              </button>
+                            </div>
                             <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
                               <Navigation size={10} /> Enter your full address so customers can see your shop on Google Maps when tracking orders.
                             </p>
@@ -1397,180 +1464,285 @@ export default function Profile() {
                     </div>
                   ))}
                 </div>
-
-                {!showAddShopForm && (
-                  <button onClick={() => setShowAddShopForm(true)} className="flex items-center gap-1 bg-gray-100 text-gray-600 hover:text-brand hover:bg-brand-light/50 px-3 py-1.5 rounded-full text-sm font-medium transition-colors mt-4">
-                    <Plus size={14} /> Add Shop
-                  </button>
-                )}
+                <button onClick={() => setShowAddShopForm(true)} className="flex items-center gap-1 bg-gray-100 text-gray-600 hover:text-brand hover:bg-brand-light/50 px-3 py-1.5 rounded-full text-sm font-medium transition-colors mt-4">
+                  <Plus size={14} /> Add Shop
+                </button>
               </div>
 
               {/* Add New Product button */}
               <button
-                onClick={() => setShowAddForm(!showAddForm)}
+                onClick={() => setShowAddForm(true)}
                 className="bg-brand hover:bg-brand-dark text-white px-6 py-2.5 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 shadow-sm flex-shrink-0"
               >
                 <Plus size={20} />
-                {showAddForm ? 'Cancel' : 'Add New Product'}
+                Add New Product
               </button>
             </div>
           </div>
 
-          {/* ── Add New Shop Form ─────────────────────────────────────────────── */}
+          {/* ── Add New Shop Form Modal ────────────────────────────────────────── */}
           {showAddShopForm && (
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8 max-w-2xl">
-              <h2 className="text-xl font-semibold mb-4">Add New Shop</h2>
-              <form onSubmit={handleAddAdditionalShop} className="space-y-4">
-                <div>
-                  <label className={labelCls}>Shop Name</label>
-                  <div className="relative"><Store className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input required type="text" value={newShop.shopName} onChange={(e) => setNewShop({ ...newShop, shopName: e.target.value })} className={inputCls} placeholder="E.g. Fresh Valley Farms" /></div>
-                </div>
-                <div>
-                  <label className={labelCls}>Shop Location <span className="text-brand font-bold">*</span></label>
-                  <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input required type="text" value={newShop.location} onChange={(e) => setNewShop({ ...newShop, location: e.target.value })} className={inputCls} placeholder="E.g. Andheri West, Mumbai, Maharashtra" /></div>
-                  <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
-                    <Navigation size={11} /> Use a specific address — customers see this on Google Maps when tracking their order.
-                  </p>
-                </div>
-                <div>
-                  <label className={labelCls}>GST Number</label>
-                  <div className="relative"><FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input required type="text" value={newShop.gstNumber} onChange={(e) => setNewShop({ ...newShop, gstNumber: e.target.value })} className={inputCls} placeholder="E.g. 22AAAAA0000A1Z5" /></div>
-                </div>
-                <div className="pt-2 flex gap-2">
-                  <button type="submit" className="bg-brand text-white px-6 py-2.5 rounded-xl font-medium hover:bg-brand-dark transition-colors">Create Shop</button>
-                  <button type="button" onClick={() => { setShowAddShopForm(false); setNewShop({ shopName: '', location: '', gstNumber: '' }); }} className="text-gray-600 hover:text-gray-800 px-4 py-2.5 rounded-xl font-medium">Cancel</button>
-                </div>
-              </form>
+            <div 
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+              onClick={() => { setShowAddShopForm(false); setNewShop({ shopName: '', location: '', gstNumber: '' }); }}
+            >
+              <div 
+                className="bg-white rounded-3xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-hidden flex flex-col transform transition-all scale-100 duration-300"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <form onSubmit={handleAddAdditionalShop} className="flex flex-col h-full overflow-hidden">
+                  
+                  {/* Modal Header */}
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0 bg-white">
+                    <div className="flex items-center gap-2.5">
+                      <div className="bg-brand/10 p-2 rounded-xl text-brand animate-pulse">
+                        <Plus size={20} />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">Add New Shop</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">Register a new shop branch to showcase your products</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setShowAddShopForm(false); setNewShop({ shopName: '', location: '', gstNumber: '' }); }}
+                      className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-all duration-200"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                    <div>
+                      <label className={labelCls}>Shop Name</label>
+                      <div className="relative">
+                        <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input required type="text" value={newShop.shopName} onChange={(e) => setNewShop({ ...newShop, shopName: e.target.value })} className={inputCls} placeholder="E.g. Fresh Valley Farms" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Shop Location <span className="text-brand font-bold">*</span></label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input required type="text" value={newShop.location} onChange={(e) => setNewShop({ ...newShop, location: e.target.value })} className={inputCls} style={{ paddingRight: '160px' }} placeholder="E.g. Andheri West, Mumbai, Maharashtra" />
+                        <button
+                          type="button"
+                          onClick={() => handleGetCurrentLocation(setNewShop, newShop)}
+                          disabled={detectingShopLocation}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-brand/10 hover:bg-brand/20 disabled:bg-gray-100 disabled:text-gray-400 text-brand text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                        >
+                          {detectingShopLocation ? (
+                            <span className="w-3.5 h-3.5 border-2 border-brand border-t-transparent rounded-full animate-spin"></span>
+                          ) : (
+                            <Navigation size={12} />
+                          )}
+                          {detectingShopLocation ? 'Detecting...' : 'Add current location'}
+                        </button>
+                      </div>
+                      <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
+                        <Navigation size={11} /> Use a specific address — customers see this on Google Maps when tracking their order.
+                      </p>
+                    </div>
+                    <div>
+                      <label className={labelCls}>GST Number</label>
+                      <div className="relative">
+                        <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input required type="text" value={newShop.gstNumber} onChange={(e) => setNewShop({ ...newShop, gstNumber: e.target.value })} className={inputCls} placeholder="E.g. 22AAAAA0000A1Z5" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50 flex-shrink-0">
+                    <button 
+                      type="button" 
+                      onClick={() => { setShowAddShopForm(false); setNewShop({ shopName: '', location: '', gstNumber: '' }); }} 
+                      className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-100 font-semibold transition-all duration-200 text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit" 
+                      className="bg-brand hover:bg-brand-dark text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98] text-sm"
+                    >
+                      Create Shop
+                    </button>
+                  </div>
+
+                </form>
+              </div>
             </div>
           )}
 
-          {/* ── Add Product Form ──────────────────────────────────────────────── */}
+          {/* ── Add Product Form Modal ────────────────────────────────────────── */}
           {showAddForm && (
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8 max-w-4xl">
-              <h2 className="text-xl font-bold text-gray-900 mb-6 border-b pb-4">Add New Product</h2>
-              <form onSubmit={handleAddProduct} className="space-y-8">
+            <div 
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+              onClick={() => setShowAddForm(false)}
+            >
+              <div 
+                className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col transform transition-all scale-100 duration-300"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <form onSubmit={handleAddProduct} className="flex flex-col h-full overflow-hidden">
+                  
+                  {/* Modal Header */}
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0 bg-white">
+                    <div className="flex items-center gap-2.5">
+                      <div className="bg-brand/10 p-2 rounded-xl text-brand animate-pulse">
+                        <Plus size={20} />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">Add New Product</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">Fill in the details to publish a new product in the marketplace</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddForm(false)}
+                      className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-all duration-200"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
 
-                {/* Section: Basic Info */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-brand uppercase tracking-widest flex items-center gap-2">
-                    <Package size={16} /> Basic Information
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
-                      <label className={labelCls}>Product Name</label>
-                      <div className="relative">
-                        <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input required type="text" name="name" value={newProduct.name} onChange={handleInputChange} className={inputCls} placeholder="E.g. Organic Tomatoes" />
+                  {/* Modal Body (Scrollable) */}
+                  <div className="overflow-y-auto px-6 py-6 md:px-8 md:py-8 space-y-8 flex-1">
+                    {/* Section: Basic Info */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-bold text-brand uppercase tracking-widest flex items-center gap-2">
+                        <Package size={16} /> Basic Information
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="md:col-span-2">
+                          <label className={labelCls}>Product Name</label>
+                          <div className="relative">
+                            <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input required type="text" name="name" value={newProduct.name} onChange={handleInputChange} className={inputCls} placeholder="E.g. Organic Tomatoes" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className={labelCls}>Which Shop?</label>
+                          <div className="relative">
+                            <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <select required name="shop" value={newProduct.shop} onChange={handleInputChange} className={`${inputCls} appearance-none bg-white`}>
+                              <option value="">Select a shop...</option>
+                              {vendorShops.map((shop, i) => <option key={i} value={shop.shopName}>{shop.shopName}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className={labelCls}>Category</label>
+                          <div className="relative">
+                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <select required name="category" value={newProduct.category} onChange={handleInputChange} className={`${inputCls} appearance-none bg-white`}>
+                              <option value="">Select category...</option>
+                              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className={labelCls}>Price (₹)</label>
+                          <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input required type="number" step="0.01" name="price" value={newProduct.price} onChange={handleInputChange} className={inputCls} placeholder="2.99" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className={labelCls}>Image URL</label>
+                          <div className="relative">
+                            <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input required type="text" name="image" value={newProduct.image} onChange={handleInputChange} className={inputCls} placeholder="https://example.com/image.jpg" />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <label className={labelCls}>Which Shop?</label>
-                      <div className="relative">
-                        <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <select required name="shop" value={newProduct.shop} onChange={handleInputChange} className={`${inputCls} appearance-none bg-white`}>
-                          <option value="">Select a shop...</option>
-                          {vendorShops.map((shop, i) => <option key={i} value={shop.shopName}>{shop.shopName}</option>)}
-                        </select>
+
+                    {/* Section: Product Specifications */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-bold text-brand uppercase tracking-widest flex items-center gap-2">
+                        <Check size={16} /> Product Specifications
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <label className={labelCls}>Unit (e.g. kg, box)</label>
+                          <input required type="text" name="unit" value={newProduct.unit} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="kg" />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Net Weight</label>
+                          <input type="text" name="netWeight" value={newProduct.netWeight} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="500g" />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Food Preference</label>
+                          <select name="preference" value={newProduct.preference} onChange={handleInputChange} className={`${inputCls.replace('pl-10', 'px-4')} appearance-none bg-white`}>
+                            <option value="Vegetarian">Vegetarian</option>
+                            <option value="Non-Vegetarian">Non-Vegetarian</option>
+                            <option value="Vegan">Vegan</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className={labelCls}>Country of Origin</label>
+                          <input type="text" name="origin" value={newProduct.origin} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="India" />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Max Shelf Life</label>
+                          <input type="text" name="shelfLife" value={newProduct.shelfLife} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="7 days" />
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <label className={labelCls}>Category</label>
-                      <div className="relative">
-                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <select required name="category" value={newProduct.category} onChange={handleInputChange} className={`${inputCls} appearance-none bg-white`}>
-                          <option value="">Select category...</option>
-                          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
+
+                    {/* Section: Details & Lists */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-bold text-brand uppercase tracking-widest flex items-center gap-2">
+                        <FileText size={16} /> Details & Descriptions
+                      </h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className={labelCls}>Description</label>
+                          <textarea name="description" value={newProduct.description} onChange={handleInputChange} rows="3" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand outline-none resize-none text-sm" placeholder="Detailed description of the product..."></textarea>
+                        </div>
+                        <div>
+                          <label className={labelCls}>Features & Details (one per line)</label>
+                          <textarea name="features" value={newProduct.features} onChange={handleInputChange} rows="3" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand outline-none resize-none text-sm" placeholder="Hand-picked&#10;Organic certified&#10;Rich in Vitamin C"></textarea>
+                        </div>
+                        <div>
+                          <label className={labelCls}>Available Offers (one per line)</label>
+                          <textarea name="offers" value={newProduct.offers} onChange={handleInputChange} rows="2" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand outline-none resize-none text-sm" placeholder="10% discount on orders above $50&#10;Buy 1 Get 1 Free"></textarea>
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <label className={labelCls}>Price (₹)</label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input required type="number" step="0.01" name="price" value={newProduct.price} onChange={handleInputChange} className={inputCls} placeholder="2.99" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className={labelCls}>Image URL</label>
-                      <div className="relative">
-                        <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input required type="text" name="image" value={newProduct.image} onChange={handleInputChange} className={inputCls} placeholder="https://example.com/image.jpg" />
+
+                    {/* Section: Policies */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-bold text-brand uppercase tracking-widest flex items-center gap-2">
+                        <RefreshCw size={16} /> Policies
+                      </h3>
+                      <div>
+                        <label className={labelCls}>Return Policy</label>
+                        <textarea name="returnPolicy" value={newProduct.returnPolicy} onChange={handleInputChange} rows="2" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand outline-none resize-none text-sm" placeholder="Returnable within 24 hours if damaged..."></textarea>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Section: Product Specifications */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-brand uppercase tracking-widest flex items-center gap-2">
-                    <Check size={16} /> Product Specifications
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div>
-                      <label className={labelCls}>Unit (e.g. kg, box)</label>
-                      <input required type="text" name="unit" value={newProduct.unit} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="kg" />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Net Weight</label>
-                      <input type="text" name="netWeight" value={newProduct.netWeight} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="500g" />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Food Preference</label>
-                      <select name="preference" value={newProduct.preference} onChange={handleInputChange} className={`${inputCls.replace('pl-10', 'px-4')} appearance-none bg-white`}>
-                        <option value="Vegetarian">Vegetarian</option>
-                        <option value="Non-Vegetarian">Non-Vegetarian</option>
-                        <option value="Vegan">Vegan</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className={labelCls}>Country of Origin</label>
-                      <input type="text" name="origin" value={newProduct.origin} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="India" />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Max Shelf Life</label>
-                      <input type="text" name="shelfLife" value={newProduct.shelfLife} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="7 days" />
-                    </div>
+                  {/* Modal Footer */}
+                  <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddForm(false)}
+                      className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-100 font-semibold transition-all duration-200 text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-brand hover:bg-brand-dark text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98] text-sm"
+                    >
+                      Save Product to Marketplace
+                    </button>
                   </div>
-                </div>
-
-                {/* Section: Details & Lists */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-brand uppercase tracking-widest flex items-center gap-2">
-                    <FileText size={16} /> Details & Descriptions
-                  </h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className={labelCls}>Description</label>
-                      <textarea name="description" value={newProduct.description} onChange={handleInputChange} rows="3" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand outline-none resize-none text-sm" placeholder="Detailed description of the product..."></textarea>
-                    </div>
-                    <div>
-                      <label className={labelCls}>Features & Details (one per line)</label>
-                      <textarea name="features" value={newProduct.features} onChange={handleInputChange} rows="3" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand outline-none resize-none text-sm" placeholder="Hand-picked&#10;Organic certified&#10;Rich in Vitamin C"></textarea>
-                    </div>
-                    <div>
-                      <label className={labelCls}>Available Offers (one per line)</label>
-                      <textarea name="offers" value={newProduct.offers} onChange={handleInputChange} rows="2" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand outline-none resize-none text-sm" placeholder="10% discount on orders above $50&#10;Buy 1 Get 1 Free"></textarea>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section: Policies */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-brand uppercase tracking-widest flex items-center gap-2">
-                    <RefreshCw size={16} /> Policies
-                  </h3>
-                  <div>
-                    <label className={labelCls}>Return Policy</label>
-                    <textarea name="returnPolicy" value={newProduct.returnPolicy} onChange={handleInputChange} rows="2" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand outline-none resize-none text-sm" placeholder="Returnable within 24 hours if damaged..."></textarea>
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t font-bold">
-                  <button type="submit" className="bg-brand text-white px-8 py-4 rounded-xl w-full hover:bg-brand-dark transition-all shadow-lg active:scale-[0.99] text-lg">
-                    Save Product to Marketplace
-                  </button>
-                </div>
-              </form>
+                </form>
+              </div>
             </div>
           )}
 
