@@ -4,7 +4,7 @@ import { useProducts } from '../context/ProductContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { realtimeDb } from '../firebase';
 import { ref, onValue, update, set } from 'firebase/database';
-import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power } from 'lucide-react';
+import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power } from 'lucide-react';
 
 const CATEGORIES = ['Tomatoes', 'Potatoes', 'Onions', 'Brinjal', 'Carrots', 'Spinach', 'Capsicum', 'Broccoli', 'Garlic', 'Apples', 'Bananas', 'Strawberries', 'Oranges', 'Milk', 'Butter', 'Cheese', 'Yogurt', 'Paneer'];
 
@@ -28,8 +28,15 @@ export default function Profile() {
   // Safely migrate existing users and define current shops array
   const vendorShops = userProfile?.shops || [];
 
+  const [selectedShopFilter, setSelectedShopFilter] = useState(null);
+
   // Vendor sees products from all their shops combined
-  const vendorProducts = allProducts.filter(p => vendorShops.some(shop => shop.shopName === p.vendor));
+  const vendorProducts = allProducts.filter(p => {
+    if (selectedShopFilter) {
+      return p.vendor === selectedShopFilter;
+    }
+    return vendorShops.some(shop => shop.shopName === p.vendor);
+  });
 
   const isVendor = userProfile?.role === 'vendor';
 
@@ -47,12 +54,12 @@ export default function Profile() {
   });
 
   // ─── Add Shop States ────────────────────────────────────────────────────────
-  const [shopSetup, setShopSetup] = useState({ shopName: '', location: '', gstNumber: '' });
-  const [newShop, setNewShop] = useState({ shopName: '', location: '', gstNumber: '' });
+  const [shopSetup, setShopSetup] = useState({ shopName: '', location: '', gstNumber: '', image: '' });
+  const [newShop, setNewShop] = useState({ shopName: '', location: '', gstNumber: '', image: '' });
 
   // ─── Edit Shop State ────────────────────────────────────────────────────────
   const [editingShopIndex, setEditingShopIndex] = useState(null);
-  const [editShopForm, setEditShopForm] = useState({ shopName: '', location: '', gstNumber: '' });
+  const [editShopForm, setEditShopForm] = useState({ shopName: '', location: '', gstNumber: '', image: '' });
 
   // ─── Edit / Delete Product State ────────────────────────────────────────────
   const [editingProductId, setEditingProductId] = useState(null);
@@ -64,6 +71,8 @@ export default function Profile() {
   const [deletingProductId, setDeletingProductId] = useState(null);
 
   const [detectingShopLocation, setDetectingShopLocation] = useState(false);
+  const [deletingShopIndex, setDeletingShopIndex] = useState(null);
+  const [viewingShopIndex, setViewingShopIndex] = useState(null);
 
   const handleGetCurrentLocation = (setter, formState) => {
     if (!navigator.geolocation) {
@@ -105,37 +114,99 @@ export default function Profile() {
   const handleShopSetup = (e) => {
     e.preventDefault();
     if (shopSetup.shopName.trim() && shopSetup.location.trim() && shopSetup.gstNumber.trim()) {
-      const shop = { shopName: shopSetup.shopName.trim(), location: shopSetup.location.trim(), gstNumber: shopSetup.gstNumber.trim(), createdAt: new Date().toISOString() };
+      const shop = {
+        shopName: shopSetup.shopName.trim(),
+        location: shopSetup.location.trim(),
+        gstNumber: shopSetup.gstNumber.trim(),
+        image: shopSetup.image.trim(),
+        createdAt: new Date().toISOString()
+      };
       updateProfile({ shops: [...vendorShops, shop] });
-      setShopSetup({ shopName: '', location: '', gstNumber: '' });
+      setShopSetup({ shopName: '', location: '', gstNumber: '', image: '' });
     }
   };
 
   const handleAddAdditionalShop = (e) => {
     e.preventDefault();
     if (newShop.shopName.trim() && newShop.location.trim() && newShop.gstNumber.trim()) {
-      const shopToAdd = { shopName: newShop.shopName.trim(), location: newShop.location.trim(), gstNumber: newShop.gstNumber.trim(), createdAt: new Date().toISOString() };
+      const shopToAdd = {
+        shopName: newShop.shopName.trim(),
+        location: newShop.location.trim(),
+        gstNumber: newShop.gstNumber.trim(),
+        image: newShop.image.trim(),
+        createdAt: new Date().toISOString()
+      };
       updateProfile({ shops: [...vendorShops, shopToAdd] });
-      setNewShop({ shopName: '', location: '', gstNumber: '' });
+      setNewShop({ shopName: '', location: '', gstNumber: '', image: '' });
       setShowAddShopForm(false);
     }
   };
 
   const handleEditShopClick = (shop, index) => {
     setEditingShopIndex(index);
-    setEditShopForm({ shopName: shop.shopName, location: shop.location, gstNumber: shop.gstNumber });
+    setEditShopForm({
+      shopName: shop.shopName,
+      location: shop.location,
+      gstNumber: shop.gstNumber,
+      image: shop.image || ''
+    });
   };
 
   const handleUpdateShop = (e) => {
     e.preventDefault();
     const oldShopName = vendorShops[editingShopIndex].shopName;
+    const newShopName = editShopForm.shopName.trim();
     const updatedShops = vendorShops.map((shop, i) =>
       i === editingShopIndex
-        ? { ...shop, shopName: editShopForm.shopName.trim(), location: editShopForm.location.trim(), gstNumber: editShopForm.gstNumber.trim() }
+        ? {
+            ...shop,
+            shopName: newShopName,
+            location: editShopForm.location.trim(),
+            gstNumber: editShopForm.gstNumber.trim(),
+            image: editShopForm.image.trim()
+          }
         : shop
     );
+
+    // If shopName changed, update all products belonging to the old shop name
+    if (oldShopName !== newShopName) {
+      const shopProducts = allProducts.filter(p => p.vendor === oldShopName);
+      shopProducts.forEach(product => {
+        updateProduct(product.id, { vendor: newShopName });
+      });
+      // Update selected shop filter if it was active
+      if (selectedShopFilter === oldShopName) {
+        setSelectedShopFilter(newShopName);
+      }
+    }
+
     updateProfile({ shops: updatedShops });
     setEditingShopIndex(null);
+  };
+
+  const handleDeleteShop = (index) => {
+    const shopToDelete = vendorShops[index];
+    if (shopToDelete) {
+      // Clean up products associated with the deleted shop name
+      const shopProducts = allProducts.filter(p => p.vendor === shopToDelete.shopName);
+      shopProducts.forEach(product => {
+        deleteProduct(product.id);
+      });
+
+      // Update user profile shops
+      const updatedShops = vendorShops.filter((_, i) => i !== index);
+      updateProfile({ shops: updatedShops });
+      setDeletingShopIndex(null);
+    }
+  };
+
+  const handleOpenAddProductForShop = (shopName) => {
+    setNewProduct({
+      name: '', price: '', category: '', image: '', shop: shopName, unit: 'kg',
+      description: '', origin: '', preference: 'Vegetarian', shelfLife: '',
+      netWeight: '', returnPolicy: '', offers: '', features: ''
+    });
+    setShowAddForm(true);
   };
 
   // ─── Product Handlers ───────────────────────────────────────────────────────
@@ -215,6 +286,160 @@ export default function Profile() {
 
   const [detectingLocation, setDetectingLocation] = useState(false);
 
+  const [profileMapCoords, setProfileMapCoords] = useState(null);
+  const profileMapContainerRef = useRef(null);
+  const profileMapRef = useRef(null);
+  const profileMarkerRef = useRef(null);
+
+  const handleReverseGeocode = async (lat, lng, addressSetter) => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'FresVegApp/1.0' }
+      });
+      const data = await res.json();
+      if (data && data.address) {
+        const addr = data.address;
+        
+        // Extract all possible door/house/building identifiers to form an approximate door number
+        const doorNumberParts = [
+          addr.house_number,
+          addr.house_name,
+          addr.building,
+          addr.flat,
+          addr.apartment,
+          addr.unit
+        ].filter(Boolean);
+        const doorNumber = doorNumberParts.join(', ');
+        
+        const streetName = addr.road || addr.suburb || addr.neighbourhood || '';
+        const street = doorNumber 
+          ? `${doorNumber}, ${streetName}` 
+          : streetName || addr.amenity || 'Selected Location';
+        
+        const city = addr.city || addr.town || addr.village || addr.state_district || '';
+        const state = addr.state || '';
+        const zipCode = addr.postcode || '';
+        const country = addr.country || 'India';
+        addressSetter(prev => ({
+          ...prev,
+          street,
+          city,
+          state,
+          zipCode,
+          country
+        }));
+      }
+    } catch (err) {
+      console.error("Reverse geocoding failed:", err);
+    }
+  };
+
+  const handleLocateTypedAddress = async () => {
+    const { street, city, state, zipCode, country } = newAddress;
+    const queryParts = [street, city, state, zipCode, country].filter(part => part && part.trim() !== '');
+    if (queryParts.length === 0) {
+      alert("Please fill in some address details first.");
+      return;
+    }
+    const queryStr = queryParts.join(', ');
+    const coords = await geocodeAddress(queryStr);
+    if (coords) {
+      const newCoords = { lat: coords.lat, lng: coords.lon };
+      setProfileMapCoords(newCoords);
+      // Automatically reverse geocode to get precise details (like door number) for this coordinate!
+      await handleReverseGeocode(newCoords.lat, newCoords.lng, setNewAddress);
+    } else {
+      alert("Could not locate the typed address on the map. Try checking the spelling.");
+    }
+  };
+
+  useEffect(() => {
+    if (!showAddressForm || !window.L || !profileMapContainerRef.current) {
+      if (profileMapRef.current) {
+        profileMapRef.current.remove();
+        profileMapRef.current = null;
+        profileMarkerRef.current = null;
+      }
+      return;
+    }
+
+    const L = window.L;
+    const initialLat = profileMapCoords?.lat || 20.5937;
+    const initialLng = profileMapCoords?.lng || 78.9629;
+
+    console.log("Initializing Profile Map at:", initialLat, initialLng);
+
+    const map = L.map(profileMapContainerRef.current, {
+      zoomControl: true,
+      scrollWheelZoom: true,
+      attributionControl: false
+    }).setView([initialLat, initialLng], profileMapCoords ? 16 : 5);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    profileMapRef.current = map;
+
+    const pinHtml = `
+      <div class="instamart-marker-container">
+        <div class="instamart-marker-shadow"></div>
+        <div class="instamart-marker-ground-dot"></div>
+        <div class="instamart-marker-pin">
+          <div class="instamart-marker-inner-dot"></div>
+        </div>
+      </div>
+    `;
+    const customIcon = L.divIcon({
+      html: pinHtml,
+      className: 'custom-leaflet-marker',
+      iconSize: [40, 40],
+      iconAnchor: [20, 20]
+    });
+
+    const marker = L.marker([initialLat, initialLng], {
+      draggable: true,
+      icon: customIcon
+    }).addTo(map);
+
+    profileMarkerRef.current = marker;
+
+    marker.on('dragend', async () => {
+      const latLng = marker.getLatLng();
+      const newCoords = { lat: latLng.lat, lng: latLng.lng };
+      setProfileMapCoords(newCoords);
+      await handleReverseGeocode(newCoords.lat, newCoords.lng, setNewAddress);
+    });
+
+    map.on('click', async (e) => {
+      const latLng = e.latlng;
+      marker.setLatLng(latLng);
+      const newCoords = { lat: latLng.lat, lng: latLng.lng };
+      setProfileMapCoords(newCoords);
+      await handleReverseGeocode(newCoords.lat, newCoords.lng, setNewAddress);
+    });
+
+    return () => {
+      if (profileMapRef.current) {
+        profileMapRef.current.remove();
+        profileMapRef.current = null;
+        profileMarkerRef.current = null;
+      }
+    };
+  }, [showAddressForm]);
+
+  useEffect(() => {
+    if (profileMapRef.current && profileMarkerRef.current && profileMapCoords) {
+      const { lat, lng } = profileMapCoords;
+      const currentLatLng = profileMarkerRef.current.getLatLng();
+      if (Math.abs(currentLatLng.lat - lat) > 0.0001 || Math.abs(currentLatLng.lng - lng) > 0.0001) {
+        profileMarkerRef.current.setLatLng([lat, lng]);
+        profileMapRef.current.setView([lat, lng], 16);
+      }
+    }
+  }, [profileMapCoords]);
+
   const handleDetectLocation = async () => {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser.");
@@ -237,10 +462,21 @@ export default function Profile() {
           if (data && data.address) {
             const addr = data.address;
             
-            // Build a descriptive street address
+            // Extract all possible door/house/building identifiers to form an approximate door number
+            const doorNumberParts = [
+              addr.house_number,
+              addr.house_name,
+              addr.building,
+              addr.flat,
+              addr.apartment,
+              addr.unit
+            ].filter(Boolean);
+            const doorNumber = doorNumberParts.join(', ');
+            
             const streetName = addr.road || addr.suburb || addr.neighbourhood || '';
-            const houseNumber = addr.house_number || '';
-            const street = [houseNumber, streetName].filter(Boolean).join(' ') || addr.amenity || 'Current Location';
+            const street = doorNumber 
+              ? `${doorNumber}, ${streetName}` 
+              : streetName || addr.amenity || 'Current Location';
             
             const city = addr.city || addr.town || addr.village || addr.state_district || '';
             const state = addr.state || '';
@@ -255,7 +491,7 @@ export default function Profile() {
               zipCode,
               country
             }));
-            
+            setProfileMapCoords({ lat: latitude, lng: longitude });
             console.log("Automatically detected and filled address details:", data.address);
           } else {
             alert("Could not retrieve address details for your location. Please enter manually.");
@@ -280,6 +516,7 @@ export default function Profile() {
     setNewAddress({ ...newAddress, [e.target.name]: e.target.value });
   };
 
+
   const handleAddAddress = (e) => {
     e.preventDefault();
     if (newAddress.street && newAddress.city) {
@@ -300,7 +537,7 @@ export default function Profile() {
     }
   };
 
-  const handleEditAddressClick = (addr) => {
+  const handleEditAddressClick = async (addr) => {
     setEditingAddressId(addr.id);
     setNewAddress({
       label: addr.label || '',
@@ -310,18 +547,24 @@ export default function Profile() {
       zipCode: addr.zipCode || '',
       country: addr.country || ''
     });
+    
+    // Geocode to initialize map coordinates
+    const addressStr = `${addr.street || ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}, ${addr.country || ''}`;
+    const coords = await geocodeAddress(addressStr);
+    if (coords) {
+      setProfileMapCoords({ lat: coords.lat, lng: coords.lon });
+    } else {
+      setProfileMapCoords(null);
+    }
+    
     setShowAddressForm(true);
-    // Automatically trigger GPS detection on edit open
-    setTimeout(() => handleDetectLocation(), 100);
   };
 
   const toggleAddressForm = () => {
     if (showAddressForm) {
       setEditingAddressId(null);
       setNewAddress({ label: '', street: '', city: '', state: '', zipCode: '', country: '' });
-    } else {
-      // Automatically trigger GPS detection when opening new address form
-      setTimeout(() => handleDetectLocation(), 100);
+      setProfileMapCoords(null);
     }
     setShowAddressForm(!showAddressForm);
   };
@@ -337,8 +580,8 @@ export default function Profile() {
   };
 
   // ─── Shared field style ─────────────────────────────────────────────────────
-  const inputCls = 'w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand outline-none text-sm';
-  const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
+  const inputCls = 'w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none text-sm transition-all duration-200 bg-white/50 backdrop-blur-sm font-body';
+  const labelCls = 'block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 font-headings';
 
   // ─── Orders State & Fetching ────────────────────────────────────────────────
   const [orders, setOrders] = useState([]);
@@ -608,20 +851,20 @@ export default function Profile() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
       {/* ── User Profile Header ─────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-8">
+      <div className="bg-white/70 backdrop-blur-md border border-white/60 rounded-3xl shadow-xl shadow-emerald-950/[0.02] p-8 mb-8 animate-fade-in">
         <div className="flex flex-col md:flex-row md:items-center gap-6">
           <div className="flex-shrink-0">
-            <div className="bg-brand-light/30 p-6 rounded-full border border-brand/20">
-              <User size={48} className="text-brand" />
+            <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100/50 shadow-inner text-emerald-600">
+              <User size={40} />
             </div>
           </div>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{userProfile?.displayName || user?.displayName || 'User'}</h1>
-            <div className="flex flex-wrap items-center gap-4 text-gray-600">
-              <div className="flex items-center gap-2"><Mail size={16} /><span>{userProfile?.email || user?.email}</span></div>
-              <div className="flex items-center gap-2"><Shield size={16} /><span className="capitalize font-medium">{userProfile?.role || 'customer'}</span></div>
+            <h1 className="text-3xl font-black text-slate-800 font-headings mb-2">{userProfile?.displayName || user?.displayName || 'User'}</h1>
+            <div className="flex flex-wrap items-center gap-4 text-slate-500 font-medium text-sm">
+              <div className="flex items-center gap-2"><Mail size={15} /><span>{userProfile?.email || user?.email}</span></div>
+              <div className="flex items-center gap-1.5"><Shield size={15} /><span className="capitalize font-bold text-xs bg-emerald-50 text-emerald-800 px-2.5 py-0.5 rounded border border-emerald-100/30">{userProfile?.role || 'customer'}</span></div>
               {userProfile?.createdAt && (
-                <div className="flex items-center gap-2"><Calendar size={16} /><span>Joined {new Date(userProfile.createdAt).toLocaleDateString()}</span></div>
+                <div className="flex items-center gap-2"><Calendar size={15} /><span>Joined {new Date(userProfile.createdAt).toLocaleDateString()}</span></div>
               )}
             </div>
           </div>
@@ -630,17 +873,17 @@ export default function Profile() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-3">
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-2 sticky top-24">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-3">Dashboard Menu</p>
+          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-4 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-2 sticky top-24">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 mb-3 font-headings">Dashboard Menu</p>
             
             {userProfile?.role !== 'delivery_person' && (
               <>
                 <button
                   onClick={() => setActiveTab('addresses')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-sm ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${
                     activeTab === 'addresses'
-                      ? 'bg-brand text-white shadow-md shadow-brand/20'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-brand'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                      : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
                   }`}
                 >
                   <MapPin size={18} />
@@ -649,10 +892,10 @@ export default function Profile() {
 
                 <button
                   onClick={() => setActiveTab('orders')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-sm ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${
                     activeTab === 'orders'
-                      ? 'bg-brand text-white shadow-md shadow-brand/20'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-brand'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                      : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
                   }`}
                 >
                   <ShoppingBag size={18} />
@@ -662,10 +905,10 @@ export default function Profile() {
                 {isVendor && (
                   <button
                     onClick={() => setActiveTab('setup')}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-sm ${
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${
                       activeTab === 'setup'
-                        ? 'bg-brand text-white shadow-md shadow-brand/20'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-brand'
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                        : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
                     }`}
                   >
                     <Store size={18} />
@@ -680,10 +923,10 @@ export default function Profile() {
                 {/* Available Jobs */}
                 <button
                   onClick={() => setActiveTab('delivery_jobs')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-sm ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${
                     activeTab === 'delivery_jobs'
-                      ? 'bg-brand text-white shadow-md shadow-brand/20'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-brand'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                      : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
                   }`}
                 >
                   <Bike size={18} />
@@ -693,10 +936,10 @@ export default function Profile() {
                 {/* Active Delivery */}
                 <button
                   onClick={() => setActiveTab('delivery_active')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-sm ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${
                     activeTab === 'delivery_active'
-                      ? 'bg-brand text-white shadow-md shadow-brand/20'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-brand'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                      : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
                   }`}
                 >
                   <Navigation size={18} />
@@ -706,10 +949,10 @@ export default function Profile() {
                 {/* Completed Jobs */}
                 <button
                   onClick={() => setActiveTab('delivery_completed')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-sm ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${
                     activeTab === 'delivery_completed'
-                      ? 'bg-brand text-white shadow-md shadow-brand/20'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-brand'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                      : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
                   }`}
                 >
                   <Check size={18} />
@@ -718,10 +961,10 @@ export default function Profile() {
               </>
             )}
 
-            <div className="border-t border-gray-100 my-2 pt-2">
+            <div className="border-t border-slate-100 my-2 pt-2">
               <button
                 onClick={handleVendorLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-red-500 hover:bg-red-50 transition-all text-sm"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-rose-500 hover:bg-rose-50 transition-all text-sm text-left"
               >
                 <LogOutIcon size={18} />
                 Logout
@@ -732,112 +975,148 @@ export default function Profile() {
 
         <div className="lg:col-span-9 space-y-8">
           {activeTab === 'addresses' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-3">
-            <div className="bg-orange-100 p-3 rounded-full text-orange-600">
-              <MapPin size={24} />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">
-                {editingAddressId ? 'Edit Address' : 'My Saved Addresses'}
-              </h2>
-              <p className="text-sm text-gray-500">
-                {editingAddressId ? 'Update your address details below' : 'Manage your delivery locations'}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={toggleAddressForm}
-            className="flex items-center gap-2 bg-brand text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-brand-dark transition-colors"
-          >
-            {showAddressForm ? <X size={18} /> : <Plus size={18} />}
-            {showAddressForm ? 'Cancel' : 'Add New Address'}
-          </button>
-        </div>
-
-        {showAddressForm && (
-          <form onSubmit={handleAddAddress} className="bg-gray-50 p-6 rounded-2xl border border-gray-100 mb-8 space-y-4 max-w-2xl">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Location Services Banner */}
-              <div className="md:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between bg-brand/5 border border-brand/10 p-3.5 rounded-2xl gap-3">
-                <div className="flex items-center gap-2">
-                  <Navigation size={18} className={`text-brand ${detectingLocation ? 'animate-spin' : ''}`} />
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] animate-fade-in">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100/50 flex items-center justify-center text-emerald-600">
+                    <MapPin size={20} />
+                  </div>
                   <div>
-                    <p className="text-xs font-bold text-brand-dark">Location Services</p>
-                    <p className="text-[10px] text-gray-500">Detecting details automatically via GPS reverse geocoding</p>
+                    <h2 className="text-xl font-bold font-headings text-slate-800">
+                      {editingAddressId ? 'Edit Address' : 'My Saved Addresses'}
+                    </h2>
+                    <p className="text-xs text-slate-400 font-medium">
+                      {editingAddressId ? 'Update your address details below' : 'Manage your delivery locations'}
+                    </p>
                   </div>
                 </div>
                 <button
-                  type="button"
-                  disabled={detectingLocation}
-                  onClick={handleDetectLocation}
-                  className="bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-[0.98] w-full sm:w-auto"
+                  onClick={toggleAddressForm}
+                  className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-900/10 active:scale-[0.98] self-start sm:self-auto"
                 >
-                  <RefreshCw size={12} className={detectingLocation ? 'animate-spin' : ''} />
-                  {detectingLocation ? 'Detecting...' : 'Auto-Detect GPS'}
+                  {showAddressForm ? <X size={14} /> : <Plus size={14} />}
+                  {showAddressForm ? 'Cancel' : 'Add New Address'}
                 </button>
               </div>
 
-              <div className="md:col-span-2">
-                <label className={labelCls}>Label (e.g. Home, Office)</label>
-                <input required type="text" name="label" value={newAddress.label} onChange={handleAddressInputChange} className={inputCls} placeholder="Home" />
+        {showAddressForm && (
+          <form onSubmit={handleAddAddress} className="bg-slate-50/50 backdrop-blur border border-slate-100 p-6 rounded-3xl mb-8 space-y-4 max-w-4xl">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Left Column: Form Fields */}
+              <div className="lg:col-span-7 space-y-4">
+                {/* Location Services Banner */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-emerald-50/50 border border-emerald-100/50 p-3.5 rounded-2xl gap-3">
+                  <div className="flex items-center gap-2">
+                    <Navigation size={18} className={`text-emerald-600 ${detectingLocation ? 'animate-spin' : ''}`} />
+                    <div>
+                      <p className="text-xs font-bold text-emerald-800 font-headings">Location Services</p>
+                      <p className="text-[10px] text-slate-400">Detecting details automatically via GPS reverse geocoding</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      disabled={detectingLocation}
+                      onClick={handleDetectLocation}
+                      className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all shadow-md shadow-emerald-900/10 flex items-center justify-center gap-1.5 active:scale-[0.98] w-full sm:w-auto"
+                    >
+                      <RefreshCw size={12} className={detectingLocation ? 'animate-spin' : ''} />
+                      {detectingLocation ? 'Detecting...' : 'Auto-Detect GPS'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLocateTypedAddress}
+                      className="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-[0.98] w-full sm:w-auto"
+                      title="Geocode fields and update pin"
+                    >
+                      <MapPin size={12} />
+                      Locate Address
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className={labelCls}>Label (e.g. Home, Office)</label>
+                    <input required type="text" name="label" value={newAddress.label} onChange={handleAddressInputChange} className={inputCls} placeholder="Home" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className={labelCls}>
+                      Street Address <span className="text-[10px] text-gray-400 font-normal">(Include Door/Flat/Plot No. if missing)</span>
+                    </label>
+                    <input required type="text" name="street" value={newAddress.street} onChange={handleAddressInputChange} className={inputCls} placeholder="e.g. Door No. 45, Main St" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>City</label>
+                    <input required type="text" name="city" value={newAddress.city} onChange={handleAddressInputChange} className={inputCls} placeholder="Mumbai" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>State</label>
+                    <input required type="text" name="state" value={newAddress.state} onChange={handleAddressInputChange} className={inputCls} placeholder="Maharashtra" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>ZIP Code</label>
+                    <input required type="text" name="zipCode" value={newAddress.zipCode} onChange={handleAddressInputChange} className={inputCls} placeholder="400001" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Country</label>
+                    <input required type="text" name="country" value={newAddress.country} onChange={handleAddressInputChange} className={inputCls} placeholder="India" />
+                  </div>
+                </div>
+
+                <button type="submit" className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-2.5 rounded-xl font-bold hover:shadow-lg transition-all duration-300 active:scale-[0.98]">
+                  {editingAddressId ? 'Update Address' : 'Save Address'}
+                </button>
               </div>
-              <div className="md:col-span-2">
-                <label className={labelCls}>Street Address</label>
-                <input required type="text" name="street" value={newAddress.street} onChange={handleAddressInputChange} className={inputCls} placeholder="123 Main St" />
+
+              {/* Right Column: Interactive Map */}
+              <div className="lg:col-span-5 flex flex-col min-h-[300px]">
+                <label className={labelCls}>Pin Location on Map</label>
+                <div 
+                  ref={profileMapContainerRef} 
+                  id="profile-address-map" 
+                  className="w-full flex-grow rounded-2xl border border-slate-200 shadow-inner overflow-hidden relative"
+                  style={{ minHeight: '300px', zIndex: 1 }}
+                />
+                <p className="text-[10px] text-slate-405 mt-2">
+                  ℹ️ Drag the green marker or click on the map to pinpoint your location precisely. The fields will update automatically.
+                </p>
               </div>
-              <div>
-                <label className={labelCls}>City</label>
-                <input required type="text" name="city" value={newAddress.city} onChange={handleAddressInputChange} className={inputCls} placeholder="Mumbai" />
-              </div>
-              <div>
-                <label className={labelCls}>State</label>
-                <input required type="text" name="state" value={newAddress.state} onChange={handleAddressInputChange} className={inputCls} placeholder="Maharashtra" />
-              </div>
-              <div>
-                <label className={labelCls}>ZIP Code</label>
-                <input required type="text" name="zipCode" value={newAddress.zipCode} onChange={handleAddressInputChange} className={inputCls} placeholder="400001" />
-              </div>
-              <div>
-                <label className={labelCls}>Country</label>
-                <input required type="text" name="country" value={newAddress.country} onChange={handleAddressInputChange} className={inputCls} placeholder="India" />
-              </div>
+
             </div>
-            <button type="submit" className="bg-brand text-white px-6 py-2 rounded-xl font-bold hover:bg-brand-dark transition-colors">
-              {editingAddressId ? 'Update Address' : 'Save Address'}
-            </button>
           </form>
         )}
 
         {savedAddresses.length === 0 ? (
-          <div className="text-center py-8 border border-dashed border-gray-200 rounded-2xl">
-            <p className="text-gray-500 text-sm">No addresses saved yet.</p>
+          <div className="text-center py-12 border-2 border-dashed border-slate-100 rounded-3xl">
+            <MapPin className="mx-auto text-slate-350 mb-4" size={48} />
+            <p className="text-slate-500 font-bold text-sm">No addresses saved yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {savedAddresses.map((addr) => (
-              <div key={addr.id} className="bg-gray-50 p-5 rounded-2xl border border-gray-100 relative group">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-bold bg-brand/10 text-brand px-2 py-0.5 rounded-full uppercase">
+              <div key={addr.id} className="bg-white/40 hover:bg-white/90 p-5 rounded-3xl border border-slate-100 hover:border-emerald-100 hover:shadow-md transition-all duration-300 relative group">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-100/30 px-2.5 py-1 rounded-md uppercase tracking-wider">
                     {addr.label || 'Other'}
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-gray-900">{addr.street}</p>
-                <p className="text-sm text-gray-500">{addr.city}, {addr.state} - {addr.zipCode}</p>
-                <p className="text-xs text-gray-400 mt-1 uppercase tracking-tight font-medium">{addr.country}</p>
+                <p className="text-sm font-semibold text-slate-800 font-headings">{addr.street}</p>
+                <p className="text-xs text-slate-400 mt-1">{addr.city}, {addr.state} - {addr.zipCode}</p>
+                <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-black">{addr.country}</p>
 
-                <div className="absolute top-4 right-4 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                <div className="absolute top-4 right-4 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300">
                   <button
                     onClick={() => handleEditAddressClick(addr)}
-                    className="text-gray-400 hover:text-brand transition-all p-1 rounded-lg hover:bg-white"
+                    className="text-slate-450 hover:text-emerald-600 hover:bg-white transition-all p-1.5 rounded-lg shadow-sm border border-slate-100"
                     title="Edit Address"
                   >
-                    <Pencil size={15} />
+                    <Pencil size={12} />
                   </button>
                   <button
                     onClick={() => handleDeleteAddress(addr.id)}
-                    className="text-gray-400 hover:text-red-500 transition-all p-1 rounded-lg hover:bg-white"
+                    className="text-slate-450 hover:text-rose-600 hover:bg-white transition-all p-1.5 rounded-lg shadow-sm border border-slate-100"
                     title="Delete Address"
                   >
                     <Trash2 size={15} />
@@ -851,181 +1130,184 @@ export default function Profile() {
       )}
 
       {activeTab === 'orders' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-8">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="bg-green-100 p-3 rounded-full text-green-600">
-            <ShoppingBag size={24} />
+        <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] mb-8 animate-fade-in">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100/50 flex items-center justify-center text-emerald-600">
+              <ShoppingBag size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold font-headings text-slate-800">{userProfile?.role === 'vendor' ? 'Customer Orders' : 'My Orders'}</h2>
+              <p className="text-xs text-slate-400 font-medium">
+                {userProfile?.role === 'vendor'
+                  ? 'Manage orders for your products'
+                  : 'Track your recent purchases and delivery status'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">{userProfile?.role === 'vendor' ? 'Customer Orders' : 'My Orders'}</h2>
-            <p className="text-sm text-gray-500">
-              {userProfile?.role === 'vendor'
-                ? 'Manage orders for your products'
-                : 'Track your recent purchases and delivery status'}
-            </p>
-          </div>
-        </div>
 
-        {loadingOrders ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
-            <p className="text-sm text-gray-500 mt-4">Loading orders...</p>
-          </div>
-        ) : orders.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed border-gray-100 rounded-3xl">
-            <ShoppingBag className="mx-auto text-gray-300 mb-4" size={48} />
-            <p className="text-gray-500 font-medium">No orders found.</p>
-            {userProfile?.role === 'customer' && (
-              <button onClick={() => navigate('/#marketplace')} className="text-brand text-sm font-bold mt-2 hover:underline">
-                Start Shopping
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {orders.map((order) => (
-              <div key={order.id} className="bg-gray-50 rounded-3xl border border-gray-200 overflow-hidden transition-all hover:border-brand/30">
-                {/* Order Header */}
-                <div className="bg-white px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="text-xs">
-                      <p className="text-gray-500 uppercase font-bold tracking-wider mb-0.5">Order Placed</p>
-                      <p className="text-gray-900 font-bold">{new Date(order.timestamp).toLocaleDateString()}</p>
+          {loadingOrders ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-emerald-100 border-t-emerald-600"></div>
+              <p className="text-xs font-semibold text-emerald-850 animate-pulse font-headings mt-4">Loading your orders...</p>
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="text-center py-12 border-2 border-dashed border-slate-100 rounded-3xl">
+              <ShoppingBag className="mx-auto text-slate-300 mb-4" size={48} />
+              <p className="text-slate-550 font-bold text-sm">No orders found.</p>
+              {userProfile?.role === 'customer' && (
+                <button onClick={() => navigate('/')} className="mt-4 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all">
+                  Start Shopping
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {orders.map((order) => (
+                <div key={order.id} className="bg-white/40 border border-slate-100 hover:border-emerald-100 hover:shadow-md transition-all duration-300 rounded-3xl overflow-hidden">
+                  {/* Order Header */}
+                  <div className="bg-white/80 px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-6">
+                      <div className="text-xs font-medium">
+                        <p className="text-slate-400 uppercase font-black tracking-wider mb-0.5">Order Placed</p>
+                        <p className="text-slate-700 font-bold">{new Date(order.timestamp).toLocaleDateString()}</p>
+                      </div>
+                      <div className="text-xs font-medium">
+                        <p className="text-slate-400 uppercase font-black tracking-wider mb-0.5">Total Amount</p>
+                        <p className="text-emerald-600 font-extrabold">₹{parseFloat(order.total).toFixed(2)}</p>
+                      </div>
+                      <div className="text-xs font-medium">
+                        <p className="text-slate-400 uppercase font-black tracking-wider mb-0.5">Order ID</p>
+                        <p className="text-slate-700 font-mono font-bold uppercase">#{order.id.slice(-8)}</p>
+                      </div>
                     </div>
-                    <div className="text-xs">
-                      <p className="text-gray-500 uppercase font-bold tracking-wider mb-0.5">Total Amount</p>
-                      <p className="text-brand font-black">₹{parseFloat(order.total).toFixed(2)}</p>
-                    </div>
-                    <div className="text-xs">
-                      <p className="text-gray-500 uppercase font-bold tracking-wider mb-0.5">Order ID</p>
-                      <p className="text-gray-900 font-medium font-mono uppercase">#{order.id.slice(-8)}</p>
+                    <div className="flex items-center gap-3">
+                      <span className="bg-emerald-50 text-emerald-805 border border-emerald-100/50 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                        <Clock size={10} /> {order.status}
+                      </span>
+                      <button
+                        onClick={() => navigate(`/order/${order.id}`)}
+                        className="flex items-center gap-1 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-250 text-slate-750 hover:text-emerald-700 text-xs font-bold px-3 py-2 rounded-xl transition-all shadow-sm active:scale-[0.98]"
+                      >
+                        <ArrowRight size={10} /> Track
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold uppercase flex items-center gap-1.5">
-                      <Clock size={12} /> {order.status}
-                    </span>
-                    <button
-                      onClick={() => navigate(`/order/${order.id}`)}
-                      className="flex items-center gap-1.5 text-brand text-xs font-bold hover:bg-brand-light px-3 py-1 rounded-lg transition-colors border border-brand/20"
-                    >
-                      <ArrowRight size={12} /> Track Order
-                    </button>
-                  </div>
-                </div>
 
-                {/* Main Content */}
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                    {/* Item List */}
-                    <div className="md:col-span-8 space-y-4">
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-4">
-                          <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-xl border border-gray-200" />
-                          <div className="flex-1">
-                            <h4 className="font-bold text-gray-900 text-sm">{item.name}</h4>
-                            <p className="text-xs text-gray-500">Sold by: {item.vendor}</p>
-                            <div className="flex items-center gap-4 mt-1">
-                              <p className="text-xs font-bold text-brand">Qty: {item.quantity}</p>
-                              <p className="text-xs font-bold text-gray-700">₹{item.price}</p>
+                  {/* Main Content */}
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                      {/* Item List */}
+                      <div className="md:col-span-8 space-y-4">
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-4">
+                            <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-2xl border border-slate-100 flex-shrink-0" />
+                            <div className="flex-grow min-w-0">
+                              <h4 className="font-bold text-slate-800 text-sm font-headings truncate">{item.name}</h4>
+                              <p className="text-[10px] text-slate-405 font-semibold">Sold by: {item.vendor}</p>
+                              <div className="flex items-center gap-4 mt-1">
+                                <p className="text-xs font-bold text-emerald-600">Qty: {item.quantity}</p>
+                                <p className="text-xs font-bold text-slate-500">₹{item.price}</p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
 
-                    {/* Shipping Info */}
-                    <div className="md:col-span-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-center">
-                      <div className="flex items-start gap-2">
-                        <MapPin size={16} className="text-gray-400 mt-1" />
-                        <div>
-                          <p className="text-xs font-bold text-gray-500 uppercase mb-1">Shipping To</p>
-                          <p className="text-xs text-gray-700 leading-relaxed italic line-clamp-3">
-                            {order.address}
-                          </p>
+                      {/* Shipping Info */}
+                      <div className="md:col-span-4 bg-white/50 p-4 rounded-2xl border border-slate-100/85 flex flex-col justify-center">
+                        <div className="flex items-start gap-2">
+                          <MapPin size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider font-headings">Shipping Destination</p>
+                            <p className="text-xs text-slate-650 leading-relaxed italic line-clamp-3">
+                              {order.address}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Vendor Controls */}
-                {isVendor && (
-                  <div className="bg-brand-light/10 border-t border-gray-200/50 px-6 py-4 flex items-center justify-between gap-4">
-                    <div className="text-xs text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                      <Shield size={14} className="text-brand" /> Vendor Controls
+                  {/* Vendor Controls */}
+                  {isVendor && (
+                    <div className="bg-emerald-500/[0.015] border-t border-slate-105 px-6 py-4 flex items-center justify-between gap-4">
+                      <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-1.5 font-headings">
+                        <Shield size={14} className="text-emerald-600" /> Vendor Controls
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {order.status === 'pending' && (
+                          <button
+                            onClick={() => handleUpdateOrderStatus(order.id, 'confirmed')}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5"
+                          >
+                            <Check size={14} /> Confirm Order
+                          </button>
+                        )}
+                        {order.status === 'confirmed' && (
+                          <button
+                            onClick={() => handleUpdateOrderStatus(order.id, 'processing')}
+                            className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5"
+                          >
+                            <Package size={14} /> Start Packing
+                          </button>
+                        )}
+                        {order.status === 'processing' && (
+                          <>
+                            {order.deliveryStatus === 'requested' ? (
+                              <span className="text-[10px] font-black bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full uppercase flex items-center gap-1.5 border border-amber-100">
+                                <Clock size={12} className="animate-pulse" /> Awaiting Delivery Acceptance
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleUpdateOrderStatus(order.id, 'processing', { deliveryStatus: 'requested' })}
+                                className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5"
+                              >
+                                <Bike size={14} /> Request Dispatch Rider
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {order.status === 'dispatched' && (
+                          <div className="flex items-center gap-2 text-[10px] font-black text-orange-600 bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-full uppercase font-headings">
+                            <Bike size={12} /> Dispatched Rider: {order.deliveryBoyName || 'Assigned'}
+                          </div>
+                        )}
+                        {order.status === 'delivered' && (
+                          <span className="text-[10px] font-black bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-full uppercase flex items-center gap-1.5 border border-emerald-100">
+                            <Check size={14} /> Delivered Successfully
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {order.status === 'pending' && (
-                        <button
-                          onClick={() => handleUpdateOrderStatus(order.id, 'confirmed')}
-                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5"
-                        >
-                          <Check size={14} /> Confirm Order
-                        </button>
-                      )}
-                      {order.status === 'confirmed' && (
-                        <button
-                          onClick={() => handleUpdateOrderStatus(order.id, 'processing')}
-                          className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5"
-                        >
-                          <Package size={14} /> Start Packing
-                        </button>
-                      )}
-                      {order.status === 'processing' && (
-                        <>
-                          {order.deliveryStatus === 'requested' ? (
-                            <span className="text-xs font-bold bg-yellow-100 text-yellow-700 px-3 py-1.5 rounded-full uppercase flex items-center gap-1.5">
-                              <Clock size={12} className="animate-pulse" /> Awaiting Delivery Boy Acceptance
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => handleUpdateOrderStatus(order.id, 'processing', { deliveryStatus: 'requested' })}
-                              className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5"
-                            >
-                              <Bike size={14} /> Send Delivery Request
-                            </button>
-                          )}
-                        </>
-                      )}
-                      {order.status === 'dispatched' && (
-                        <div className="flex items-center gap-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-full uppercase">
-                          <Bike size={12} /> Out for Delivery ({order.deliveryBoyName || 'Assigned Driver'})
-                        </div>
-                      )}
-                      {order.status === 'delivered' && (
-                        <span className="text-xs font-bold bg-green-100 text-green-700 px-3 py-1.5 rounded-full uppercase flex items-center gap-1.5">
-                          <Check size={14} /> Delivered Successfully
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
+
 
       {/* ─── Geolocation & Delivery Person Dashboard Tabs ─────────────────────── */}
       {activeTab === 'delivery_jobs' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div className="flex items-center gap-3">
-              <div className="bg-green-50 p-3 rounded-full text-green-600 border border-green-100">
+              <div className="bg-emerald-50 p-3 rounded-2xl text-emerald-600 border border-emerald-100/50">
                 <Bike size={24} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Available Delivery Jobs</h2>
-                <p className="text-sm text-gray-500">Claim pending requests from vendors nearby</p>
+                <h2 className="text-xl font-bold font-headings text-slate-800">Available Delivery Jobs</h2>
+                <p className="text-xs text-slate-400 font-medium font-body">Claim pending requests from vendors nearby</p>
               </div>
             </div>
             {/* Duty status toggle */}
             <button
               onClick={() => setIsTrackingActive(!isTrackingActive)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                isTrackingActive ? 'bg-orange-500 hover:bg-orange-600 text-white animate-pulse' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm font-headings ${
+                isTrackingActive 
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-orange-500/10 animate-pulse' 
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
               }`}
             >
               <Power size={14} />
@@ -1034,30 +1316,30 @@ export default function Profile() {
           </div>
 
           {orders.filter(o => o.status === 'processing' && o.deliveryStatus === 'requested').length === 0 ? (
-            <div className="text-center py-16 border-2 border-dashed border-gray-100 rounded-3xl">
-              <Bike className="mx-auto text-gray-300 mb-4" size={56} />
-              <p className="text-gray-500 font-bold text-lg">All Quiet on the Delivery Front!</p>
-              <p className="text-gray-400 text-sm mt-1 max-w-sm mx-auto">There are no pending delivery requests right now. Vendors will request when orders are ready.</p>
+            <div className="text-center py-16 border border-dashed border-slate-200 rounded-3xl bg-slate-50/30">
+              <Bike className="mx-auto text-slate-300 mb-4" size={56} />
+              <p className="text-slate-550 font-bold text-lg font-headings">All Quiet on the Delivery Front!</p>
+              <p className="text-slate-400 text-sm mt-1 max-w-sm mx-auto font-body">There are no pending delivery requests right now. Vendors will request when orders are ready.</p>
             </div>
           ) : (
             <div className="space-y-6">
               {orders.filter(o => o.status === 'processing' && o.deliveryStatus === 'requested').map((order) => (
-                <div key={order.id} className="bg-gray-50 rounded-3xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+                <div key={order.id} className="bg-white/40 border border-slate-100 hover:border-emerald-100 hover:shadow-md transition-all duration-300 rounded-3xl overflow-hidden shadow-sm">
                   {/* Job Header */}
-                  <div className="bg-white px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="text-xs">
-                        <p className="text-gray-400 uppercase font-bold mb-0.5">Ready At</p>
-                        <p className="text-gray-700 font-bold">{new Date(order.timestamp).toLocaleTimeString()}</p>
+                  <div className="bg-white/80 px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-6">
+                      <div className="text-xs font-medium">
+                        <p className="text-slate-400 uppercase font-black tracking-wider mb-0.5">Ready At</p>
+                        <p className="text-slate-700 font-bold">{new Date(order.timestamp).toLocaleTimeString()}</p>
                       </div>
-                      <div className="text-xs">
-                        <p className="text-gray-400 uppercase font-bold mb-0.5">Order Total</p>
-                        <p className="text-brand font-black">₹{parseFloat(order.total).toFixed(2)}</p>
+                      <div className="text-xs font-medium">
+                        <p className="text-slate-400 uppercase font-black tracking-wider mb-0.5">Order Total</p>
+                        <p className="text-emerald-600 font-extrabold">₹{parseFloat(order.total).toFixed(2)}</p>
                       </div>
                     </div>
                     <button
                       onClick={() => handleAcceptJob(order.id)}
-                      className="bg-brand hover:bg-brand-dark text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5"
+                      className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md shadow-emerald-900/10 flex items-center gap-1.5 active:scale-[0.98]"
                     >
                       <Check size={14} /> Accept Delivery Job
                     </button>
@@ -1067,34 +1349,34 @@ export default function Profile() {
                   <div className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Vendor shop details */}
-                      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-                        <h4 className="font-bold text-gray-900 text-sm mb-3 flex items-center gap-1.5 text-green-600">
+                      <div className="bg-white/60 p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <h4 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-1.5 text-emerald-600 font-headings">
                           <Store size={16} /> Pickup From (Vendor)
                         </h4>
-                        <p className="font-bold text-gray-800 text-sm">{order.items[0]?.vendor || 'Local Vendor'}</p>
-                        <p className="text-xs text-gray-500 italic mt-1 leading-relaxed">
+                        <p className="font-extrabold text-slate-700 text-sm">{order.items[0]?.vendor || 'Local Vendor'}</p>
+                        <p className="text-xs text-slate-400 italic mt-1.5 leading-relaxed font-body">
                           {order.items[0]?.shopLocation || 'Shop Address Not Provided'}
                         </p>
                       </div>
 
                       {/* Customer address */}
-                      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-                        <h4 className="font-bold text-gray-900 text-sm mb-3 flex items-center gap-1.5 text-blue-600">
+                      <div className="bg-white/60 p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <h4 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-1.5 text-blue-600 font-headings">
                           <MapPin size={16} /> Deliver To (Customer)
                         </h4>
-                        <p className="font-bold text-gray-800 text-sm">{order.customerName}</p>
-                        <p className="text-xs text-gray-500 italic mt-1 leading-relaxed line-clamp-2">
+                        <p className="font-extrabold text-slate-700 text-sm">{order.customerName}</p>
+                        <p className="text-xs text-slate-400 italic mt-1.5 leading-relaxed line-clamp-2 font-body">
                           {order.address}
                         </p>
                       </div>
                     </div>
 
                     {/* Items preview */}
-                    <div className="mt-4 border-t border-gray-100 pt-4">
-                      <p className="text-xs font-bold text-gray-400 uppercase mb-2">Package Items ({order.items.length})</p>
+                    <div className="mt-4 border-t border-slate-100 pt-4">
+                      <p className="text-xs font-black text-slate-405 uppercase mb-2 tracking-wider font-headings">Package Items ({order.items.length})</p>
                       <div className="flex flex-wrap gap-2">
                         {order.items.map((item, idx) => (
-                          <span key={idx} className="bg-gray-100 text-gray-700 text-xs px-3 py-1 rounded-full border border-gray-200 font-medium">
+                          <span key={idx} className="bg-slate-50 text-slate-650 text-xs px-3 py-1 rounded-full border border-slate-150 font-semibold font-body">
                             {item.name} x {item.quantity}
                           </span>
                         ))}
@@ -1109,41 +1391,43 @@ export default function Profile() {
       )}
 
       {activeTab === 'delivery_active' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] animate-fade-in">
           <div className="flex items-center gap-3 mb-8">
-            <div className="bg-orange-100 p-3 rounded-full text-orange-600 border border-orange-200">
-              <Navigation size={24} />
+            <div className="bg-amber-50 p-3 rounded-2xl text-amber-600 border border-amber-100/50">
+              <Navigation size={24} className="animate-pulse" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Active Delivery Job</h2>
-              <p className="text-sm text-gray-500">Real-time route tracking and delivery actions</p>
+              <h2 className="text-xl font-bold font-headings text-slate-800">Active Delivery Job</h2>
+              <p className="text-xs text-slate-400 font-medium font-body">Real-time route tracking and delivery actions</p>
             </div>
           </div>
 
           {orders.filter(o => o.deliveryBoyId === user.uid && o.status === 'dispatched').length === 0 ? (
-            <div className="text-center py-16 border-2 border-dashed border-gray-100 rounded-3xl">
-              <Navigation className="mx-auto text-gray-300 mb-4" size={56} />
-              <p className="text-gray-500 font-bold text-lg">No Active Deliveries</p>
-              <p className="text-gray-400 text-sm mt-1 max-w-sm mx-auto">You don't have any active deliveries. Go to the "Available Jobs" tab to accept a job.</p>
+            <div className="text-center py-16 border border-dashed border-slate-200 rounded-3xl bg-slate-50/30">
+              <Navigation className="mx-auto text-slate-350 mb-4" size={56} />
+              <p className="text-slate-550 font-bold text-lg font-headings">No Active Deliveries</p>
+              <p className="text-slate-400 text-sm mt-1 max-w-sm mx-auto font-body">You don't have any active deliveries. Go to the "Available Jobs" tab to accept a job.</p>
             </div>
           ) : (
             <div className="space-y-6">
               {orders.filter(o => o.deliveryBoyId === user.uid && o.status === 'dispatched').map((order) => (
-                <div key={order.id} className="bg-gray-50 rounded-3xl border border-gray-200 overflow-hidden shadow-md">
+                <div key={order.id} className="bg-white/40 border border-slate-100 hover:border-emerald-100 hover:shadow-md transition-all duration-300 rounded-3xl overflow-hidden shadow-sm">
                   {/* Active header */}
-                  <div className="bg-orange-500 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+                  <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-wider opacity-75">Active Order ID</p>
-                      <p className="font-bold tracking-tight text-sm font-mono uppercase">#{order.id.slice(-12)}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Active Order ID</p>
+                      <p className="font-extrabold tracking-tight text-sm font-mono uppercase">#{order.id.slice(-12)}</p>
                     </div>
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => setIsTrackingActive(!isTrackingActive)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all ${
-                          isTrackingActive ? 'bg-green-600 text-white animate-pulse' : 'bg-white text-gray-800'
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-md transition-all border active:scale-[0.98] ${
+                          isTrackingActive 
+                            ? 'bg-emerald-600 border-emerald-500 hover:bg-emerald-700 text-white animate-pulse' 
+                            : 'bg-white border-slate-100 text-slate-800 hover:bg-slate-50'
                         }`}
                       >
-                        <Power size={12} />
+                        <Power size={11} strokeWidth={2.5} />
                         {isTrackingActive ? 'GPS Sharing: ON' : 'GPS Sharing: OFF (Turn ON!)'}
                       </button>
                     </div>
@@ -1153,24 +1437,24 @@ export default function Profile() {
                   <div className="p-6 space-y-6">
                     {/* Alert when GPS is OFF */}
                     {!isTrackingActive && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex items-start gap-3 text-yellow-800 text-xs">
-                        <Clock size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+                      <div className="bg-amber-50/70 border border-amber-100/50 rounded-2xl p-4 flex items-start gap-3 text-amber-800 text-xs">
+                        <Clock size={16} className="text-amber-600 flex-shrink-0 mt-0.5 animate-pulse" />
                         <div>
-                          <p className="font-bold text-yellow-900">GPS location sharing is offline</p>
-                          <p className="mt-0.5 text-yellow-700">Please click the button above to enable GPS sharing so the customer and vendor can track your location lively on the map.</p>
+                          <p className="font-bold text-amber-900 font-headings">GPS location sharing is offline</p>
+                          <p className="mt-0.5 text-slate-500 leading-relaxed font-body">Please click the button above to enable GPS sharing so the customer and vendor can track your location lively on the map.</p>
                         </div>
                       </div>
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Pickup Shop */}
-                      <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
+                      <div className="bg-white/60 p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-emerald-100 transition-all duration-300">
                         <div>
-                          <h4 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-1.5 text-green-600">
+                          <h4 className="font-bold text-slate-800 text-sm mb-2.5 flex items-center gap-1.5 text-emerald-600 font-headings">
                             <Store size={16} /> 1. Pickup From
                           </h4>
-                          <p className="font-black text-gray-800 text-sm">{order.items[0]?.vendor}</p>
-                          <p className="text-xs text-gray-500 italic mt-1 leading-relaxed">
+                          <p className="font-extrabold text-slate-700 text-sm">{order.items[0]?.vendor}</p>
+                          <p className="text-xs text-slate-400 italic mt-1.5 leading-relaxed font-body">
                             {order.items[0]?.shopLocation || 'Shop location not set'}
                           </p>
                         </div>
@@ -1179,7 +1463,7 @@ export default function Profile() {
                             href={`https://www.google.com/maps/dir/${order.deliveryBoyLocation?.lat || ''},${order.deliveryBoyLocation?.lng || ''}/${encodeURIComponent(order.items[0].shopLocation)}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="mt-4 flex items-center justify-center gap-1.5 text-xs font-bold text-green-600 border border-green-200/50 hover:bg-green-50 py-2.5 rounded-xl transition-all"
+                            className="mt-4 flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-600 border border-emerald-200/50 hover:bg-emerald-50 py-2.5 rounded-xl transition-all font-headings"
                           >
                             <ExternalLink size={12} /> Get Pickup Directions
                           </a>
@@ -1187,13 +1471,13 @@ export default function Profile() {
                       </div>
 
                       {/* Delivery Address */}
-                      <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
+                      <div className="bg-white/60 p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-blue-100 transition-all duration-300">
                         <div>
-                          <h4 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-1.5 text-blue-600">
+                          <h4 className="font-bold text-slate-800 text-sm mb-2.5 flex items-center gap-1.5 text-blue-650 font-headings">
                             <MapPin size={16} /> 2. Deliver To
                           </h4>
-                          <p className="font-black text-gray-800 text-sm">{order.customerName}</p>
-                          <p className="text-xs text-gray-500 italic mt-1 leading-relaxed">
+                          <p className="font-extrabold text-slate-700 text-sm">{order.customerName}</p>
+                          <p className="text-xs text-slate-400 italic mt-1.5 leading-relaxed font-body">
                             {order.address}
                           </p>
                         </div>
@@ -1201,7 +1485,7 @@ export default function Profile() {
                           href={`https://www.google.com/maps/dir/${order.deliveryBoyLocation?.lat || ''},${order.deliveryBoyLocation?.lng || ''}/${encodeURIComponent(order.address)}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-4 flex items-center justify-center gap-1.5 text-xs font-bold text-blue-600 border border-blue-200/50 hover:bg-blue-50 py-2.5 rounded-xl transition-all"
+                          className="mt-4 flex items-center justify-center gap-1.5 text-xs font-bold text-blue-600 border border-blue-200/50 hover:bg-blue-50 py-2.5 rounded-xl transition-all font-headings"
                         >
                           <ExternalLink size={12} /> Get Delivery Directions
                         </a>
@@ -1209,21 +1493,21 @@ export default function Profile() {
                     </div>
 
                     {/* Order Summary & Earn Info */}
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between">
+                    <div className="bg-white/80 rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center justify-between">
                       <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order Total Value</p>
-                        <p className="text-lg font-black text-gray-800 mt-0.5">₹{parseFloat(order.total).toFixed(2)}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-headings">Order Total Value</p>
+                        <p className="text-lg font-black text-slate-800 mt-0.5">₹{parseFloat(order.total).toFixed(2)}</p>
                       </div>
-                      <div className="bg-brand/5 border border-brand/10 px-4 py-2 rounded-xl text-right">
-                        <p className="text-[10px] font-bold text-brand uppercase tracking-widest">Est. Earnings</p>
-                        <p className="text-lg font-black text-brand mt-0.5">₹40.00</p>
+                      <div className="bg-emerald-50 text-emerald-800 border border-emerald-100/50 px-4 py-2 rounded-xl text-right">
+                        <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest font-headings">Est. Earnings</p>
+                        <p className="text-lg font-black text-emerald-800 mt-0.5">₹40.00</p>
                       </div>
                     </div>
 
                     {/* Delivered Action */}
                     <button
                       onClick={() => handleMarkAsDelivered(order.id)}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2 text-base"
+                      className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-emerald-900/10 transition-all active:scale-[0.99] flex items-center justify-center gap-2 text-base font-headings"
                     >
                       <Check size={20} strokeWidth={3} /> Complete Order & Mark as Delivered
                     </button>
@@ -1236,47 +1520,47 @@ export default function Profile() {
       )}
 
       {activeTab === 'delivery_completed' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] animate-fade-in">
           <div className="flex items-center gap-3 mb-8">
-            <div className="bg-green-100 p-3 rounded-full text-green-600 border border-green-200">
+            <div className="bg-emerald-50 p-3 rounded-2xl text-emerald-600 border border-emerald-100/50">
               <Check size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Completed Deliveries</h2>
-              <p className="text-sm text-gray-500">Your historical delivery performance and earnings</p>
+              <h2 className="text-xl font-bold font-headings text-slate-800">Completed Deliveries</h2>
+              <p className="text-xs text-slate-400 font-medium font-body">Your historical delivery performance and earnings</p>
             </div>
           </div>
 
           {orders.filter(o => o.deliveryBoyId === user.uid && o.status === 'delivered').length === 0 ? (
-            <div className="text-center py-16 border-2 border-dashed border-gray-100 rounded-3xl">
-              <Check className="mx-auto text-gray-300 mb-4" size={56} />
-              <p className="text-gray-500 font-bold text-lg">No Completed Deliveries Yet</p>
-              <p className="text-gray-400 text-sm mt-1 max-w-sm mx-auto">Your completed delivery jobs will appear here once you fulfill them.</p>
+            <div className="text-center py-16 border border-dashed border-slate-200 rounded-3xl bg-slate-50/30">
+              <Check className="mx-auto text-slate-350 mb-4" size={56} />
+              <p className="text-slate-550 font-bold text-lg font-headings">No Completed Deliveries Yet</p>
+              <p className="text-slate-400 text-sm mt-1 max-w-sm mx-auto font-body">Your completed delivery jobs will appear here once you fulfill them.</p>
             </div>
           ) : (
             <div className="space-y-4">
               {/* Earnings summary card */}
-              <div className="bg-green-50 border border-green-100 rounded-3xl p-6 flex items-center justify-between mb-4">
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100/30 rounded-3xl p-6 flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="font-bold text-green-800 text-sm">Total Deliveries Fulfilled</h3>
-                  <p className="text-3xl font-black text-green-900 mt-1">{orders.filter(o => o.deliveryBoyId === user.uid && o.status === 'delivered').length}</p>
+                  <h3 className="font-bold text-emerald-800 text-sm font-headings">Total Deliveries Fulfilled</h3>
+                  <p className="text-3xl font-black text-emerald-900 mt-1">{orders.filter(o => o.deliveryBoyId === user.uid && o.status === 'delivered').length}</p>
                 </div>
                 <div className="text-right">
-                  <h3 className="font-bold text-green-800 text-sm">Total Earnings</h3>
-                  <p className="text-3xl font-black text-green-900 mt-1">₹{orders.filter(o => o.deliveryBoyId === user.uid && o.status === 'delivered').length * 40}.00</p>
+                  <h3 className="font-bold text-emerald-800 text-sm font-headings">Total Earnings</h3>
+                  <p className="text-3xl font-black text-emerald-900 mt-1">₹{orders.filter(o => o.deliveryBoyId === user.uid && o.status === 'delivered').length * 40}.00</p>
                 </div>
               </div>
 
               <div className="space-y-3">
                 {orders.filter(o => o.deliveryBoyId === user.uid && o.status === 'delivered').map((order) => (
-                  <div key={order.id} className="bg-gray-50 rounded-2xl border border-gray-100 p-4 flex items-center justify-between flex-wrap gap-4 text-xs font-semibold">
+                  <div key={order.id} className="bg-white/45 border border-slate-100 hover:border-emerald-100 hover:shadow-md p-4 rounded-2xl flex items-center justify-between flex-wrap gap-4 text-xs font-semibold transition-all duration-300">
                     <div>
-                      <p className="text-gray-700 font-bold text-sm">Delivered to {order.customerName}</p>
-                      <p className="text-gray-400 mt-0.5">Order ID: #{order.id.slice(-8).toUpperCase()} • {new Date(order.timestamp).toLocaleDateString()}</p>
+                      <p className="text-slate-700 font-bold text-sm font-headings">Delivered to {order.customerName}</p>
+                      <p className="text-slate-400 mt-0.5 font-medium font-body">Order ID: #{order.id.slice(-8).toUpperCase()} • {new Date(order.timestamp).toLocaleDateString()}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-bold uppercase">Success</span>
-                      <span className="text-brand font-black text-sm">₹40.00 Earned</span>
+                      <span className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-bold uppercase text-[10px] border border-emerald-100/30 tracking-wider">Success</span>
+                      <span className="text-emerald-600 font-black text-sm font-headings">₹40.00 Earned</span>
                     </div>
                   </div>
                 ))}
@@ -1304,45 +1588,65 @@ export default function Profile() {
         <>
           {/* ── Vendor: No Shop Yet ──────────────────────────────────────────────── */}
           {vendorShops.length === 0 && (
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-xl mx-auto mt-8">
+        <div className="bg-white/70 backdrop-blur-md border border-white/60 p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] max-w-xl mx-auto mt-8 animate-fade-in">
           <div className="text-center mb-6">
-            <Store className="mx-auto text-brand mb-4" size={48} />
-            <h2 className="text-2xl font-bold text-gray-900">Set Up Your Shop</h2>
-            <p className="text-gray-500 text-sm mt-1">Add your shop name so you can start adding products.</p>
+            <div className="bg-emerald-50 text-emerald-600 border border-emerald-100/50 p-4 rounded-3xl inline-block mb-4">
+              <Store size={36} />
+            </div>
+            <h2 className="text-2xl font-bold font-headings text-slate-800">Set Up Your Shop</h2>
+            <p className="text-xs text-slate-400 font-medium font-body mt-1">Add your shop name so you can start adding products.</p>
           </div>
           <form onSubmit={handleShopSetup} className="space-y-4">
             <div>
               <label className={labelCls}>Shop Name</label>
-              <div className="relative"><Store className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input required type="text" value={shopSetup.shopName} onChange={(e) => setShopSetup({ ...shopSetup, shopName: e.target.value })} className={inputCls} placeholder="E.g. Fresh Valley Farms" /></div>
+              <div className="relative">
+                <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input required type="text" value={shopSetup.shopName} onChange={(e) => setShopSetup({ ...shopSetup, shopName: e.target.value })} className={inputCls} placeholder="E.g. Fresh Valley Farms" />
+              </div>
             </div>
             <div>
-              <label className={labelCls}>Shop Location <span className="text-brand font-bold">*</span></label>
+              <label className={labelCls}>Shop Location <span className="text-emerald-600 font-bold">*</span></label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input required type="text" value={shopSetup.location} onChange={(e) => setShopSetup({ ...shopSetup, location: e.target.value })} className={inputCls} style={{ paddingRight: '160px' }} placeholder="E.g. Andheri West, Mumbai, Maharashtra" />
                 <button
                   type="button"
                   onClick={() => handleGetCurrentLocation(setShopSetup, shopSetup)}
                   disabled={detectingShopLocation}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-brand/10 hover:bg-brand/20 disabled:bg-gray-100 disabled:text-gray-400 text-brand text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-50 hover:bg-emerald-100 disabled:bg-slate-100 disabled:text-slate-400 text-emerald-600 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors border border-emerald-100/50 flex items-center gap-1"
                 >
                   {detectingShopLocation ? (
-                    <span className="w-3 h-3 border-2 border-brand border-t-transparent rounded-full animate-spin"></span>
+                    <span className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></span>
                   ) : (
                     <Navigation size={11} />
                   )}
                   {detectingShopLocation ? 'Detecting...' : 'Add current location'}
                 </button>
               </div>
-              <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
-                <Navigation size={11} /> Use a specific address (area + city + state) — this is shown to customers on Google Maps when they track their delivery.
+              <p className="text-[10px] text-emerald-600 mt-1.5 flex items-start gap-1 font-body">
+                <Navigation size={11} className="mt-0.5 flex-shrink-0" /> Use a specific address (area + city + state) — this is shown to customers on Google Maps when they track their delivery.
               </p>
             </div>
             <div>
               <label className={labelCls}>GST Number</label>
-              <div className="relative"><FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input required type="text" value={shopSetup.gstNumber} onChange={(e) => setShopSetup({ ...shopSetup, gstNumber: e.target.value })} className={inputCls} placeholder="E.g. 22AAAAA0000A1Z5" /></div>
+              <div className="relative">
+                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input required type="text" value={shopSetup.gstNumber} onChange={(e) => setShopSetup({ ...shopSetup, gstNumber: e.target.value })} className={inputCls} placeholder="E.g. 22AAAAA0000A1Z5" />
+              </div>
             </div>
-            <button type="submit" className="w-full bg-brand text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-dark transition-colors">Complete Setup</button>
+            <div>
+              <label className={labelCls}>Shop Photo URL</label>
+              <div className="relative">
+                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input type="text" value={shopSetup.image} onChange={(e) => setShopSetup({ ...shopSetup, image: e.target.value })} className={inputCls} placeholder="https://images.unsplash.com/photo-..." />
+              </div>
+            </div>
+            <button 
+              type="submit" 
+              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-3.5 rounded-xl font-bold hover:shadow-lg transition-all duration-300 active:scale-[0.98] font-headings shadow-md shadow-emerald-900/10"
+            >
+              Complete Setup
+            </button>
           </form>
         </div>
       )}
@@ -1350,141 +1654,335 @@ export default function Profile() {
       {/* ── Vendor: Has Shops ────────────────────────────────────────────────── */}
       {userProfile?.role === 'vendor' && vendorShops.length > 0 && (
         <div className="mt-8">
+          {viewingShopIndex !== null ? (
+            /* ── Shop Detail Page View ── */
+            (() => {
+              const shop = vendorShops[viewingShopIndex];
+              if (!shop) return null;
 
-          {/* My Shops panel */}
-          <div className="mb-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">My Shops ({vendorShops.length})</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {vendorShops.map((shop, i) => (
-                    <div key={i} className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                      {editingShopIndex === i ? (
-                        /* ── Inline Edit Shop Form ── */
-                        <form onSubmit={handleUpdateShop} className="space-y-3">
-                          <p className="text-sm font-semibold text-brand mb-2">Editing Shop</p>
+              return (
+                <div className="space-y-8 animate-fade-in">
+                  {/* Back button */}
+                  <button
+                    onClick={() => {
+                      setViewingShopIndex(null);
+                      setSelectedShopFilter(null);
+                    }}
+                    className="flex items-center gap-1.5 text-slate-600 hover:text-emerald-600 font-bold text-sm transition-colors font-headings"
+                  >
+                    <ArrowLeft size={16} /> Back to My Shops
+                  </button>
+
+                  {/* Shop Details Header Card */}
+                  <div className="bg-white/70 backdrop-blur-md border border-white/60 rounded-3xl overflow-hidden shadow-xl shadow-emerald-950/[0.02]">
+                    {/* Banner Image */}
+                    <div className="h-56 w-full bg-gradient-to-r from-emerald-800 to-teal-950 relative flex items-center justify-center">
+                      {shop.image ? (
+                        <img src={shop.image} alt={shop.shopName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="text-white text-center">
+                          <Store size={48} className="mx-auto mb-2 opacity-80" />
+                          <p className="text-sm font-semibold tracking-wider uppercase opacity-80 font-headings">Fresh Produce Store</p>
+                        </div>
+                      )}
+                      {/* Edit Button Overlay */}
+                      <button
+                        onClick={() => handleEditShopClick(shop, viewingShopIndex)}
+                        className="absolute bottom-4 right-4 bg-white/90 hover:bg-white text-emerald-600 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 font-headings"
+                      >
+                        <Pencil size={12} /> Edit Shop / Photo
+                      </button>
+                    </div>
+
+                    {/* Shop details */}
+                    <div className="p-6 md:p-8">
+                      {editingShopIndex === viewingShopIndex ? (
+                        /* Editing form inside detail page */
+                        <form onSubmit={handleUpdateShop} className="space-y-4 max-w-xl">
+                          <h3 className="text-lg font-bold text-slate-800 mb-2 font-headings">Edit Shop Details</h3>
                           <div>
                             <label className={labelCls}>Shop Name</label>
-                            <div className="relative"><Store className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} /><input required type="text" value={editShopForm.shopName} onChange={(e) => setEditShopForm({ ...editShopForm, shopName: e.target.value })} className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 focus:border-brand outline-none text-sm" /></div>
+                            <div className="relative">
+                              <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                              <input required type="text" value={editShopForm.shopName} onChange={(e) => setEditShopForm({ ...editShopForm, shopName: e.target.value })} className={inputCls} />
+                            </div>
                           </div>
                           <div>
-                            <label className={labelCls}>Location <span className="text-brand font-bold">*</span></label>
+                            <label className={labelCls}>Location <span className="text-emerald-600 font-bold">*</span></label>
                             <div className="relative">
-                              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                              <input required type="text" value={editShopForm.location} onChange={(e) => setEditShopForm({ ...editShopForm, location: e.target.value })} className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 focus:border-brand outline-none text-sm" style={{ paddingRight: '150px' }} placeholder="E.g. Andheri West, Mumbai, Maharashtra" />
+                              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                              <input required type="text" value={editShopForm.location} onChange={(e) => setEditShopForm({ ...editShopForm, location: e.target.value })} className={inputCls} style={{ paddingRight: '150px' }} />
                               <button
                                 type="button"
                                 onClick={() => handleGetCurrentLocation(setEditShopForm, editShopForm)}
                                 disabled={detectingShopLocation}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-brand/10 hover:bg-brand/20 disabled:bg-gray-100 disabled:text-gray-400 text-brand text-xs font-bold px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-50 hover:bg-emerald-100 disabled:bg-slate-100 disabled:text-slate-400 text-emerald-600 text-xs font-bold px-2 py-1 rounded-md transition-colors border border-emerald-100/50 flex items-center gap-1"
                               >
                                 {detectingShopLocation ? (
-                                  <span className="w-2.5 h-2.5 border-2 border-brand border-t-transparent rounded-full animate-spin"></span>
+                                  <span className="w-2.5 h-2.5 border-2 border-emerald-650 border-t-transparent rounded-full animate-spin"></span>
                                 ) : (
                                   <Navigation size={10} />
                                 )}
                                 {detectingShopLocation ? 'Detecting...' : 'Add current location'}
                               </button>
                             </div>
-                            <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                              <Navigation size={10} /> Enter your full address so customers can see your shop on Google Maps when tracking orders.
-                            </p>
                           </div>
                           <div>
                             <label className={labelCls}>GST Number</label>
-                            <div className="relative"><FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} /><input required type="text" value={editShopForm.gstNumber} onChange={(e) => setEditShopForm({ ...editShopForm, gstNumber: e.target.value })} className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 focus:border-brand outline-none text-sm" /></div>
+                            <div className="relative">
+                              <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                              <input required type="text" value={editShopForm.gstNumber} onChange={(e) => setEditShopForm({ ...editShopForm, gstNumber: e.target.value })} className={inputCls} />
+                            </div>
                           </div>
-                          <div className="flex gap-2 pt-1">
-                            <button type="submit" className="flex items-center gap-1 bg-brand text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-brand-dark transition-colors"><Check size={14} /> Save</button>
-                            <button type="button" onClick={() => setEditingShopIndex(null)} className="flex items-center gap-1 bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"><X size={14} /> Cancel</button>
+                          <div>
+                            <label className={labelCls}>Shop Photo URL</label>
+                            <div className="relative">
+                              <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                              <input type="text" value={editShopForm.image} onChange={(e) => setEditShopForm({ ...editShopForm, image: e.target.value })} className={inputCls} placeholder="https://images.unsplash.com/..." />
+                            </div>
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <button type="submit" className="flex items-center gap-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-900/10"><Check size={14} /> Save Changes</button>
+                            <button type="button" onClick={() => setEditingShopIndex(null)} className="flex items-center gap-1 bg-slate-100 text-slate-650 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"><X size={14} /> Cancel</button>
                           </div>
                         </form>
-                      ) : (
-                        /* ── Shop Card View ── */
-                        <>
-                          {/* Shop Header */}
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="bg-brand/10 p-1.5 rounded-lg">
-                                <Store size={14} className="text-brand" />
-                              </div>
-                              <h3 className="font-bold text-gray-900">{shop.shopName}</h3>
-                            </div>
-                            <button onClick={() => handleEditShopClick(shop, i)} className="text-gray-400 hover:text-brand transition-colors p-1 rounded-lg hover:bg-brand-light/30" title="Edit Shop">
-                              <Pencil size={14} />
+                      ) : deletingShopIndex === viewingShopIndex ? (
+                        /* Delete Shop Confirmation block */
+                        <div className="py-6 flex flex-col items-center justify-center text-center gap-2 max-w-md mx-auto">
+                          <Trash2 className="text-red-500 animate-bounce" size={32} />
+                          <h3 className="text-lg font-bold text-slate-800 font-headings">Delete {shop.shopName}?</h3>
+                          <p className="text-sm text-slate-400 font-medium font-body leading-relaxed">Deleting this shop will permanently remove it and all of its associated products. This action cannot be undone.</p>
+                          <div className="flex gap-3 mt-4">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleDeleteShop(viewingShopIndex);
+                                setViewingShopIndex(null);
+                                setSelectedShopFilter(null);
+                              }}
+                              className="bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-900/10"
+                            >
+                              Yes, Delete Shop
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingShopIndex(null)}
+                              className="bg-slate-100 text-slate-600 px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"
+                            >
+                              Cancel
                             </button>
                           </div>
-
-                          {/* Location row */}
-                          <div className="flex items-center justify-between gap-2 mb-3">
-                            <div className="flex items-center gap-2 text-sm text-gray-600 min-w-0">
-                              <MapPin size={13} className="text-green-600 flex-shrink-0" />
-                              <span className="truncate font-medium">{shop.location || <span className="text-red-400 italic">No location set</span>}</span>
+                        </div>
+                      ) : (
+                        /* Display Shop details */
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                          <div className="space-y-4">
+                            <h2 className="text-3xl font-black text-slate-850 font-headings">{shop.shopName}</h2>
+                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500 font-medium font-body">
+                              <span className="flex items-center gap-1.5"><MapPin size={16} className="text-emerald-600" />{shop.location || 'No location set'}</span>
+                              <span className="flex items-center gap-1.5"><FileText size={16} className="text-slate-400" />GST: {shop.gstNumber}</span>
                             </div>
-                            {shop.location && (
-                              <a
-                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.location)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-xs font-bold text-brand border border-brand/20 px-2 py-1 rounded-lg hover:bg-brand/5 transition-colors flex-shrink-0"
-                              >
-                                <ExternalLink size={11} /> Maps
-                              </a>
-                            )}
                           </div>
 
-                          {/* Google Maps Embed Preview */}
-                          {shop.location ? (
-                            <div className="rounded-xl overflow-hidden border border-gray-200 mb-3" style={{ height: '160px' }}>
-                              <iframe
-                                title={`Map for ${shop.shopName}`}
-                                src={`https://maps.google.com/maps?q=${encodeURIComponent(shop.location + (shop.shopName ? ' ' + shop.shopName : ''))}&output=embed&z=14`}
-                                width="100%"
-                                height="100%"
-                                style={{ border: 0 }}
-                                loading="lazy"
-                                referrerPolicy="no-referrer-when-downgrade"
-                              />
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-red-200 bg-red-50 mb-3 py-5 px-3 text-center">
-                              <Navigation size={22} className="text-red-300 mb-1" />
-                              <p className="text-xs font-bold text-red-400">Shop location not set</p>
-                              <p className="text-xs text-red-300 mt-0.5">Click the pencil icon to add your location so customers can track their orders.</p>
-                            </div>
-                          )}
-
-                          {/* GST */}
-                          <div className="flex items-center gap-2 text-xs text-gray-400">
-                            <FileText size={12} />
-                            <span>GST: {shop.gstNumber}</span>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAddProductForShop(shop.shopName)}
+                              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-emerald-900/10 flex items-center gap-2 text-xs font-headings active:scale-[0.98]"
+                            >
+                              <Plus size={16} /> Add Product
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingShopIndex(viewingShopIndex)}
+                              className="bg-rose-50 hover:bg-rose-100 text-rose-500 p-2.5 rounded-xl transition-all border border-rose-100/50"
+                              title="Delete Shop"
+                            >
+                              <Trash2 size={18} />
+                            </button>
                           </div>
-                        </>
+                        </div>
                       )}
                     </div>
-                  ))}
+                  </div>
                 </div>
-                <button onClick={() => setShowAddShopForm(true)} className="flex items-center gap-1 bg-gray-100 text-gray-600 hover:text-brand hover:bg-brand-light/50 px-3 py-1.5 rounded-full text-sm font-medium transition-colors mt-4">
-                  <Plus size={14} /> Add Shop
-                </button>
+              );
+            })()
+          ) : (
+            /* My Shops panel */
+            <div className="mb-8 bg-white/70 backdrop-blur-md border border-white/60 p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02]">
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div className="flex-1 w-full">
+                  <h2 className="text-2xl font-bold text-slate-800 mb-4 font-headings">My Shops ({vendorShops.length})</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {vendorShops.map((shop, i) => (
+                      <div key={i} className="bg-white/40 backdrop-blur-sm p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-100/50 transition-all duration-300">
+                        {editingShopIndex === i ? (
+                          /* ── Inline Edit Shop Form ── */
+                          <form onSubmit={handleUpdateShop} className="space-y-3">
+                            <p className="text-xs font-black text-emerald-700 uppercase tracking-wider mb-2 font-headings">Editing Shop</p>
+                            <div>
+                              <label className={labelCls}>Shop Name</label>
+                              <div className="relative">
+                                <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <input required type="text" value={editShopForm.shopName} onChange={(e) => setEditShopForm({ ...editShopForm, shopName: e.target.value })} className={inputCls} />
+                              </div>
+                            </div>
+                            <div>
+                              <label className={labelCls}>Location <span className="text-emerald-650 font-bold">*</span></label>
+                              <div className="relative">
+                                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <input required type="text" value={editShopForm.location} onChange={(e) => setEditShopForm({ ...editShopForm, location: e.target.value })} className={inputCls} style={{ paddingRight: '150px' }} placeholder="E.g. Andheri West, Mumbai, Maharashtra" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleGetCurrentLocation(setEditShopForm, editShopForm)}
+                                  disabled={detectingShopLocation}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-50 hover:bg-emerald-100 disabled:bg-slate-100 disabled:text-slate-400 text-emerald-600 text-xs font-bold px-2 py-1 rounded-md transition-colors border border-emerald-100/50 flex items-center gap-1"
+                                >
+                                  {detectingShopLocation ? (
+                                    <span className="w-2.5 h-2.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></span>
+                                  ) : (
+                                    <Navigation size={10} />
+                                  )}
+                                  {detectingShopLocation ? 'Detecting...' : 'Add current location'}
+                                </button>
+                              </div>
+                              <p className="text-[10px] text-emerald-600 mt-1 flex items-start gap-1 font-body leading-relaxed">
+                                <Navigation size={10} className="mt-0.5 flex-shrink-0" /> Enter your full address so customers can see your shop on Google Maps when tracking orders.
+                              </p>
+                            </div>
+                            <div>
+                              <label className={labelCls}>GST Number</label>
+                              <div className="relative">
+                                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <input required type="text" value={editShopForm.gstNumber} onChange={(e) => setEditShopForm({ ...editShopForm, gstNumber: e.target.value })} className={inputCls} />
+                              </div>
+                            </div>
+                            <div>
+                              <label className={labelCls}>Shop Photo URL</label>
+                              <div className="relative">
+                                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <input type="text" value={editShopForm.image} onChange={(e) => setEditShopForm({ ...editShopForm, image: e.target.value })} className={inputCls} placeholder="https://images.unsplash.com/..." />
+                              </div>
+                            </div>
+                            <div className="flex gap-2 pt-1">
+                              <button type="submit" className="flex items-center gap-1 bg-emerald-650 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all"><Check size={14} /> Save</button>
+                              <button type="button" onClick={() => setEditingShopIndex(null)} className="flex items-center gap-1 bg-slate-105 text-slate-600 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"><X size={14} /> Cancel</button>
+                            </div>
+                          </form>
+                        ) : deletingShopIndex === i ? (
+                          /* ── Delete Confirmation ── */
+                          <div className="p-4 flex flex-col items-center justify-center text-center gap-2">
+                            <Trash2 className="text-red-500 animate-bounce" size={24} />
+                            <p className="text-sm font-bold text-slate-800 font-headings">Delete {shop.shopName}?</p>
+                            <p className="text-[10px] text-slate-400 font-body">Deleting this shop will also hide its products. This cannot be undone.</p>
+                            <div className="flex gap-2 mt-2">
+                              <button type="button" onClick={() => handleDeleteShop(i)} className="bg-gradient-to-r from-rose-500 to-red-650 hover:from-rose-600 hover:to-red-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-900/10">Yes, Delete</button>
+                              <button type="button" onClick={() => setDeletingShopIndex(null)} className="bg-slate-100 text-slate-650 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all">Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          /* ── Shop Card View ── */
+                          <>
+                            {/* Shop Header */}
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100/30">
+                                  <Store size={14} className="text-emerald-600" />
+                                </div>
+                                <h3 className="font-extrabold text-slate-800 font-headings">{shop.shopName}</h3>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => handleEditShopClick(shop, i)} className="text-slate-400 hover:text-emerald-600 transition-colors p-1.5 rounded-lg hover:bg-emerald-50" title="Edit Shop">
+                                  <Pencil size={14} />
+                                </button>
+                                <button onClick={() => setDeletingShopIndex(i)} className="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-rose-50" title="Delete Shop">
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Location row */}
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                              <div className="flex items-center gap-2 text-sm text-slate-500 min-w-0 font-body">
+                                <MapPin size={13} className="text-emerald-600 flex-shrink-0" />
+                                <span className="truncate font-semibold">{shop.location || <span className="text-red-400 italic">No location set</span>}</span>
+                              </div>
+                              {shop.location && (
+                                <a
+                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.location)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-xs font-bold text-emerald-600 border border-emerald-250 px-2 py-1 rounded-lg hover:bg-emerald-50/50 transition-colors flex-shrink-0 font-headings"
+                                >
+                                  <ExternalLink size={11} /> Maps
+                                </a>
+                              )}
+                            </div>
+
+                            {/* Google Maps Embed Preview */}
+                            {shop.location ? (
+                              <div className="rounded-2xl overflow-hidden border border-slate-150 shadow-inner mb-3" style={{ height: '160px' }}>
+                                <iframe
+                                  title={`Map for ${shop.shopName}`}
+                                  src={`https://maps.google.com/maps?q=${encodeURIComponent(shop.location + (shop.shopName ? ' ' + shop.shopName : ''))}&output=embed&z=14`}
+                                  width="100%"
+                                  height="100%"
+                                  style={{ border: 0 }}
+                                  loading="lazy"
+                                  referrerPolicy="no-referrer-when-downgrade"
+                                />
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-rose-150 bg-rose-50/30 mb-3 py-5 px-3 text-center">
+                                <Navigation size={22} className="text-rose-300 mb-1" />
+                                <p className="text-xs font-bold text-rose-500 font-headings">Shop location not set</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5 font-body">Click the pencil icon to add your location so customers can track their orders.</p>
+                              </div>
+                            )}
+
+                            {/* GST */}
+                            <div className="flex items-center gap-2 text-xs text-slate-400 border-b border-slate-100 pb-3 font-body">
+                              <FileText size={12} />
+                              <span>GST: {shop.gstNumber}</span>
+                            </div>
+
+                            {/* View Shop Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setViewingShopIndex(i);
+                                setSelectedShopFilter(shop.shopName);
+                              }}
+                              className="w-full mt-3 flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-650 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-900/10 active:scale-[0.98] font-headings"
+                            >
+                              <Store size={12} /> View Shop
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              {/* Add New Product button */}
+              {/* Add Shop button */}
               <button
-                onClick={() => setShowAddForm(true)}
-                className="bg-brand hover:bg-brand-dark text-white px-6 py-2.5 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 shadow-sm flex-shrink-0"
+                type="button"
+                onClick={() => setShowAddShopForm(true)}
+                className="bg-gradient-to-r from-emerald-600 to-teal-650 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md shadow-emerald-900/10 flex items-center justify-center gap-2 active:scale-[0.98] font-headings mt-6"
               >
                 <Plus size={20} />
-                Add New Product
+                Add Shop
               </button>
             </div>
-          </div>
+          )}
 
           {/* ── Add New Shop Form Modal ────────────────────────────────────────── */}
           {showAddShopForm && (
             <div 
               className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
-              onClick={() => { setShowAddShopForm(false); setNewShop({ shopName: '', location: '', gstNumber: '' }); }}
+              onClick={() => { setShowAddShopForm(false); setNewShop({ shopName: '', location: '', gstNumber: '', image: '' }); }}
             >
               <div 
                 className="bg-white rounded-3xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-hidden flex flex-col transform transition-all scale-100 duration-300"
@@ -1493,20 +1991,20 @@ export default function Profile() {
                 <form onSubmit={handleAddAdditionalShop} className="flex flex-col h-full overflow-hidden">
                   
                   {/* Modal Header */}
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0 bg-white">
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 flex-shrink-0 bg-white">
                     <div className="flex items-center gap-2.5">
-                      <div className="bg-brand/10 p-2 rounded-xl text-brand animate-pulse">
+                      <div className="bg-emerald-50 p-2.5 rounded-2xl text-emerald-605 border border-emerald-100 animate-pulse">
                         <Plus size={20} />
                       </div>
                       <div>
-                        <h2 className="text-xl font-bold text-gray-900">Add New Shop</h2>
-                        <p className="text-xs text-gray-500 mt-0.5">Register a new shop branch to showcase your products</p>
+                        <h2 className="text-xl font-bold text-slate-800 font-headings">Add New Shop</h2>
+                        <p className="text-xs text-slate-400 font-medium font-body mt-0.5">Register a new shop branch to showcase your products</p>
                       </div>
                     </div>
                     <button
                       type="button"
-                      onClick={() => { setShowAddShopForm(false); setNewShop({ shopName: '', location: '', gstNumber: '' }); }}
-                      className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-all duration-200"
+                      onClick={() => { setShowAddShopForm(false); setNewShop({ shopName: '', location: '', gstNumber: '', image: '' }); }}
+                      className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-all duration-200"
                     >
                       <X size={20} />
                     </button>
@@ -1517,31 +2015,31 @@ export default function Profile() {
                     <div>
                       <label className={labelCls}>Shop Name</label>
                       <div className="relative">
-                        <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <input required type="text" value={newShop.shopName} onChange={(e) => setNewShop({ ...newShop, shopName: e.target.value })} className={inputCls} placeholder="E.g. Fresh Valley Farms" />
                       </div>
                     </div>
                     <div>
-                      <label className={labelCls}>Shop Location <span className="text-brand font-bold">*</span></label>
+                      <label className={labelCls}>Shop Location <span className="text-emerald-605 font-bold">*</span></label>
                       <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <input required type="text" value={newShop.location} onChange={(e) => setNewShop({ ...newShop, location: e.target.value })} className={inputCls} style={{ paddingRight: '160px' }} placeholder="E.g. Andheri West, Mumbai, Maharashtra" />
                         <button
                           type="button"
                           onClick={() => handleGetCurrentLocation(setNewShop, newShop)}
                           disabled={detectingShopLocation}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-brand/10 hover:bg-brand/20 disabled:bg-gray-100 disabled:text-gray-400 text-brand text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-50 hover:bg-emerald-100 disabled:bg-slate-100 disabled:text-slate-400 text-emerald-600 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors border border-emerald-100/50 flex items-center gap-1"
                         >
                           {detectingShopLocation ? (
-                            <span className="w-3.5 h-3.5 border-2 border-brand border-t-transparent rounded-full animate-spin"></span>
+                            <span className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></span>
                           ) : (
                             <Navigation size={12} />
                           )}
                           {detectingShopLocation ? 'Detecting...' : 'Add current location'}
                         </button>
                       </div>
-                      <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
-                        <Navigation size={11} /> Use a specific address — customers see this on Google Maps when tracking their order.
+                      <p className="text-[10px] text-emerald-650 mt-1.5 flex items-start gap-1 font-body">
+                        <Navigation size={11} className="mt-0.5 flex-shrink-0" /> Use a specific address — customers see this on Google Maps when tracking their order.
                       </p>
                     </div>
                     <div>
@@ -1551,13 +2049,20 @@ export default function Profile() {
                         <input required type="text" value={newShop.gstNumber} onChange={(e) => setNewShop({ ...newShop, gstNumber: e.target.value })} className={inputCls} placeholder="E.g. 22AAAAA0000A1Z5" />
                       </div>
                     </div>
+                    <div>
+                      <label className={labelCls}>Shop Photo URL</label>
+                      <div className="relative">
+                        <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input type="text" value={newShop.image} onChange={(e) => setNewShop({ ...newShop, image: e.target.value })} className={inputCls} placeholder="https://images.unsplash.com/photo-..." />
+                      </div>
+                    </div>
                   </div>
 
                   {/* Modal Footer */}
                   <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50 flex-shrink-0">
                     <button 
                       type="button" 
-                      onClick={() => { setShowAddShopForm(false); setNewShop({ shopName: '', location: '', gstNumber: '' }); }} 
+                      onClick={() => { setShowAddShopForm(false); setNewShop({ shopName: '', location: '', gstNumber: '', image: '' }); }} 
                       className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-100 font-semibold transition-all duration-200 text-sm"
                     >
                       Cancel
@@ -1588,20 +2093,20 @@ export default function Profile() {
                 <form onSubmit={handleAddProduct} className="flex flex-col h-full overflow-hidden">
                   
                   {/* Modal Header */}
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0 bg-white">
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 flex-shrink-0 bg-white">
                     <div className="flex items-center gap-2.5">
-                      <div className="bg-brand/10 p-2 rounded-xl text-brand animate-pulse">
+                      <div className="bg-emerald-55 p-2.5 rounded-2xl text-emerald-600 border border-emerald-100/50 animate-pulse">
                         <Plus size={20} />
                       </div>
                       <div>
-                        <h2 className="text-xl font-bold text-gray-900">Add New Product</h2>
-                        <p className="text-xs text-gray-500 mt-0.5">Fill in the details to publish a new product in the marketplace</p>
+                        <h2 className="text-xl font-bold text-slate-800 font-headings">Add New Product</h2>
+                        <p className="text-xs text-slate-400 font-medium font-body mt-0.5">Fill in the details to publish a new product in the marketplace</p>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowAddForm(false)}
-                      className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-all duration-200"
+                      className="text-slate-400 hover:text-slate-650 hover:bg-slate-100 p-2 rounded-full transition-all duration-200"
                     >
                       <X size={20} />
                     </button>
@@ -1611,22 +2116,29 @@ export default function Profile() {
                   <div className="overflow-y-auto px-6 py-6 md:px-8 md:py-8 space-y-8 flex-1">
                     {/* Section: Basic Info */}
                     <div className="space-y-4">
-                      <h3 className="text-sm font-bold text-brand uppercase tracking-widest flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-emerald-605 uppercase tracking-widest flex items-center gap-2 font-headings">
                         <Package size={16} /> Basic Information
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="md:col-span-2">
                           <label className={labelCls}>Product Name</label>
                           <div className="relative">
-                            <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-450" size={18} />
                             <input required type="text" name="name" value={newProduct.name} onChange={handleInputChange} className={inputCls} placeholder="E.g. Organic Tomatoes" />
                           </div>
                         </div>
                         <div>
                           <label className={labelCls}>Which Shop?</label>
                           <div className="relative">
-                            <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <select required name="shop" value={newProduct.shop} onChange={handleInputChange} className={`${inputCls} appearance-none bg-white`}>
+                            <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-450" size={18} />
+                            <select
+                              required
+                              name="shop"
+                              value={newProduct.shop}
+                              onChange={handleInputChange}
+                              disabled={!!selectedShopFilter}
+                              className={`${inputCls} appearance-none bg-white font-medium`}
+                            >
                               <option value="">Select a shop...</option>
                               {vendorShops.map((shop, i) => <option key={i} value={shop.shopName}>{shop.shopName}</option>)}
                             </select>
@@ -1635,8 +2147,8 @@ export default function Profile() {
                         <div>
                           <label className={labelCls}>Category</label>
                           <div className="relative">
-                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <select required name="category" value={newProduct.category} onChange={handleInputChange} className={`${inputCls} appearance-none bg-white`}>
+                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-455" size={18} />
+                            <select required name="category" value={newProduct.category} onChange={handleInputChange} className={`${inputCls} appearance-none bg-white font-medium`}>
                               <option value="">Select category...</option>
                               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
@@ -1645,14 +2157,14 @@ export default function Profile() {
                         <div>
                           <label className={labelCls}>Price (₹)</label>
                           <div className="relative">
-                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-455" size={18} />
                             <input required type="number" step="0.01" name="price" value={newProduct.price} onChange={handleInputChange} className={inputCls} placeholder="2.99" />
                           </div>
                         </div>
                         <div>
                           <label className={labelCls}>Image URL</label>
                           <div className="relative">
-                            <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-455" size={18} />
                             <input required type="text" name="image" value={newProduct.image} onChange={handleInputChange} className={inputCls} placeholder="https://example.com/image.jpg" />
                           </div>
                         </div>
@@ -1661,7 +2173,7 @@ export default function Profile() {
 
                     {/* Section: Product Specifications */}
                     <div className="space-y-4">
-                      <h3 className="text-sm font-bold text-brand uppercase tracking-widest flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-emerald-605 uppercase tracking-widest flex items-center gap-2 font-headings">
                         <Check size={16} /> Product Specifications
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1675,7 +2187,7 @@ export default function Profile() {
                         </div>
                         <div>
                           <label className={labelCls}>Food Preference</label>
-                          <select name="preference" value={newProduct.preference} onChange={handleInputChange} className={`${inputCls.replace('pl-10', 'px-4')} appearance-none bg-white`}>
+                          <select name="preference" value={newProduct.preference} onChange={handleInputChange} className={`${inputCls.replace('pl-10', 'px-4')} appearance-none bg-white font-medium`}>
                             <option value="Vegetarian">Vegetarian</option>
                             <option value="Non-Vegetarian">Non-Vegetarian</option>
                             <option value="Vegan">Vegan</option>
@@ -1694,49 +2206,49 @@ export default function Profile() {
 
                     {/* Section: Details & Lists */}
                     <div className="space-y-4">
-                      <h3 className="text-sm font-bold text-brand uppercase tracking-widest flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-emerald-605 uppercase tracking-widest flex items-center gap-2 font-headings">
                         <FileText size={16} /> Details & Descriptions
                       </h3>
                       <div className="space-y-4">
                         <div>
                           <label className={labelCls}>Description</label>
-                          <textarea name="description" value={newProduct.description} onChange={handleInputChange} rows="3" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand outline-none resize-none text-sm" placeholder="Detailed description of the product..."></textarea>
+                          <textarea name="description" value={newProduct.description} onChange={handleInputChange} rows="3" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none resize-none text-sm transition-all duration-200 bg-white/50 backdrop-blur-sm font-body" placeholder="Detailed description of the product..."></textarea>
                         </div>
                         <div>
                           <label className={labelCls}>Features & Details (one per line)</label>
-                          <textarea name="features" value={newProduct.features} onChange={handleInputChange} rows="3" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand outline-none resize-none text-sm" placeholder="Hand-picked&#10;Organic certified&#10;Rich in Vitamin C"></textarea>
+                          <textarea name="features" value={newProduct.features} onChange={handleInputChange} rows="3" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none resize-none text-sm transition-all duration-200 bg-white/50 backdrop-blur-sm font-body" placeholder="Hand-picked&#10;Organic certified&#10;Rich in Vitamin C"></textarea>
                         </div>
                         <div>
                           <label className={labelCls}>Available Offers (one per line)</label>
-                          <textarea name="offers" value={newProduct.offers} onChange={handleInputChange} rows="2" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand outline-none resize-none text-sm" placeholder="10% discount on orders above $50&#10;Buy 1 Get 1 Free"></textarea>
+                          <textarea name="offers" value={newProduct.offers} onChange={handleInputChange} rows="2" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none resize-none text-sm transition-all duration-200 bg-white/50 backdrop-blur-sm font-body" placeholder="10% discount on orders above $50&#10;Buy 1 Get 1 Free"></textarea>
                         </div>
                       </div>
                     </div>
 
                     {/* Section: Policies */}
                     <div className="space-y-4">
-                      <h3 className="text-sm font-bold text-brand uppercase tracking-widest flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-emerald-605 uppercase tracking-widest flex items-center gap-2 font-headings">
                         <RefreshCw size={16} /> Policies
                       </h3>
                       <div>
                         <label className={labelCls}>Return Policy</label>
-                        <textarea name="returnPolicy" value={newProduct.returnPolicy} onChange={handleInputChange} rows="2" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand outline-none resize-none text-sm" placeholder="Returnable within 24 hours if damaged..."></textarea>
+                        <textarea name="returnPolicy" value={newProduct.returnPolicy} onChange={handleInputChange} rows="2" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none resize-none text-sm transition-all duration-200 bg-white/50 backdrop-blur-sm font-body" placeholder="Returnable within 24 hours if damaged..."></textarea>
                       </div>
                     </div>
                   </div>
 
                   {/* Modal Footer */}
-                  <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50 flex-shrink-0">
+                  <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50 flex-shrink-0">
                     <button
                       type="button"
                       onClick={() => setShowAddForm(false)}
-                      className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-100 font-semibold transition-all duration-200 text-sm"
+                      className="px-5 py-2.5 rounded-xl border border-slate-205 text-slate-700 hover:bg-slate-100 font-semibold transition-all duration-200 text-sm font-headings"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="bg-brand hover:bg-brand-dark text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98] text-sm"
+                      className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md shadow-emerald-900/10 active:scale-[0.98] text-sm font-headings"
                     >
                       Save Product to Marketplace
                     </button>
@@ -1748,63 +2260,76 @@ export default function Profile() {
 
           {/* ── Your Products ─────────────────────────────────────────────────── */}
           <div>
-            <h2 className="text-xl font-semibold mb-4">Your Products ({vendorProducts.length})</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+              <h2 className="text-xl font-bold font-headings text-slate-800">
+                {selectedShopFilter ? `Products at ${selectedShopFilter}` : 'Your Products'} ({vendorProducts.length})
+              </h2>
+              {selectedShopFilter && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedShopFilter(null)}
+                  className="flex items-center gap-1.5 bg-slate-100 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/50 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all self-start shadow-sm active:scale-[0.98] font-headings"
+                >
+                  <X size={12} /> Show All Shops
+                </button>
+              )}
+            </div>
             {vendorProducts.length === 0 ? (
-              <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-12 text-center">
-                <Package className="mx-auto text-gray-400 mb-4" size={48} />
-                <h3 className="text-lg font-medium text-gray-900 mb-1">No products yet</h3>
-                <p className="text-gray-500">Get started by adding your first product to your shop.</p>
+              <div className="bg-white/40 border border-dashed border-slate-200 rounded-3xl p-12 text-center">
+                <Package className="mx-auto text-slate-350 mb-4" size={48} />
+                <h3 className="text-lg font-bold font-headings text-slate-800 mb-1">No products yet</h3>
+                <p className="text-sm text-slate-550 font-body">Get started by adding your first product to your shop.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {vendorProducts.map(product => (
-                  <div key={product.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  <div key={product.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md hover:border-emerald-100/50 transition-all duration-300">
 
                     {editingProductId === product.id ? (
                       /* ── Inline Edit Product Form ── */
                       <div className="p-6">
-                        <div className="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
-                          <p className="text-sm font-black text-brand uppercase tracking-tighter">Editing Product</p>
+                        <div className="flex items-center justify-between mb-6 pb-2 border-b border-slate-100">
+                          <p className="text-xs font-black text-emerald-700 uppercase tracking-wider font-headings">Editing Product</p>
                           <div className="flex gap-2">
-                            <button onClick={handleUpdateProduct} className="bg-brand text-white p-2 rounded-lg hover:bg-brand-dark transition-colors"><Check size={16} /></button>
-                            <button onClick={() => setEditingProductId(null)} className="bg-gray-100 text-gray-500 p-2 rounded-lg hover:bg-gray-200 transition-colors"><X size={16} /></button>
+                            <button onClick={handleUpdateProduct} className="bg-emerald-600 text-white p-2 rounded-xl hover:bg-emerald-700 transition-colors shadow-sm"><Check size={16} /></button>
+                            <button onClick={() => setEditingProductId(null)} className="bg-slate-100 text-slate-500 p-2 rounded-xl hover:bg-slate-200 transition-colors"><X size={16} /></button>
                           </div>
                         </div>
 
                         <form onSubmit={handleUpdateProduct} className="space-y-6">
                           {/* Basic Information */}
                           <div className="space-y-3">
-                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Basic Information</h4>
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-headings">Basic Information</h4>
                             <div className="grid grid-cols-1 gap-3">
-                              <input required type="text" value={editProductForm.name} onChange={(e) => setEditProductForm({ ...editProductForm, name: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-brand outline-none" placeholder="Name" />
+                              <input required type="text" value={editProductForm.name} onChange={(e) => setEditProductForm({ ...editProductForm, name: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-250 text-xs focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none font-body bg-white" placeholder="Name" />
                               <div className="grid grid-cols-2 gap-3">
-                                <input required type="number" step="0.01" value={editProductForm.price} onChange={(e) => setEditProductForm({ ...editProductForm, price: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-brand outline-none" placeholder="Price (₹)" />
-                                <select required value={editProductForm.category} onChange={(e) => setEditProductForm({ ...editProductForm, category: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-brand outline-none bg-white font-medium">{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select>
+                                <input required type="number" step="0.01" value={editProductForm.price} onChange={(e) => setEditProductForm({ ...editProductForm, price: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-250 text-xs focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none font-body bg-white" placeholder="Price (₹)" />
+                                <select required value={editProductForm.category} onChange={(e) => setEditProductForm({ ...editProductForm, category: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-250 text-xs focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none font-body bg-white font-medium">{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select>
                               </div>
-                              <input type="text" value={editProductForm.image} onChange={(e) => setEditProductForm({ ...editProductForm, image: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-brand outline-none" placeholder="Image URL" />
+                              <input type="text" value={editProductForm.image} onChange={(e) => setEditProductForm({ ...editProductForm, image: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-250 text-xs focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none font-body bg-white" placeholder="Image URL" />
                             </div>
                           </div>
 
                           {/* Specifications */}
                           <div className="space-y-3">
-                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Specifications</h4>
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-headings">Specifications</h4>
                             <div className="grid grid-cols-2 gap-3">
-                              <input type="text" value={editProductForm.unit} onChange={(e) => setEditProductForm({ ...editProductForm, unit: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" placeholder="Unit" />
-                              <input type="text" value={editProductForm.netWeight} onChange={(e) => setEditProductForm({ ...editProductForm, netWeight: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" placeholder="Net Weight" />
-                              <input type="text" value={editProductForm.origin} onChange={(e) => setEditProductForm({ ...editProductForm, origin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium" placeholder="Origin" />
-                              <select value={editProductForm.preference} onChange={(e) => setEditProductForm({ ...editProductForm, preference: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white font-medium"><option value="Vegetarian">Veg</option><option value="Non-Vegetarian">Non-Veg</option><option value="Vegan">Vegan</option></select>
+                              <input type="text" value={editProductForm.unit} onChange={(e) => setEditProductForm({ ...editProductForm, unit: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-250 text-xs font-body bg-white" placeholder="Unit" />
+                              <input type="text" value={editProductForm.netWeight} onChange={(e) => setEditProductForm({ ...editProductForm, netWeight: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-250 text-xs font-body bg-white" placeholder="Net Weight" />
+                              <input type="text" value={editProductForm.origin} onChange={(e) => setEditProductForm({ ...editProductForm, origin: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-250 text-xs font-body bg-white font-medium" placeholder="Origin" />
+                              <select value={editProductForm.preference} onChange={(e) => setEditProductForm({ ...editProductForm, preference: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-250 text-xs font-body bg-white font-medium"><option value="Vegetarian">Veg</option><option value="Non-Vegetarian">Non-Veg</option><option value="Vegan">Vegan</option></select>
                             </div>
                           </div>
 
                           {/* Details & Lists */}
                           <div className="space-y-3">
-                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Descriptions & Details</h4>
-                            <textarea rows="2" value={editProductForm.description} onChange={(e) => setEditProductForm({ ...editProductForm, description: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs focus:border-brand outline-none resize-none" placeholder="Description"></textarea>
-                            <textarea rows="2" value={editProductForm.features} onChange={(e) => setEditProductForm({ ...editProductForm, features: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs focus:border-brand outline-none resize-none" placeholder="Features (one per line)"></textarea>
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-headings">Descriptions & Details</h4>
+                            <textarea rows="2" value={editProductForm.description} onChange={(e) => setEditProductForm({ ...editProductForm, description: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-250 text-xs focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none resize-none font-body bg-white" placeholder="Description"></textarea>
+                            <textarea rows="2" value={editProductForm.features} onChange={(e) => setEditProductForm({ ...editProductForm, features: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-250 text-xs focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none resize-none font-body bg-white" placeholder="Features (one per line)"></textarea>
                           </div>
 
                           <div className="pt-2">
-                            <button type="submit" className="w-full bg-brand text-white py-2.5 rounded-xl font-bold hover:bg-brand-dark transition-colors shadow-sm">
+                            <button type="submit" className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-2.5 rounded-xl font-bold transition-all shadow-md font-headings shadow-emerald-900/10">
                               Update Product
                             </button>
                           </div>
@@ -1813,34 +2338,34 @@ export default function Profile() {
                     ) : deletingProductId === product.id ? (
                       /* ── Delete Confirmation ── */
                       <div className="p-5 flex flex-col items-center justify-center h-full text-center gap-3">
-                        <Trash2 className="text-red-400" size={32} />
-                        <p className="text-sm font-medium text-gray-800">Delete <span className="font-bold">{product.name}</span>?</p>
-                        <p className="text-xs text-gray-500">This cannot be undone.</p>
+                        <Trash2 className="text-rose-500 animate-bounce" size={32} />
+                        <p className="text-sm font-bold text-slate-800 font-headings">Delete <span className="text-emerald-600">{product.name}</span>?</p>
+                        <p className="text-xs text-slate-405 font-body">This cannot be undone.</p>
                         <div className="flex gap-2">
-                          <button onClick={() => handleDeleteProduct(product.id)} className="bg-red-500 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors">Yes, Delete</button>
-                          <button onClick={() => setDeletingProductId(null)} className="bg-gray-100 text-gray-600 px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-gray-200 transition-colors">Cancel</button>
+                          <button onClick={() => handleDeleteProduct(product.id)} className="bg-gradient-to-r from-rose-500 to-red-650 hover:from-rose-600 hover:to-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-900/10">Yes, Delete</button>
+                          <button onClick={() => setDeletingProductId(null)} className="bg-slate-100 text-slate-655 px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all">Cancel</button>
                         </div>
                       </div>
                     ) : (
                       /* ── Normal Product Card ── */
                       <>
-                        <div className="h-44 overflow-hidden bg-gray-100 flex items-center justify-center relative group">
+                        <div className="h-44 overflow-hidden bg-slate-50 flex items-center justify-center relative group">
                           {product.image
                             ? <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                            : <ImageIcon className="text-gray-300" size={48} />
+                            : <ImageIcon className="text-slate-300" size={48} />
                           }
                           {/* Action buttons overlay */}
-                          <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-305">
                             <button
                               onClick={() => handleEditProductClick(product)}
-                              className="bg-white/90 backdrop-blur-sm text-brand hover:bg-brand hover:text-white p-1.5 rounded-lg shadow-sm transition-colors"
+                              className="bg-white/90 backdrop-blur-sm text-emerald-600 hover:bg-emerald-650 hover:text-white p-2 rounded-xl shadow-md border border-slate-100 transition-colors"
                               title="Edit Product"
                             >
                               <Pencil size={14} />
                             </button>
                             <button
                               onClick={() => setDeletingProductId(product.id)}
-                              className="bg-white/90 backdrop-blur-sm text-red-500 hover:bg-red-500 hover:text-white p-1.5 rounded-lg shadow-sm transition-colors"
+                              className="bg-white/90 backdrop-blur-sm text-rose-550 hover:bg-rose-600 hover:text-white p-2 rounded-xl shadow-md border border-slate-100 transition-colors"
                               title="Delete Product"
                             >
                               <Trash2 size={14} />
@@ -1848,11 +2373,11 @@ export default function Profile() {
                           </div>
                         </div>
                         <div className="p-4">
-                          <div className="text-xs font-semibold text-brand mb-1 uppercase tracking-wider">{product.category}</div>
-                          <h3 className="font-medium text-gray-900 mb-1 truncate">{product.name}</h3>
+                          <div className="text-[10px] font-black text-emerald-650 mb-1.5 uppercase tracking-wider font-headings">{product.category}</div>
+                          <h3 className="font-bold text-slate-800 mb-1 truncate font-headings text-sm">{product.name}</h3>
                           <div className="flex items-center justify-between mt-3">
-                            <div className="font-bold text-gray-900">₹{parseFloat(product.price).toFixed(2)}</div>
-                            <div className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-xs truncate max-w-[120px] flex items-center gap-1">
+                            <div className="font-extrabold text-slate-900 text-base font-body">₹{parseFloat(product.price).toFixed(2)}</div>
+                            <div className="bg-slate-50 text-slate-405 px-2.5 py-1 rounded-full text-[10px] font-semibold truncate max-w-[120px] flex items-center gap-1 border border-slate-100 font-body">
                               <Store size={10} /> {product.vendor}
                             </div>
                           </div>

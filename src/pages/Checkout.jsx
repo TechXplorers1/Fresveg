@@ -215,233 +215,266 @@ export default function Checkout() {
   const isRazorpay = selectedPayment === 'Pay Online';
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="text-center mb-8">
-          <CheckCircle className="mx-auto text-green-500" size={64} />
-          <h1 className="text-3xl font-bold text-gray-900 mt-4">Checkout</h1>
-          <p className="text-gray-600">Review your order and confirm payment</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-          {/* ── Order Summary ────────────────────────────────────────────── */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-6">
-              <Package className="text-green-600" size={24} />
-              <h2 className="text-xl font-semibold">Order Summary</h2>
-            </div>
-
-            <div className="space-y-4">
-              {cartItems.map(item => (
-                <div key={item.id} className="flex items-center gap-4 p-4 border border-gray-100 rounded-xl">
-                  <img src={item.image} alt={item.name}
-                    className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
-                    onError={e => { e.target.style.display = 'none'; }}
-                  />
-                  <div className="flex-grow min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
-                    <p className="text-sm text-gray-500">Qty: {item.quantity} × ₹{item.price}</p>
+    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      {/* Progress Stepper */}
+      <div className="mb-10 bg-white/70 backdrop-blur-md border border-white/60 p-6 rounded-3xl shadow-sm">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-8">
+          {[
+            { label: 'Shopping Cart', desc: 'Manage items & location' },
+            { label: 'Payment', desc: 'Choose checkout method' },
+            { label: 'Live Tracking', desc: 'Monitor delivery status' }
+          ].map((step, idx) => {
+            const stepNum = idx + 1;
+            const isActive = stepNum === 2;
+            const isCompleted = stepNum < 2;
+            return (
+              <div key={idx} className="flex-1 w-full flex items-center gap-4 relative">
+                <div className="relative flex items-center">
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm transition-all duration-300 ${
+                    isCompleted 
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
+                      : isActive 
+                      ? 'bg-emerald-800 text-white shadow-lg shadow-emerald-800/20 animate-pulse-glow' 
+                      : 'bg-slate-100 text-slate-400'
+                  }`}>
+                    {isCompleted ? <Check size={18} /> : stepNum}
                   </div>
-                  <p className="font-bold text-gray-900 flex-shrink-0">
-                    ₹{(item.price * item.quantity).toFixed(2)}
+                  {idx < 2 && (
+                    <div className="hidden md:block absolute left-12 w-24 lg:w-44 h-[2px] bg-slate-100">
+                      <div className={`h-full bg-emerald-500 transition-all duration-500 ${isCompleted ? 'w-full' : 'w-0'}`} />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className={`font-semibold text-sm font-headings transition-colors ${isActive ? 'text-emerald-800 font-bold' : isCompleted ? 'text-emerald-600' : 'text-slate-500'}`}>
+                    {step.label}
+                  </p>
+                  <p className="text-[11px] text-slate-400 font-normal">
+                    {step.desc}
                   </p>
                 </div>
-              ))}
-            </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-            {/* Total */}
-            <div className="mt-6 pt-4 border-t border-gray-200 space-y-2">
-              <div className="flex justify-between text-sm text-gray-500">
-                <span>Subtotal</span>
-                <span>₹{getTotal().toFixed(2)}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Order Summary */}
+        <div className="lg:col-span-7 bg-white/70 backdrop-blur-md border border-white/60 p-6 md:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02]">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
+              <Package className="text-emerald-600" size={18} />
+            </div>
+            <h2 className="text-xl font-bold font-headings text-slate-800">Order Summary</h2>
+          </div>
+
+          <div className="space-y-4">
+            {cartItems.map(item => (
+              <div key={item.id} className="flex items-center gap-4 p-4 bg-white/40 border border-slate-100 rounded-2xl hover:bg-white/80 transition-all duration-300">
+                <img src={item.image} alt={item.name}
+                  className="w-16 h-16 object-cover rounded-xl border border-slate-100/50 flex-shrink-0"
+                  onError={e => { e.target.style.display = 'none'; }}
+                />
+                <div className="flex-grow min-w-0">
+                  <h3 className="font-bold text-base text-slate-800 font-headings truncate">{item.name}</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Qty: {item.quantity} × ₹{item.price}</p>
+                </div>
+                <p className="font-extrabold text-slate-800 text-base flex-shrink-0 font-sans">
+                  ₹{(item.price * item.quantity).toFixed(2)}
+                </p>
               </div>
-              <div className="flex justify-between text-sm text-gray-500">
-                <span>Delivery</span>
-                <span className="text-green-600 font-medium">FREE</span>
+            ))}
+          </div>
+
+          {/* Subtotal & Total */}
+          <div className="mt-8 pt-6 border-t border-slate-100 space-y-3">
+            <div className="flex justify-between text-sm text-slate-500 font-medium px-1">
+              <span>Subtotal</span>
+              <span>₹{getTotal().toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-slate-500 font-medium px-1">
+              <span>Delivery Fee</span>
+              <span className="text-emerald-600 font-semibold uppercase tracking-wider">FREE</span>
+            </div>
+            <div className="flex justify-between items-center bg-emerald-50/30 p-4 rounded-2xl border border-emerald-100/50 mt-4">
+              <span className="text-slate-700 font-bold text-sm">Total Amount Payable</span>
+              <span className="text-2xl font-black text-emerald-800 font-sans">₹{getTotal().toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Address and Payment */}
+        <div className="lg:col-span-5 space-y-6">
+          {/* Delivery Address */}
+          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
+                  <MapPin className="text-emerald-600" size={18} />
+                </div>
+                <h2 className="text-lg font-bold font-headings text-slate-800">Delivery Address</h2>
               </div>
-              <div className="flex justify-between items-center text-xl font-black pt-2 border-t border-gray-100">
-                <span>Total</span>
-                <span className="text-green-600">₹{getTotal().toFixed(2)}</span>
-              </div>
+              <button
+                onClick={() => navigate('/cart')}
+                className="text-xs font-bold text-emerald-600 hover:text-emerald-800 transition-colors uppercase tracking-wider"
+              >
+                Change
+              </button>
+            </div>
+            <div className="p-4 bg-white/40 border border-slate-100 rounded-2xl">
+              {address ? (
+                <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-line text-sm">{address}</p>
+              ) : (
+                <div className="text-center py-3">
+                  <p className="text-rose-500 font-bold text-sm mb-2">No address selected!</p>
+                  <button onClick={() => navigate('/cart')} className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all">
+                    Go back to Cart & Choose Address
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* ── Right Column ─────────────────────────────────────────────── */}
-          <div className="space-y-6">
-
-            {/* Delivery Address */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <MapPin className="text-green-600" size={22} />
-                  <h2 className="text-lg font-semibold">Delivery Address</h2>
-                </div>
-                <button
-                  onClick={() => navigate('/cart')}
-                  className="text-xs font-bold text-gray-400 hover:text-green-600 transition-colors uppercase tracking-widest"
-                >
-                  Change
-                </button>
+          {/* Payment Method */}
+          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02]">
+            <div className="flex items-center gap-2 mb-5">
+              <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
+                <CreditCard className="text-emerald-600" size={18} />
               </div>
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                {address ? (
-                  <p className="text-gray-900 font-medium leading-relaxed whitespace-pre-line text-sm">{address}</p>
-                ) : (
-                  <div className="text-center py-3">
-                    <p className="text-red-500 font-bold text-sm mb-1">No address selected!</p>
-                    <button onClick={() => navigate('/cart')} className="text-green-600 text-sm font-bold hover:underline">
-                      Go back to Cart →
-                    </button>
-                  </div>
-                )}
-              </div>
+              <h2 className="text-lg font-bold font-headings text-slate-800">Payment Method</h2>
             </div>
 
-            {/* Payment Method */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center gap-2 mb-5">
-                <CreditCard className="text-green-600" size={22} />
-                <h2 className="text-lg font-semibold">Payment Method</h2>
-              </div>
-
-              <div className="space-y-3">
-                {PAYMENT_METHODS.map((method) => {
-                  const isSelected = selectedPayment === method.name;
-                  return (
-                    <div key={method.id}>
-                      <button
-                        onClick={() => { setSelectedPayment(method.name); setRzpError(''); }}
-                        className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all group
-                          ${isSelected
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-100 hover:border-gray-200 bg-gray-50/60'
-                          }`}
-                      >
-                        <div className={`p-3 rounded-xl transition-colors flex-shrink-0
-                          ${isSelected ? 'bg-green-600 text-white' : 'bg-white text-gray-400 group-hover:text-green-600'}`}>
-                          <method.icon size={22} />
+            <div className="space-y-3">
+              {PAYMENT_METHODS.map((method) => {
+                const isSelected = selectedPayment === method.name;
+                return (
+                  <div key={method.id}>
+                    <button
+                      onClick={() => { setSelectedPayment(method.name); setRzpError(''); }}
+                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-300 text-left ${
+                        isSelected
+                          ? 'border-emerald-500 bg-emerald-500/[0.02] shadow-md shadow-emerald-950/[0.01]'
+                          : 'border-slate-100 hover:border-slate-200 bg-white/40 hover:bg-white/80'
+                      }`}
+                    >
+                      <div className={`p-3 rounded-xl transition-all duration-300 ${
+                        isSelected ? 'bg-emerald-600 text-white' : 'bg-slate-50 text-slate-400'
+                      }`}>
+                        <method.icon size={20} />
+                      </div>
+                      <div className="flex-grow">
+                        <p className={`font-bold font-headings text-sm ${isSelected ? 'text-emerald-800' : 'text-slate-800'}`}>
+                          {method.name}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">{method.desc}</p>
+                      </div>
+                      {isSelected ? (
+                        <div className="bg-emerald-500 text-white p-1 rounded-full">
+                          <Check size={12} strokeWidth={3} />
                         </div>
-                        <div className="text-left flex-grow">
-                          <p className={`font-bold ${isSelected ? 'text-green-700' : 'text-gray-900'}`}>
-                            {method.name}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-0.5">{method.desc}</p>
-                        </div>
-                        {isSelected
-                          ? <div className="bg-green-500 text-white p-1 rounded-full flex-shrink-0">
-                              <Check size={14} strokeWidth={3} />
-                            </div>
-                          : <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
-                        }
-                      </button>
-
-                      {/* ── Razorpay expanded panel ───────────────────────── */}
-                      {method.id === 'razorpay' && isSelected && (
-                        <div className="mt-3 mx-1 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 space-y-4">
-
-                          {/* Accepted methods */}
-                          <div>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
-                              All payment methods accepted
-                            </p>
-                            <div className="grid grid-cols-4 gap-2">
-                              {RAZORPAY_METHODS.map((m) => (
-                                <div
-                                  key={m.label}
-                                  className="flex flex-col items-center gap-1.5 bg-white rounded-xl p-2.5 border border-gray-100 shadow-sm"
-                                >
-                                  <div
-                                    className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[9px] font-black"
-                                    style={{ backgroundColor: m.color }}
-                                  >
-                                    {m.abbr}
-                                  </div>
-                                  <span className="text-[10px] font-semibold text-gray-600 text-center leading-tight">
-                                    {m.label}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Razorpay trust badge */}
-                          <div className="flex items-center gap-2 bg-white/70 border border-blue-100 rounded-xl px-3 py-2.5">
-                            <ShieldCheck size={16} className="text-blue-600 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-gray-700">Secured by Razorpay</p>
-                              <p className="text-[11px] text-gray-400">256-bit SSL · PCI DSS Level 1 certified</p>
-                            </div>
-                            <div className="flex-shrink-0">
-                              <div className="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-md tracking-wide">
-                                RAZORPAY
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Amount preview */}
-                          <div className="flex items-center justify-between bg-green-600 text-white rounded-xl px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <Zap size={16} />
-                              <span className="text-sm font-bold">Amount to Pay</span>
-                            </div>
-                            <span className="text-xl font-black">₹{getTotal().toFixed(2)}</span>
-                          </div>
-
-                          {/* Error message */}
-                          {rzpError && (
-                            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
-                              <AlertTriangle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
-                              <p className="text-xs text-red-600 font-medium">{rzpError}</p>
-                            </div>
-                          )}
-                        </div>
+                      ) : (
+                        <ChevronRight size={14} className="text-slate-300" />
                       )}
-                    </div>
-                  );
-                })}
-              </div>
+                    </button>
 
-              {/* ── Confirm / Pay Button ─────────────────────────────────── */}
-              <button
-                onClick={handleConfirm}
-                disabled={!canConfirm}
-                className={`w-full py-4 px-4 rounded-2xl font-black transition-all mt-6 active:scale-[0.98] shadow-lg flex items-center justify-center gap-2
-                  ${canConfirm
-                    ? isRazorpay
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  }`}
-              >
-                {isProcessing || rzpLoading ? (
-                  <>
-                    <Loader size={18} className="animate-spin" />
-                    {rzpLoading ? 'Loading Razorpay…' : 'Processing…'}
-                  </>
-                ) : isRazorpay ? (
-                  <>
-                    <Zap size={18} />
-                    Pay ₹{getTotal().toFixed(2)} with Razorpay
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle size={18} />
-                    Confirm Order (Cash on Delivery)
-                  </>
-                )}
-              </button>
+                    {/* Razorpay Expanded Panel */}
+                    {method.id === 'razorpay' && isSelected && (
+                      <div className="mt-3 rounded-2xl border border-emerald-100/50 bg-gradient-to-br from-emerald-50/20 to-teal-50/20 p-4 space-y-4 shadow-inner">
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+                            All methods accepted
+                          </p>
+                          <div className="grid grid-cols-4 gap-2">
+                            {RAZORPAY_METHODS.map((m) => (
+                              <div
+                                key={m.label}
+                                className="flex flex-col items-center gap-1.5 bg-white/70 backdrop-blur-md border border-slate-100 rounded-xl p-2.5 shadow-sm"
+                              >
+                                <div
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[9px] font-black"
+                                  style={{ backgroundColor: m.color }}
+                                >
+                                  {m.abbr}
+                                </div>
+                                <span className="text-[10px] font-semibold text-slate-600 text-center leading-tight">
+                                  {m.label}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
 
-              {/* Razorpay mode notice */}
-              {isRazorpay && (
-                <p className="text-center text-[11px] text-gray-400 mt-2 flex items-center justify-center gap-1">
-                  <ShieldCheck size={11} className="text-green-500" />
-                  You'll be redirected to Razorpay's secure payment page
-                </p>
-              )}
+                        {/* Razorpay Trust Seal */}
+                        <div className="flex items-center gap-2 bg-white/80 border border-slate-100 rounded-xl p-3">
+                          <ShieldCheck size={18} className="text-emerald-600 flex-shrink-0" />
+                          <div className="flex-grow min-w-0">
+                            <p className="text-xs font-bold text-slate-800">Secured by Razorpay</p>
+                            <p className="text-[10px] text-slate-400 leading-tight">256-bit SSL · PCI DSS Level 1 Certified</p>
+                          </div>
+                          <div className="bg-emerald-800 text-white text-[9px] font-extrabold px-2 py-0.5 rounded tracking-wider">
+                            SECURE
+                          </div>
+                        </div>
+
+                        {/* Amount Preview */}
+                        <div className="flex items-center justify-between bg-emerald-800 text-white rounded-xl px-4 py-3 shadow-md shadow-emerald-950/20">
+                          <div className="flex items-center gap-2">
+                            <Zap size={14} className="text-amber-400 fill-amber-400" />
+                            <span className="text-xs font-bold font-headings">Total to Pay Online</span>
+                          </div>
+                          <span className="text-lg font-black font-sans">₹{getTotal().toFixed(2)}</span>
+                        </div>
+
+                        {rzpError && (
+                          <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-xl p-3">
+                            <AlertTriangle size={14} className="text-rose-500 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-rose-600 font-medium leading-relaxed">{rzpError}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+
+            {/* Confirm / Pay Button */}
+            <button
+              onClick={handleConfirm}
+              disabled={!canConfirm}
+              className={`w-full py-4 px-4 rounded-2xl font-bold transition-all duration-300 mt-6 active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 ${
+                canConfirm
+                  ? isRazorpay
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-900/10 hover:shadow-emerald-900/20'
+                    : 'bg-gradient-to-r from-emerald-700 to-emerald-800 hover:from-emerald-800 hover:to-emerald-900 text-white shadow-emerald-950/10 hover:shadow-emerald-950/20'
+                  : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200/50 shadow-none'
+              }`}
+            >
+              {isProcessing || rzpLoading ? (
+                <>
+                  <Loader size={18} className="animate-spin" />
+                  {rzpLoading ? 'Loading Secure Gateway…' : 'Processing order…'}
+                </>
+              ) : isRazorpay ? (
+                <>
+                  <Zap size={16} className="text-amber-300 fill-amber-300" />
+                  Pay ₹{getTotal().toFixed(2)} Securely
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={16} />
+                  Confirm Order (COD)
+                </>
+              )}
+            </button>
+
+            {isRazorpay && (
+              <p className="text-center text-[10px] text-slate-400 mt-3 flex items-center justify-center gap-1">
+                <ShieldCheck size={12} className="text-emerald-500" />
+                Payments processed via Razorpay secure layers.
+              </p>
+            )}
           </div>
         </div>
       </div>
