@@ -128,9 +128,9 @@ export default function Navbar() {
                 </div>
               </div>
             )}
-            <Link to="/" className="block px-3.5 py-2.5 text-gray-600 hover:text-brand hover:bg-brand-light/50 rounded-xl font-bold text-sm transition-colors">Home</Link>
-            <Link to="/#marketplace" className="block px-3.5 py-2.5 text-gray-600 hover:text-brand hover:bg-brand-light/50 rounded-xl font-bold text-sm transition-colors">Marketplace</Link>
-            <Link to="/cart" className="flex items-center justify-between px-3.5 py-2.5 text-gray-600 hover:text-brand hover:bg-brand-light/50 rounded-xl font-bold text-sm transition-colors">
+            <Link to="/" onClick={() => setIsMenuOpen(false)} className="block px-3.5 py-2.5 text-gray-600 hover:text-brand hover:bg-brand-light/50 rounded-xl font-bold text-sm transition-colors">Home</Link>
+            <Link to="/#marketplace" onClick={() => setIsMenuOpen(false)} className="block px-3.5 py-2.5 text-gray-600 hover:text-brand hover:bg-brand-light/50 rounded-xl font-bold text-sm transition-colors">Marketplace</Link>
+            <Link to="/cart" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between px-3.5 py-2.5 text-gray-600 hover:text-brand hover:bg-brand-light/50 rounded-xl font-bold text-sm transition-colors">
               <div className="flex items-center gap-2">
                 <ShoppingCart size={16} /> Cart
               </div>
@@ -140,7 +140,7 @@ export default function Navbar() {
             </Link>
             
             {user && (
-              <Link to="/profile" className="flex items-center gap-2 px-3.5 py-2.5 text-gray-600 hover:text-brand hover:bg-brand-light/50 rounded-xl font-bold text-sm transition-colors">
+              <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 px-3.5 py-2.5 text-gray-600 hover:text-brand hover:bg-brand-light/50 rounded-xl font-bold text-sm transition-colors">
                 {userProfile?.role === 'vendor' ? (
                   <Store size={16} />
                 ) : userProfile?.role === 'delivery_person' ? (
@@ -153,9 +153,9 @@ export default function Navbar() {
             )}
 
             {!user ? (
-              <Link to="/auth" className="block px-3.5 py-2.5 text-center bg-brand hover:bg-brand-dark text-white rounded-xl font-bold text-sm transition-colors">Sign In</Link>
+              <Link to="/auth" onClick={() => setIsMenuOpen(false)} className="block px-3.5 py-2.5 text-center bg-brand hover:bg-brand-dark text-white rounded-xl font-bold text-sm transition-colors">Sign In</Link>
             ) : (
-              <button onClick={handleLogout} className="flex items-center gap-2 w-full px-3.5 py-2.5 text-left font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors">
+              <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="flex items-center gap-2 w-full px-3.5 py-2.5 text-left font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors">
                 <LogOut size={16} /> Logout
               </button>
             )}
