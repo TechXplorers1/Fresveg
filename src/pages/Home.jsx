@@ -6,7 +6,7 @@ import { useProducts } from '../context/ProductContext';
 
 export default function Home() {
   const { addToCart } = useCart();
-  const { products, searchQuery } = useProducts();
+  const { products, searchQuery, setSearchQuery } = useProducts();
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('All');
   const [sortBy, setSortBy] = useState('none');
