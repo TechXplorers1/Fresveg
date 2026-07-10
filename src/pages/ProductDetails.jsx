@@ -2,12 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
-import { ShoppingCart, Target, ShieldCheck, Truck, Star, Info, Tag, ArrowLeft, Store, RefreshCw, BadgePercent, Leaf, Zap } from 'lucide-react';
+import { ShoppingCart, Target, ShieldCheck, Truck, Star, Info, Tag, ArrowLeft, Store, RefreshCw, BadgePercent, Leaf, Zap, Minus, Plus } from 'lucide-react';
 
 export default function ProductDetails() {
   const { id } = useParams();
   const { products } = useProducts();
-  const { addToCart } = useCart();
+  const { addToCart, cartItems, updateQuantity } = useCart();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
 
@@ -46,6 +46,8 @@ export default function ProductDetails() {
     "Rich source of natural vitamins and dietary fibers."
   ];
   const displayReturnPolicy = product.returnPolicy || "This product is eligible for return within 48 hours of delivery. if the item is delivered in a damaged or defective condition, you may request a refund natively through the Marketplace application.";
+  
+  const cartItem = cartItems.find(item => String(item.id) === String(product.id));
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen">
@@ -71,19 +73,39 @@ export default function ProductDetails() {
                 />
               </div>
               <div className="flex flex-col sm:flex-row gap-4">
-                 <button 
-                   onClick={() => addToCart(product)}
-                   className="flex-1 bg-white/80 border-2 border-emerald-600 text-emerald-600 py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-50 hover:shadow-md transition-all active:scale-[0.98]"
-                 >
-                   <ShoppingCart size={18} />
-                   Add to Cart
-                 </button>
+                 {cartItem ? (
+                   <div className="flex-1 flex items-center justify-between bg-slate-50/50 border-2 border-slate-200/60 rounded-2xl p-1 font-bold h-[56px]">
+                     <button 
+                       onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
+                       className="w-10 h-10 rounded-xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-emerald-600 hover:bg-slate-50 transition-all active:scale-[0.95]"
+                     >
+                       <Minus size={16} strokeWidth={3} />
+                     </button>
+                     <span className="text-slate-800 text-base font-black font-sans px-4">{cartItem.quantity}</span>
+                     <button 
+                       onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
+                       className="w-10 h-10 rounded-xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-all active:scale-[0.95]"
+                     >
+                       <Plus size={16} strokeWidth={3} />
+                     </button>
+                   </div>
+                 ) : (
+                   <button 
+                     onClick={() => addToCart(product)}
+                     className="flex-1 bg-white/80 border-2 border-emerald-600 text-emerald-600 h-[56px] rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-50 hover:shadow-md transition-all active:scale-[0.98]"
+                   >
+                     <ShoppingCart size={18} />
+                     Add to Cart
+                   </button>
+                 )}
                  <button 
                    onClick={() => {
-                     addToCart(product);
+                     if (!cartItem) {
+                       addToCart(product);
+                     }
                      navigate('/checkout');
                    }}
-                   className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-900/20 transition-all duration-300 active:scale-[0.98]"
+                   className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white h-[56px] rounded-2xl font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-900/20 transition-all duration-300 active:scale-[0.98]"
                  >
                    <Zap size={18} className="text-amber-300 fill-amber-300" />
                    Buy Now
