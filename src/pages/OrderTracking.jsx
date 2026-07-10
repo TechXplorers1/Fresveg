@@ -104,6 +104,10 @@ export default function OrderTracking() {
   const [simulating, setSimulating] = useState(false);
   const [simIntervalId, setSimIntervalId] = useState(null);
 
+  // Derived state values
+  const currentStepIdx = getStepIndex(order?.status);
+  const vendorName = order?.items?.[0]?.vendor || 'Shop Pickup';
+
   // Clean up simulator on unmount or status change
   useEffect(() => {
     return () => {
