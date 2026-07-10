@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { realtimeDb } from '../firebase';
+import OrderTrackingMap from '../components/OrderTrackingMap';
 import { ref, onValue, update, set } from 'firebase/database';
 import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power } from 'lucide-react';
 
@@ -648,6 +649,66 @@ export default function Profile() {
   // Simulation states for Delivery Boy
   const [simulatingOrderId, setSimulatingOrderId] = useState(null);
   const [simInterval, setSimInterval] = useState(null);
+
+  // States for delivery distance calculation
+  const [calculatingDistanceForId, setCalculatingDistanceForId] = useState(null);
+  const [calculatedDistances, setCalculatedDistances] = useState({});
+  const [viewedMaps, setViewedMaps] = useState({});
+
+  const getHaversineDistance = (coords1, coords2) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (coords2.lat - coords1.lat) * Math.PI / 180;
+    const dLon = (coords2.lon - coords1.lon) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(coords1.lat * Math.PI / 180) * Math.cos(coords2.lat * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2)
+      ;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+  };
+
+  const handleCalculateDistance = async (order) => {
+    const pickupAddr = order.items[0]?.shopLocation;
+    const deliveryAddr = order.address;
+
+    if (!pickupAddr || !deliveryAddr) {
+      alert("Both shop location and delivery address must be set to calculate distance.");
+      return;
+    }
+
+    setCalculatingDistanceForId(order.id);
+
+    try {
+      const startCoords = await geocodeAddress(pickupAddr);
+      await new Promise((r) => setTimeout(r, 600)); // slight throttle to respect Nominatim API
+      const endCoords = await geocodeAddress(deliveryAddr);
+
+      if (!startCoords || !endCoords) {
+        // Fallback to a realistic random distance so the delivery boy is never stuck if geocoding fails
+        const mockDist = (Math.random() * 8 + 2).toFixed(2);
+        setCalculatedDistances(prev => ({
+          ...prev,
+          [order.id]: { distance: mockDist, isFallback: true }
+        }));
+      } else {
+        const dist = getHaversineDistance(startCoords, endCoords).toFixed(2);
+        setCalculatedDistances(prev => ({
+          ...prev,
+          [order.id]: { distance: dist, isFallback: false }
+        }));
+      }
+    } catch (err) {
+      console.error("Error calculating distance:", err);
+      const mockDist = (Math.random() * 8 + 2).toFixed(2);
+      setCalculatedDistances(prev => ({
+        ...prev,
+        [order.id]: { distance: mockDist, isFallback: true }
+      }));
+    } finally {
+      setCalculatingDistanceForId(null);
+    }
+  };
 
   // Geocoder helper
   const geocodeAddress = async (address) => {
@@ -1337,12 +1398,20 @@ export default function Profile() {
                         <p className="text-emerald-600 font-extrabold">₹{parseFloat(order.total).toFixed(2)}</p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleAcceptJob(order.id)}
-                      className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md shadow-emerald-900/10 flex items-center gap-1.5 active:scale-[0.98]"
-                    >
-                      <Check size={14} /> Accept Delivery Job
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleAcceptJob(order.id)}
+                        disabled={!viewedMaps[order.id]}
+                        className={`font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 active:scale-[0.98] ${
+                          viewedMaps[order.id]
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-900/10'
+                            : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                        }`}
+                        title={viewedMaps[order.id] ? 'Accept Delivery Job' : 'Please view route map below first to accept'}
+                      >
+                        <Check size={14} /> Accept Delivery Job
+                      </button>
+                    </div>
                   </div>
 
                   {/* Job details */}
@@ -1381,6 +1450,34 @@ export default function Profile() {
                           </span>
                         ))}
                       </div>
+                    </div>
+
+                    {/* Interactive Route Map requirement */}
+                    <div className="mt-5 border-t border-slate-100 pt-4 flex flex-col gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setViewedMaps(prev => ({ ...prev, [order.id]: !prev[order.id] }))}
+                        className={`w-full flex items-center justify-center gap-2 text-xs font-bold py-3 px-4 rounded-xl border transition-all active:scale-[0.99] ${
+                          viewedMaps[order.id]
+                            ? 'bg-emerald-50 border-emerald-250 text-emerald-800'
+                            : 'bg-indigo-50/50 border-indigo-150 text-indigo-700 hover:bg-indigo-50 shadow-sm'
+                        }`}
+                      >
+                        <Navigation size={14} className={viewedMaps[order.id] ? 'text-emerald-600' : 'text-indigo-650'} />
+                        {viewedMaps[order.id] ? 'Hide Route Map' : 'View Route Map & Distance to Unlock Accept'}
+                      </button>
+                      
+                      {viewedMaps[order.id] && (
+                        <div className="w-full rounded-2xl border border-slate-200 overflow-hidden relative shadow-inner">
+                          <OrderTrackingMap
+                            vendorLocation={order.items[0]?.shopLocation}
+                            vendorName={order.items[0]?.vendor}
+                            deliveryAddress={order.address}
+                            deliveryBoyLocation={null}
+                            deliveryBoyName={null}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
