@@ -4,8 +4,8 @@ import { useProducts } from '../context/ProductContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { realtimeDb } from '../firebase';
 import OrderTrackingMap from '../components/OrderTrackingMap';
-import { ref, onValue, update, set } from 'firebase/database';
-import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power } from 'lucide-react';
+import { ref, onValue, update, set, push } from 'firebase/database';
+import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power, Compass, CheckCircle, Users } from 'lucide-react';
 
 const CATEGORIES = ['Tomatoes', 'Potatoes', 'Onions', 'Brinjal', 'Carrots', 'Spinach', 'Capsicum', 'Broccoli', 'Garlic', 'Apples', 'Bananas', 'Strawberries', 'Oranges', 'Milk', 'Butter', 'Cheese', 'Yogurt', 'Paneer'];
 
@@ -269,6 +269,112 @@ export default function Profile() {
   const handleDeleteProduct = (productId) => {
     deleteProduct(productId);
     setDeletingProductId(null);
+  };
+
+  // ─── Farm States & Handlers ────────────────────────────────────────────────
+  const [vendorFarms, setVendorFarms] = useState([]);
+  const [incomingFarmBookings, setIncomingFarmBookings] = useState([]);
+  const [showAddFarmForm, setShowAddFarmForm] = useState(false);
+  const [newFarmForm, setNewFarmForm] = useState({
+    farmName: '',
+    location: '',
+    description: '',
+    costPerPerson: '',
+    image: ''
+  });
+  const [isSubmittingFarm, setIsSubmittingFarm] = useState(false);
+
+  // Farms listener
+  useEffect(() => {
+    if (!user || userProfile?.role !== 'vendor') return;
+    const farmsRef = ref(realtimeDb, 'farms');
+    const unsubscribe = onValue(farmsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.keys(data).map(key => ({
+          ...data[key],
+          id: key
+        })).filter(f => f.vendorId === user.uid);
+        setVendorFarms(list);
+      } else {
+        setVendorFarms([]);
+      }
+    });
+    return () => unsubscribe();
+  }, [user, userProfile]);
+
+  // Bookings listener
+  useEffect(() => {
+    if (!user || userProfile?.role !== 'vendor') return;
+    const bookingsRef = ref(realtimeDb, 'farmBookings');
+    const unsubscribe = onValue(bookingsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const allBookings = Object.keys(data).map(key => ({
+          ...data[key],
+          id: key
+        }));
+
+        const myFarmIds = vendorFarms.map(f => f.id);
+        let vendorMockFarmIds = [];
+        if (userProfile?.displayName === 'Orchard Farms') vendorMockFarmIds.push('mock-farm-1');
+        if (userProfile?.displayName === 'Green Valley Farm') vendorMockFarmIds.push('mock-farm-2');
+        if (userProfile?.displayName === 'Sunshine Produce') vendorMockFarmIds.push('mock-farm-3');
+
+        const activeFarmIds = [...myFarmIds, ...vendorMockFarmIds];
+        const filtered = allBookings.filter(b => activeFarmIds.includes(b.farmId));
+        filtered.sort((a, b) => new Date(a.date) - new Date(b.date));
+        setIncomingFarmBookings(filtered);
+      } else {
+        setIncomingFarmBookings([]);
+      }
+    });
+    return () => unsubscribe();
+  }, [user, userProfile, vendorFarms]);
+
+  const handleAddFarm = async (e) => {
+    e.preventDefault();
+    if (!newFarmForm.farmName.trim() || !newFarmForm.location.trim()) {
+      alert('Please fill out Farm Name and Location.');
+      return;
+    }
+
+    setIsSubmittingFarm(true);
+    try {
+      const farmsRef = ref(realtimeDb, 'farms');
+      const newFarmRef = push(farmsRef);
+      const farmData = {
+        farmName: newFarmForm.farmName.trim(),
+        location: newFarmForm.location.trim(),
+        description: newFarmForm.description.trim(),
+        costPerPerson: Number(newFarmForm.costPerPerson) || 0,
+        image: newFarmForm.image.trim() || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80',
+        vendorId: user.uid,
+        vendorName: userProfile?.displayName || user?.displayName || 'Vendor',
+        createdAt: new Date().toISOString()
+      };
+      await set(newFarmRef, farmData);
+      setNewFarmForm({ farmName: '', location: '', description: '', costPerPerson: '', image: '' });
+      setShowAddFarmForm(false);
+      alert('Farm successfully listed!');
+    } catch (err) {
+      console.error('Failed to add farm:', err);
+      alert('Error listing farm: ' + err.message);
+    } finally {
+      setIsSubmittingFarm(false);
+    }
+  };
+
+  const handleDeleteFarm = async (farmId) => {
+    if (!window.confirm('Are you sure you want to delete this farm list?')) return;
+    try {
+      const farmRef = ref(realtimeDb, `farms/${farmId}`);
+      await set(farmRef, null);
+      alert('Farm deleted successfully.');
+    } catch (err) {
+      console.error('Failed to delete farm:', err);
+      alert('Error deleting farm: ' + err.message);
+    }
   };
 
   // ─── Address States ────────────────────────────────────────────────────────
@@ -964,17 +1070,30 @@ export default function Profile() {
                 </button>
 
                 {isVendor && (
-                  <button
-                    onClick={() => setActiveTab('setup')}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${
-                      activeTab === 'setup'
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
-                        : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
-                    }`}
-                  >
-                    <Store size={18} />
-                    Set Up Your Shop
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setActiveTab('setup')}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${
+                        activeTab === 'setup'
+                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                          : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
+                      }`}
+                    >
+                      <Store size={18} />
+                      Set Up Your Shop
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('farms')}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${
+                        activeTab === 'farms'
+                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                          : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
+                      }`}
+                    >
+                      <Compass size={18} />
+                      My Farms
+                    </button>
+                  </>
                 )}
               </>
             )}
@@ -1681,6 +1800,197 @@ export default function Profile() {
         </div>
       )}
 
+      {(isVendor && activeTab === 'farms') && (
+        <div className="space-y-8 animate-fade-in text-left">
+          {/* Header */}
+          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100/50 flex items-center justify-center text-emerald-600">
+                <Compass size={20} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold font-headings text-slate-800">My Farms</h2>
+                <p className="text-xs text-slate-400 font-medium font-body">List your farm for weekend tours and manage bookings</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowAddFarmForm(!showAddFarmForm)}
+              className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-900/10 active:scale-[0.98]"
+            >
+              {showAddFarmForm ? <X size={14} /> : <Plus size={14} />}
+              {showAddFarmForm ? 'Cancel' : 'Add New Farm'}
+            </button>
+          </div>
+
+          {/* Add Farm Form */}
+          {showAddFarmForm && (
+            <form onSubmit={handleAddFarm} className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4 max-w-4xl animate-fade-in">
+              <h3 className="text-base font-bold text-slate-850 font-headings">Farm Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Farm Name</label>
+                  <input
+                    required
+                    type="text"
+                    value={newFarmForm.farmName}
+                    onChange={(e) => setNewFarmForm({ ...newFarmForm, farmName: e.target.value })}
+                    className={inputCls.replace('pl-10', 'px-4')}
+                    placeholder="E.g. Strawberry Paradise"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Location</label>
+                  <input
+                    required
+                    type="text"
+                    value={newFarmForm.location}
+                    onChange={(e) => setNewFarmForm({ ...newFarmForm, location: e.target.value })}
+                    className={inputCls.replace('pl-10', 'px-4')}
+                    placeholder="E.g. Mahabaleshwar, Maharashtra"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Admission Cost per Person (₹)</label>
+                  <input
+                    required
+                    type="number"
+                    value={newFarmForm.costPerPerson}
+                    onChange={(e) => setNewFarmForm({ ...newFarmForm, costPerPerson: e.target.value })}
+                    className={inputCls.replace('pl-10', 'px-4')}
+                    placeholder="E.g. 250"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Farm Photo URL</label>
+                  <input
+                    type="text"
+                    value={newFarmForm.image}
+                    onChange={(e) => setNewFarmForm({ ...newFarmForm, image: e.target.value })}
+                    className={inputCls.replace('pl-10', 'px-4')}
+                    placeholder="https://images.unsplash.com/photo-..."
+                  />
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Description</label>
+                <textarea
+                  required
+                  rows="3"
+                  value={newFarmForm.description}
+                  onChange={(e) => setNewFarmForm({ ...newFarmForm, description: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-205 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none text-xs transition-all duration-200 bg-white resize-none font-body"
+                  placeholder="Describe the experience visitors can expect (activities, snacks, views)..."
+                ></textarea>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddFarmForm(false)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold transition-all text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingFarm}
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md active:scale-95 text-xs flex items-center gap-1.5"
+                >
+                  {isSubmittingFarm ? 'Listing...' : 'List Farm'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Farms List & Incoming Bookings */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+            
+            {/* My Listed Farms */}
+            <div className="xl:col-span-7 space-y-6">
+              <h3 className="text-base font-extrabold text-slate-800 font-headings pl-1">My Listed Farms</h3>
+              {vendorFarms.length === 0 ? (
+                <div className="py-12 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 text-center">
+                  <Compass size={40} className="mx-auto text-slate-350 mb-3" />
+                  <p className="text-slate-500 text-sm font-bold">No farms listed yet</p>
+                  <p className="text-xs text-slate-400 mt-1 mb-4 leading-relaxed font-body">List your first organic farm to allow customers to book visits.</p>
+                  <button
+                    onClick={() => setShowAddFarmForm(true)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md active:scale-95"
+                  >
+                    Add Farm Now
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {vendorFarms.map(farm => (
+                    <div key={farm.id} className="bg-white/70 border border-white/60 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col group">
+                      <div className="relative h-36 bg-slate-50">
+                        <img src={farm.image} alt={farm.farmName} className="w-full h-full object-cover group-hover:scale-103 transition-transform" />
+                        <button
+                          onClick={() => handleDeleteFarm(farm.id)}
+                          className="absolute top-2 right-2 bg-white/95 text-rose-500 hover:bg-rose-50 p-2 rounded-xl transition-colors shadow-md border border-slate-100"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                      <div className="p-4 flex flex-col flex-1 space-y-2">
+                        <div>
+                          <h4 className="font-bold text-slate-800 text-sm font-headings truncate">{farm.farmName}</h4>
+                          <p className="text-[10px] text-slate-450 font-semibold flex items-center gap-1 font-body mt-0.5"><MapPin size={11} className="text-emerald-600" />{farm.location}</p>
+                        </div>
+                        <p className="text-[11px] text-slate-500 line-clamp-2 italic font-body">"{farm.description}"</p>
+                        <div className="border-t border-slate-100/60 pt-2.5 mt-auto flex justify-between items-center text-[10px]">
+                          <span className="text-slate-400 font-bold uppercase tracking-wider font-headings">TICKET COST</span>
+                          <span className="font-black text-emerald-800 text-sm">₹{farm.costPerPerson}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Incoming Bookings */}
+            <div className="xl:col-span-5 space-y-6">
+              <h3 className="text-base font-extrabold text-slate-800 font-headings pl-1">Incoming Farm Visits</h3>
+              <div className="bg-white/70 border border-white/60 p-5 rounded-3xl shadow-xl shadow-emerald-950/[0.02]">
+                {incomingFarmBookings.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <Calendar size={36} className="mx-auto text-slate-350 mb-3" />
+                    <p className="text-slate-550 font-bold text-xs">No scheduled visits</p>
+                    <p className="text-[10px] text-slate-400 mt-1 max-w-[200px] mx-auto leading-relaxed font-body">As soon as customers book slot dates, their visit schedules will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                    {incomingFarmBookings.map(booking => (
+                      <div key={booking.id} className="bg-slate-50/50 border border-slate-150 rounded-2xl p-4 flex flex-col space-y-2 shadow-inner">
+                        <div className="flex justify-between items-start gap-1">
+                          <div className="min-w-0">
+                            <h4 className="font-extrabold text-slate-800 text-xs truncate font-headings">{booking.customerName}</h4>
+                            <p className="text-[10px] text-slate-450 truncate font-body mt-0.5">{booking.customerEmail}</p>
+                          </div>
+                          <span className="bg-emerald-50 text-emerald-850 border border-emerald-100 px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-0.5 flex-shrink-0">
+                            <CheckCircle size={9} /> confirmed
+                          </span>
+                        </div>
+                        <div className="border-t border-slate-100/60 pt-2 flex justify-between items-center text-[10px] font-bold text-slate-550">
+                          <span className="flex items-center gap-1"><Calendar size={11} className="text-emerald-600" />{new Date(booking.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                          <span className="flex items-center gap-1"><Users size={11} className="text-emerald-600" />{booking.visitorsCount} guest{booking.visitorsCount !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="text-[9px] text-slate-450 font-extrabold tracking-wide uppercase truncate pt-1 border-t border-slate-100/30">
+                          Farm: {booking.farmName}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
       {(isVendor && activeTab === 'setup') && (
         <>
           {/* ── Vendor: No Shop Yet ──────────────────────────────────────────────── */}
@@ -1749,7 +2059,7 @@ export default function Profile() {
       )}
 
       {/* ── Vendor: Has Shops ────────────────────────────────────────────────── */}
-      {userProfile?.role === 'vendor' && vendorShops.length > 0 && (
+      {userProfile?.role === 'vendor' && activeTab === 'setup' && vendorShops.length > 0 && (
         <div className="mt-8">
           {viewingShopIndex !== null ? (
             /* ── Shop Detail Page View ── */
@@ -2051,7 +2361,7 @@ export default function Profile() {
                                 setViewingShopIndex(i);
                                 setSelectedShopFilter(shop.shopName);
                               }}
-                              className="w-full mt-3 flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-650 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-900/10 active:scale-[0.98] font-headings"
+                              className="w-full mt-3 flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-900/10 active:scale-[0.98] font-headings"
                             >
                               <Store size={12} /> View Shop
                             </button>
@@ -2067,7 +2377,7 @@ export default function Profile() {
               <button
                 type="button"
                 onClick={() => setShowAddShopForm(true)}
-                className="bg-gradient-to-r from-emerald-600 to-teal-650 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md shadow-emerald-900/10 flex items-center justify-center gap-2 active:scale-[0.98] font-headings mt-6"
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md shadow-emerald-900/10 flex items-center justify-center gap-2 active:scale-[0.98] font-headings mt-6"
               >
                 <Plus size={20} />
                 Add Shop

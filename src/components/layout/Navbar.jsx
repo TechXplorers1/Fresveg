@@ -58,6 +58,7 @@ export default function Navbar() {
           <div className="hidden md:flex items-center space-x-5">
             <Link to="/" className="text-gray-600 hover:text-brand hover:bg-brand-light/50 px-3.5 py-2 rounded-xl font-bold text-sm transition-all duration-200">Home</Link>
             <Link to="/#marketplace" className="text-gray-600 hover:text-brand hover:bg-brand-light/50 px-3.5 py-2 rounded-xl font-bold text-sm transition-all duration-200">Marketplace</Link>
+            <Link to="/visit-farms" className="text-gray-600 hover:text-brand hover:bg-brand-light/50 px-3.5 py-2 rounded-xl font-bold text-sm transition-all duration-200">Visit Farms</Link>
             
             {user && (
               <Link to="/profile" className="text-gray-600 hover:text-brand hover:bg-brand-light/50 px-3.5 py-2 rounded-xl font-bold text-sm transition-all duration-200 flex items-center gap-2">
@@ -130,6 +131,7 @@ export default function Navbar() {
             )}
             <Link to="/" onClick={() => setIsMenuOpen(false)} className="block px-3.5 py-2.5 text-gray-600 hover:text-brand hover:bg-brand-light/50 rounded-xl font-bold text-sm transition-colors">Home</Link>
             <Link to="/#marketplace" onClick={() => setIsMenuOpen(false)} className="block px-3.5 py-2.5 text-gray-600 hover:text-brand hover:bg-brand-light/50 rounded-xl font-bold text-sm transition-colors">Marketplace</Link>
+            <Link to="/visit-farms" onClick={() => setIsMenuOpen(false)} className="block px-3.5 py-2.5 text-gray-600 hover:text-brand hover:bg-brand-light/50 rounded-xl font-bold text-sm transition-colors">Visit Farms</Link>
             <Link to="/cart" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between px-3.5 py-2.5 text-gray-600 hover:text-brand hover:bg-brand-light/50 rounded-xl font-bold text-sm transition-colors">
               <div className="flex items-center gap-2">
                 <ShoppingCart size={16} /> Cart

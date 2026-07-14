@@ -19,6 +19,14 @@
     "orders": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "farms": {
+      ".read": "true",
+      ".write": "auth != null"
+    },
+    "farmBookings": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }

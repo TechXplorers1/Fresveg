@@ -10,6 +10,7 @@ import Checkout from './pages/Checkout';
 import Profile from './pages/Profile';
 import ProductDetails from './pages/ProductDetails';
 import OrderTracking from './pages/OrderTracking';
+import VisitFarms from './pages/VisitFarms';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { ProductProvider } from './context/ProductContext';
@@ -42,6 +43,7 @@ function App() {
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/product/:id" element={<ProductDetails />} />
                   <Route path="/order/:orderId" element={<OrderTracking />} />
+                  <Route path="/visit-farms" element={<VisitFarms />} />
                 </Routes>
               </main>
               <Footer />
