@@ -3,7 +3,7 @@ import { ref, onValue, push, set, remove } from 'firebase/database';
 import { realtimeDb } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, Users, Compass, Search, Sparkles, CheckCircle, Clock, Trash2, ShieldAlert, ArrowRight, BookOpen } from 'lucide-react';
+import { MapPin, Calendar, Users, Compass, Search, Sparkles, CheckCircle, Clock, Trash2, ShieldAlert, ArrowRight, BookOpen, X } from 'lucide-react';
 
 const INITIAL_MOCK_FARMS = [
   {
@@ -167,7 +167,7 @@ export default function VisitFarms() {
         customerEmail: user.email,
         date: bookingDate,
         visitorsCount: Number(visitorsCount),
-        status: 'confirmed',
+        status: 'pending',
         timestamp: new Date().toISOString()
       };
 
@@ -368,9 +368,19 @@ export default function VisitFarms() {
 
                     <div className="flex items-center justify-between text-[10px] font-bold border-t border-slate-100/60 pt-2.5">
                       <span className="flex items-center gap-1 text-slate-500"><Users size={11} /> {booking.visitorsCount} visitor{booking.visitorsCount !== 1 ? 's' : ''}</span>
-                      <span className="bg-emerald-50 text-emerald-805 border border-emerald-100 px-2 py-0.5 rounded-full uppercase text-[8px] font-black flex items-center gap-1">
-                        <CheckCircle size={9} className="text-emerald-600" /> {booking.status}
-                      </span>
+                      {booking.status === 'confirmed' ? (
+                        <span className="bg-emerald-50 text-emerald-800 border border-emerald-150 px-2 py-0.5 rounded-full uppercase text-[8px] font-black flex items-center gap-1">
+                          <CheckCircle size={9} className="text-emerald-600" /> confirmed
+                        </span>
+                      ) : booking.status === 'rejected' ? (
+                        <span className="bg-rose-50 text-rose-800 border border-rose-150 px-2 py-0.5 rounded-full uppercase text-[8px] font-black flex items-center gap-1">
+                          <X size={9} className="text-rose-650" /> declined
+                        </span>
+                      ) : (
+                        <span className="bg-amber-50 text-amber-800 border border-amber-150 px-2 py-0.5 rounded-full uppercase text-[8px] font-black flex items-center gap-1 animate-pulse">
+                          <Clock size={9} className="text-amber-600" /> pending
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -406,8 +416,8 @@ export default function VisitFarms() {
                 {bookingSuccess ? (
                   <div className="py-8 flex flex-col items-center justify-center text-center space-y-2.5">
                     <CheckCircle className="text-emerald-500 animate-bounce" size={48} />
-                    <h4 className="font-extrabold text-slate-800 text-sm font-headings">Slot Successfully Booked!</h4>
-                    <p className="text-xs text-slate-450 max-w-xs font-body leading-relaxed">Your visit to {selectedFarm.farmName} is confirmed for {new Date(bookingDate).toLocaleDateString()}. Enjoy your weekend refreshment!</p>
+                    <h4 className="font-extrabold text-slate-800 text-sm font-headings">Booking Request Submitted!</h4>
+                    <p className="text-xs text-slate-450 max-w-xs font-body leading-relaxed">Your visit slot to {selectedFarm.farmName} for {new Date(bookingDate).toLocaleDateString()} is pending owner approval. Enjoy your weekend refreshment once approved!</p>
                   </div>
                 ) : (
                   <>

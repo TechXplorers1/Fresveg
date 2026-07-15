@@ -283,6 +283,152 @@ export default function Profile() {
     image: ''
   });
   const [isSubmittingFarm, setIsSubmittingFarm] = useState(false);
+  const [detectingFarmLocation, setDetectingFarmLocation] = useState(false);
+  const [farmMapCoords, setFarmMapCoords] = useState(null);
+  const farmMapContainerRef = useRef(null);
+  const farmMapRef = useRef(null);
+  const farmMarkerRef = useRef(null);
+
+  const handleFarmReverseGeocode = async (lat, lng) => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'FresVegApp/1.0' }
+      });
+      const data = await res.json();
+      if (data && data.display_name) {
+        setNewFarmForm(prev => ({
+          ...prev,
+          location: data.display_name
+        }));
+      }
+    } catch (err) {
+      console.error("Farm reverse geocoding failed:", err);
+    }
+  };
+
+  const handleLocateFarmAddress = async () => {
+    if (!newFarmForm.location.trim()) {
+      alert("Please enter some address details first.");
+      return;
+    }
+    const coords = await geocodeAddress(newFarmForm.location);
+    if (coords) {
+      const newCoords = { lat: coords.lat, lng: coords.lon };
+      setFarmMapCoords(newCoords);
+      await handleFarmReverseGeocode(newCoords.lat, newCoords.lng);
+    } else {
+      alert("Could not locate the farm address on the map.");
+    }
+  };
+
+  const handleDetectFarmLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    setDetectingFarmLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const coords = { lat: latitude, lng: longitude };
+        setFarmMapCoords(coords);
+        await handleFarmReverseGeocode(latitude, longitude);
+        setDetectingFarmLocation(false);
+      },
+      (err) => {
+        console.error("GPS error:", err);
+        setDetectingFarmLocation(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  useEffect(() => {
+    if (!showAddFarmForm || !window.L || !farmMapContainerRef.current) {
+      if (farmMapRef.current) {
+        farmMapRef.current.remove();
+        farmMapRef.current = null;
+        farmMarkerRef.current = null;
+      }
+      return;
+    }
+
+    const L = window.L;
+    const initialLat = farmMapCoords?.lat || 20.5937;
+    const initialLng = farmMapCoords?.lng || 78.9629;
+
+    console.log("Initializing Farm Map at:", initialLat, initialLng);
+
+    const map = L.map(farmMapContainerRef.current, {
+      zoomControl: true,
+      scrollWheelZoom: true,
+      attributionControl: false
+    }).setView([initialLat, initialLng], farmMapCoords ? 15 : 5);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    farmMapRef.current = map;
+
+    const pinHtml = `
+      <div class="instamart-marker-container">
+        <div class="instamart-marker-shadow"></div>
+        <div class="instamart-marker-ground-dot"></div>
+        <div class="instamart-marker-pin">
+          <div class="instamart-marker-inner-dot"></div>
+        </div>
+      </div>
+    `;
+    const customIcon = L.divIcon({
+      html: pinHtml,
+      className: 'custom-leaflet-marker',
+      iconSize: [40, 40],
+      iconAnchor: [20, 20]
+    });
+
+    const marker = L.marker([initialLat, initialLng], {
+      draggable: true,
+      icon: customIcon
+    }).addTo(map);
+
+    farmMarkerRef.current = marker;
+
+    marker.on('dragend', async () => {
+      const latLng = marker.getLatLng();
+      const newCoords = { lat: latLng.lat, lng: latLng.lng };
+      setFarmMapCoords(newCoords);
+      await handleFarmReverseGeocode(newCoords.lat, newCoords.lng);
+    });
+
+    map.on('click', async (e) => {
+      const latLng = e.latlng;
+      marker.setLatLng(latLng);
+      const newCoords = { lat: latLng.lat, lng: latLng.lng };
+      setFarmMapCoords(newCoords);
+      await handleFarmReverseGeocode(newCoords.lat, newCoords.lng);
+    });
+
+    return () => {
+      if (farmMapRef.current) {
+        farmMapRef.current.remove();
+        farmMapRef.current = null;
+        farmMarkerRef.current = null;
+      }
+    };
+  }, [showAddFarmForm]);
+
+  useEffect(() => {
+    if (farmMapRef.current && farmMarkerRef.current && farmMapCoords) {
+      const { lat, lng } = farmMapCoords;
+      const currentLatLng = farmMarkerRef.current.getLatLng();
+      if (Math.abs(currentLatLng.lat - lat) > 0.0001 || Math.abs(currentLatLng.lng - lng) > 0.0001) {
+        farmMarkerRef.current.setLatLng([lat, lng]);
+        farmMapRef.current.setView([lat, lng], 15);
+      }
+    }
+  }, [farmMapCoords]);
 
   // Farms listener
   useEffect(() => {
@@ -374,6 +520,29 @@ export default function Profile() {
     } catch (err) {
       console.error('Failed to delete farm:', err);
       alert('Error deleting farm: ' + err.message);
+    }
+  };
+
+  const handleAcceptBooking = async (bookingId) => {
+    try {
+      const bookingRef = ref(realtimeDb, `farmBookings/${bookingId}`);
+      await update(bookingRef, { status: 'confirmed' });
+      alert('Booking accepted!');
+    } catch (err) {
+      console.error('Failed to accept booking:', err);
+      alert('Error updating booking: ' + err.message);
+    }
+  };
+
+  const handleDeclineBooking = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to decline this booking?')) return;
+    try {
+      const bookingRef = ref(realtimeDb, `farmBookings/${bookingId}`);
+      await update(bookingRef, { status: 'rejected' });
+      alert('Booking declined!');
+    } catch (err) {
+      console.error('Failed to decline booking:', err);
+      alert('Error updating booking: ' + err.message);
     }
   };
 
@@ -1824,64 +1993,123 @@ export default function Profile() {
 
           {/* Add Farm Form */}
           {showAddFarmForm && (
-            <form onSubmit={handleAddFarm} className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4 max-w-4xl animate-fade-in">
-              <h3 className="text-base font-bold text-slate-850 font-headings">Farm Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Farm Name</label>
-                  <input
-                    required
-                    type="text"
-                    value={newFarmForm.farmName}
-                    onChange={(e) => setNewFarmForm({ ...newFarmForm, farmName: e.target.value })}
-                    className={inputCls.replace('pl-10', 'px-4')}
-                    placeholder="E.g. Strawberry Paradise"
-                  />
+            <form onSubmit={handleAddFarm} className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6 max-w-5xl animate-fade-in">
+              <h3 className="text-base font-bold text-slate-855 font-headings text-left">Farm Details</h3>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Left Column: Form Fields */}
+                <div className="lg:col-span-7 space-y-4">
+                  
+                  {/* Farm Name */}
+                  <div className="text-left">
+                    <label className={labelCls}>Farm Name</label>
+                    <input
+                      required
+                      type="text"
+                      value={newFarmForm.farmName}
+                      onChange={(e) => setNewFarmForm({ ...newFarmForm, farmName: e.target.value })}
+                      className={inputCls.replace('pl-10', 'px-4')}
+                      placeholder="E.g. Strawberry Paradise"
+                    />
+                  </div>
+
+                  {/* Location Field with Buttons */}
+                  <div className="text-left">
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className={labelCls}>Location Address <span className="text-emerald-600 font-bold">*</span></label>
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          disabled={detectingFarmLocation}
+                          onClick={handleDetectFarmLocation}
+                          className="bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-lg border border-emerald-100 transition-all flex items-center gap-1 active:scale-95"
+                          title="Get current location"
+                        >
+                          <Navigation size={10} className={detectingFarmLocation ? 'animate-spin' : ''} />
+                          {detectingFarmLocation ? 'Detecting...' : 'Use GPS'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleLocateFarmAddress}
+                          className="bg-slate-700 hover:bg-slate-850 text-white text-[10px] font-bold px-2 py-1 rounded-lg transition-all flex items-center gap-1 active:scale-95"
+                          title="Pin typed address on map"
+                        >
+                          <MapPin size={10} />
+                          Locate
+                        </button>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input
+                        required
+                        type="text"
+                        value={newFarmForm.location}
+                        onChange={(e) => setNewFarmForm({ ...newFarmForm, location: e.target.value })}
+                        className={inputCls}
+                        placeholder="E.g. Mahabaleshwar, Maharashtra"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Cost */}
+                    <div className="text-left">
+                      <label className={labelCls}>Admission Cost per Person (₹)</label>
+                      <input
+                        required
+                        type="number"
+                        value={newFarmForm.costPerPerson}
+                        onChange={(e) => setNewFarmForm({ ...newFarmForm, costPerPerson: e.target.value })}
+                        className={inputCls.replace('pl-10', 'px-4')}
+                        placeholder="E.g. 250"
+                      />
+                    </div>
+                    {/* Photo URL */}
+                    <div className="text-left">
+                      <label className={labelCls}>Farm Photo URL</label>
+                      <input
+                        type="text"
+                        value={newFarmForm.image}
+                        onChange={(e) => setNewFarmForm({ ...newFarmForm, image: e.target.value })}
+                        className={inputCls.replace('pl-10', 'px-4')}
+                        placeholder="https://images.unsplash.com/photo-..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="text-left">
+                    <label className={labelCls}>Description</label>
+                    <textarea
+                      required
+                      rows="3"
+                      value={newFarmForm.description}
+                      onChange={(e) => setNewFarmForm({ ...newFarmForm, description: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none text-xs transition-all duration-200 bg-white/50 backdrop-blur-sm resize-none font-body"
+                      placeholder="Describe the experience visitors can expect (activities, snacks, views)..."
+                    ></textarea>
+                  </div>
+
                 </div>
-                <div>
-                  <label className={labelCls}>Location</label>
-                  <input
-                    required
-                    type="text"
-                    value={newFarmForm.location}
-                    onChange={(e) => setNewFarmForm({ ...newFarmForm, location: e.target.value })}
-                    className={inputCls.replace('pl-10', 'px-4')}
-                    placeholder="E.g. Mahabaleshwar, Maharashtra"
-                  />
+
+                {/* Right Column: Farm Interactive Map */}
+                <div className="lg:col-span-5 flex flex-col min-h-[250px] text-left">
+                  <label className={labelCls}>Pin Farm Location on Map</label>
+                  <div className="flex-grow bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 relative shadow-inner min-h-[250px] lg:min-h-0">
+                    <div
+                      ref={farmMapContainerRef}
+                      className="absolute inset-0 z-10 w-full h-full"
+                      style={{ minHeight: '250px' }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-2 pl-1 font-body">Drag the pin or click on the map to select your farm location address automatically.</p>
                 </div>
-                <div>
-                  <label className={labelCls}>Admission Cost per Person (₹)</label>
-                  <input
-                    required
-                    type="number"
-                    value={newFarmForm.costPerPerson}
-                    onChange={(e) => setNewFarmForm({ ...newFarmForm, costPerPerson: e.target.value })}
-                    className={inputCls.replace('pl-10', 'px-4')}
-                    placeholder="E.g. 250"
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Farm Photo URL</label>
-                  <input
-                    type="text"
-                    value={newFarmForm.image}
-                    onChange={(e) => setNewFarmForm({ ...newFarmForm, image: e.target.value })}
-                    className={inputCls.replace('pl-10', 'px-4')}
-                    placeholder="https://images.unsplash.com/photo-..."
-                  />
-                </div>
+
               </div>
-              <div>
-                <label className={labelCls}>Description</label>
-                <textarea
-                  required
-                  rows="3"
-                  value={newFarmForm.description}
-                  onChange={(e) => setNewFarmForm({ ...newFarmForm, description: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-205 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none text-xs transition-all duration-200 bg-white resize-none font-body"
-                  placeholder="Describe the experience visitors can expect (activities, snacks, views)..."
-                ></textarea>
-              </div>
+
+              {/* Form Buttons */}
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
@@ -1898,6 +2126,7 @@ export default function Profile() {
                   {isSubmittingFarm ? 'Listing...' : 'List Farm'}
                 </button>
               </div>
+
             </form>
           )}
 
@@ -1962,23 +2191,54 @@ export default function Profile() {
                 ) : (
                   <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                     {incomingFarmBookings.map(booking => (
-                      <div key={booking.id} className="bg-slate-50/50 border border-slate-150 rounded-2xl p-4 flex flex-col space-y-2 shadow-inner">
+                      <div key={booking.id} className="bg-slate-50/50 border border-slate-150 rounded-2xl p-4 flex flex-col space-y-3 shadow-inner hover:bg-white hover:border-emerald-100 transition-all duration-300">
                         <div className="flex justify-between items-start gap-1">
-                          <div className="min-w-0">
+                          <div className="min-w-0 text-left">
                             <h4 className="font-extrabold text-slate-800 text-xs truncate font-headings">{booking.customerName}</h4>
                             <p className="text-[10px] text-slate-450 truncate font-body mt-0.5">{booking.customerEmail}</p>
                           </div>
-                          <span className="bg-emerald-50 text-emerald-850 border border-emerald-100 px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-0.5 flex-shrink-0">
-                            <CheckCircle size={9} /> confirmed
-                          </span>
+                          
+                          {booking.status === 'confirmed' ? (
+                            <span className="bg-emerald-50 text-emerald-800 border border-emerald-150 px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-0.5 flex-shrink-0">
+                              <CheckCircle size={9} /> confirmed
+                            </span>
+                          ) : booking.status === 'rejected' ? (
+                            <span className="bg-rose-50 text-rose-800 border border-rose-150 px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-0.5 flex-shrink-0">
+                              <X size={9} /> declined
+                            </span>
+                          ) : (
+                            <span className="bg-amber-50 text-amber-800 border border-amber-150 px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-0.5 flex-shrink-0 animate-pulse">
+                              <Clock size={9} /> pending
+                            </span>
+                          )}
                         </div>
+                        
                         <div className="border-t border-slate-100/60 pt-2 flex justify-between items-center text-[10px] font-bold text-slate-550">
                           <span className="flex items-center gap-1"><Calendar size={11} className="text-emerald-600" />{new Date(booking.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
                           <span className="flex items-center gap-1"><Users size={11} className="text-emerald-600" />{booking.visitorsCount} guest{booking.visitorsCount !== 1 ? 's' : ''}</span>
                         </div>
-                        <div className="text-[9px] text-slate-450 font-extrabold tracking-wide uppercase truncate pt-1 border-t border-slate-100/30">
+                        
+                        <div className="text-[9px] text-slate-450 font-extrabold tracking-wide uppercase truncate pt-1 border-t border-slate-100/30 text-left">
                           Farm: {booking.farmName}
                         </div>
+
+                        {/* Accept / Decline Action Buttons for Owner */}
+                        {(!booking.status || booking.status === 'pending') && (
+                          <div className="flex gap-2 pt-2 border-t border-slate-100/30">
+                            <button
+                              onClick={() => handleAcceptBooking(booking.id)}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-wider py-1.5 rounded-xl transition-all shadow-sm active:scale-95 text-center"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => handleDeclineBooking(booking.id)}
+                              className="flex-1 bg-slate-200 hover:bg-slate-350 text-slate-705 font-bold text-[10px] uppercase tracking-wider py-1.5 rounded-xl transition-all active:scale-95 text-center"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
