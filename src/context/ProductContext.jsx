@@ -85,6 +85,20 @@ export const ProductProvider = ({ children }) => {
   const [products, setProducts] = useState(INITIAL_MOCK_PRODUCTS);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deletedMockIds, setDeletedMockIds] = useState([]);
+
+  useEffect(() => {
+    const deletedRef = ref(realtimeDb, 'deletedMockProducts');
+    const unsubscribeDeleted = onValue(deletedRef, (snapshot) => {
+      const val = snapshot.val();
+      if (val) {
+        setDeletedMockIds(Object.keys(val).map(String));
+      } else {
+        setDeletedMockIds([]);
+      }
+    });
+    return () => unsubscribeDeleted();
+  }, []);
 
   // Use Realtime Database to get products and listen for updates
   useEffect(() => {
@@ -92,19 +106,16 @@ export const ProductProvider = ({ children }) => {
     
     const unsubscribe = onValue(productsRef, (snapshot) => {
       const data = snapshot.val();
-      if (data) {
-        const dbProducts = Object.keys(data).map(key => ({
-          ...data[key],
-          id: key
-        }));
-        // Merge mock products with actual DB products
-        const mergedProducts = [...INITIAL_MOCK_PRODUCTS, ...dbProducts];
-        setProducts(mergedProducts);
-        saveProductsToStorage(mergedProducts);
-      } else {
-        setProducts(INITIAL_MOCK_PRODUCTS);
-        saveProductsToStorage(INITIAL_MOCK_PRODUCTS);
-      }
+      const dbProducts = data ? Object.keys(data).map(key => ({
+        ...data[key],
+        id: key
+      })) : [];
+
+      const activeMockProducts = INITIAL_MOCK_PRODUCTS.filter(p => !deletedMockIds.includes(String(p.id)));
+      const mergedProducts = [...activeMockProducts, ...dbProducts];
+
+      setProducts(mergedProducts);
+      saveProductsToStorage(mergedProducts);
       setLoading(false);
     }, (error) => {
       console.error('Error loading products from Firebase:', error);
@@ -121,7 +132,7 @@ export const ProductProvider = ({ children }) => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [deletedMockIds]);
 
   const saveProductsToStorage = (newProducts) => {
     try {
@@ -134,11 +145,9 @@ export const ProductProvider = ({ children }) => {
   const addProduct = async (product) => {
     try {
       const newProductRef = push(ref(realtimeDb, 'products'));
-      await set(newProductRef, product);
-      // No need to manually update state, onValue will trigger and handle it automatically.
+      await set(newProductRef, { ...product, id: newProductRef.key });
     } catch (error) {
       console.error('Error adding product to Realtime DB:', error);
-      // Fallback for offline mode
       setProducts(prev => {
         const newProduct = { ...product, id: Date.now().toString() };
         const newProducts = [...prev, newProduct];
@@ -150,10 +159,15 @@ export const ProductProvider = ({ children }) => {
 
   const updateProduct = async (id, updatedProduct) => {
     try {
-      await update(ref(realtimeDb, `products/${id}`), updatedProduct);
+      const isMock = typeof id === 'number' || !isNaN(id);
+      if (isMock) {
+        await set(ref(realtimeDb, `deletedMockProducts/${id}`), true);
+        await set(ref(realtimeDb, `products/mock_${id}`), { ...updatedProduct, id: `mock_${id}` });
+      } else {
+        await update(ref(realtimeDb, `products/${id}`), updatedProduct);
+      }
     } catch (error) {
       console.error('Error updating product in Realtime DB:', error);
-      // Fallback to localStorage update
       setProducts(prev => {
         const newProducts = prev.map(p => p.id === id ? { ...p, ...updatedProduct } : p);
         saveProductsToStorage(newProducts);
@@ -164,10 +178,18 @@ export const ProductProvider = ({ children }) => {
 
   const deleteProduct = async (id) => {
     try {
-      await remove(ref(realtimeDb, `products/${id}`));
+      const isMock = typeof id === 'number' || !isNaN(id);
+      if (isMock) {
+        await set(ref(realtimeDb, `deletedMockProducts/${id}`), true);
+      } else {
+        if (String(id).startsWith('mock_')) {
+          const originalId = String(id).replace('mock_', '');
+          await set(ref(realtimeDb, `deletedMockProducts/${originalId}`), true);
+        }
+        await remove(ref(realtimeDb, `products/${id}`));
+      }
     } catch (error) {
       console.error('Error deleting product from Realtime DB:', error);
-      // Fallback to localStorage removal
       setProducts(prev => {
         const newProducts = prev.filter(p => p.id !== id);
         saveProductsToStorage(newProducts);

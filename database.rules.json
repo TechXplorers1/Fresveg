@@ -1,10 +1,15 @@
 {
   "rules": {
     "users": {
+      ".read": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'admin'",
       "$userId": {
         ".read": "auth != null && auth.uid === $userId",
-        ".write": "auth != null && auth.uid === $userId"
+        ".write": "auth != null && (auth.uid === $userId || root.child('users/' + auth.uid + '/role').val() === 'admin')"
       }
+    },
+    "homeContent": {
+      ".read": "true",
+      ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'admin'"
     },
     "carts": {
       "$userId": {
@@ -14,7 +19,7 @@
     },
     "products": {
       ".read": "true",
-      ".write": "auth != null"
+      ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'admin'"
     },
     "orders": {
       ".read": "auth != null",
@@ -27,6 +32,10 @@
     "farmBookings": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "deletedMockProducts": {
+      ".read": "true",
+      ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'admin'"
     }
   }
 }
