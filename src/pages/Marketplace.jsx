@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, Star, Search, Filter, Plus, Minus } from 'lucide-react';
+import { ShoppingCart, Star, Search, Filter, Plus, Minus, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
 
@@ -196,12 +196,34 @@ export default function Marketplace() {
       {/* Product Marketplace Section */}
       <section id="marketplace" className="py-12 relative">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                <div>
                   <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
                     Marketplace <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
                   </h2>
                   <p className="text-gray-500 text-sm mt-1">Discover premium organic produce from certified local vendors.</p>
+               </div>
+
+               {/* Top Marketplace Quick Search Bar */}
+               <div className="w-full md:w-80 relative group">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 group-focus-within:text-brand transition-colors" size={18} />
+                  <input
+                     type="text"
+                     placeholder="Search products in marketplace..."
+                     value={searchQuery}
+                     onChange={(e) => setSearchQuery(e.target.value)}
+                     className="w-full pl-10 pr-9 py-2.5 bg-white border-2 border-emerald-500/20 rounded-2xl text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all shadow-sm placeholder:text-gray-400 group-hover:border-emerald-500/40"
+                  />
+                  {searchQuery && (
+                     <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                        title="Clear search"
+                     >
+                        <X size={15} />
+                     </button>
+                  )}
                </div>
             </div>
 
@@ -247,18 +269,38 @@ export default function Marketplace() {
                          </div>
                       </div>
                       
-                      {/* Search */}
-                      <div className="mb-6">
-                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Search Products</label>
-                         <div className="relative">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+                      {/* High-visibility Search Filter */}
+                      <div className="mb-6 bg-gradient-to-br from-emerald-50/80 to-teal-50/40 p-3.5 rounded-2xl border-2 border-emerald-500/30 shadow-sm focus-within:border-brand focus-within:ring-4 focus-within:ring-emerald-500/10 focus-within:bg-white transition-all">
+                         <label className="block text-xs font-extrabold text-emerald-950 uppercase tracking-wider mb-2 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                               <Search size={14} className="text-emerald-600" />
+                               Search Products
+                            </span>
+                            {searchQuery && (
+                               <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold shadow-xs">
+                                  Active
+                               </span>
+                            )}
+                         </label>
+                         <div className="relative group">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 group-focus-within:text-brand transition-colors" size={16} />
                             <input
                                type="text"
-                               placeholder="Type keyword..."
+                               placeholder="Search vegetables, fruits..."
                                value={searchQuery}
                                onChange={(e) => setSearchQuery(e.target.value)}
-                               className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:border-brand transition-all text-xs"
+                               className="w-full pl-9 pr-8 py-2 bg-white border border-emerald-300/70 rounded-xl focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all text-xs font-semibold text-gray-900 shadow-inner placeholder-gray-400"
                             />
+                            {searchQuery && (
+                               <button
+                                  type="button"
+                                  onClick={() => setSearchQuery('')}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                  title="Clear search"
+                               >
+                                  <X size={14} />
+                               </button>
+                            )}
                          </div>
                       </div>
 

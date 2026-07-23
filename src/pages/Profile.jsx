@@ -489,11 +489,14 @@ export default function Profile() {
     try {
       const farmsRef = ref(realtimeDb, 'farms');
       const newFarmRef = push(farmsRef);
+      const isFree = newFarmForm.costType === 'free';
+      const finalCost = isFree ? 0 : (Number(newFarmForm.costPerPerson) || 0);
+
       const farmData = {
         farmName: newFarmForm.farmName.trim(),
         location: newFarmForm.location.trim(),
         description: newFarmForm.description.trim(),
-        costPerPerson: Number(newFarmForm.costPerPerson) || 0,
+        costPerPerson: finalCost,
         image: newFarmForm.image.trim() || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80',
         vendorId: user.uid,
         vendorName: userProfile?.displayName || user?.displayName || 'Vendor',
@@ -2053,19 +2056,76 @@ export default function Profile() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Cost */}
-                    <div className="text-left">
-                      <label className={labelCls}>Admission Cost per Person (₹)</label>
-                      <input
-                        required
-                        type="number"
-                        value={newFarmForm.costPerPerson}
-                        onChange={(e) => setNewFarmForm({ ...newFarmForm, costPerPerson: e.target.value })}
-                        className={inputCls.replace('pl-10', 'px-4')}
-                        placeholder="E.g. 250"
-                      />
+                  {/* Admission Entry Type (Free vs Payable) */}
+                  <div className="text-left space-y-2">
+                    <label className={labelCls}>Admission Entry Type <span className="text-emerald-600 font-bold">*</span></label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setNewFarmForm(prev => ({ ...prev, costType: 'free', costPerPerson: '0' }))}
+                        className={`p-3 rounded-2xl border-2 flex items-center justify-between transition-all text-left ${
+                          (newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0')
+                            ? 'border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-500/10'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                            🆓
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-slate-800">Free of Cost</p>
+                            <p className="text-[10px] text-slate-400 font-medium">Free open tour (₹0)</p>
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setNewFarmForm(prev => ({ ...prev, costType: 'payable', costPerPerson: (newFarmForm.costPerPerson === '0' || !newFarmForm.costPerPerson) ? '250' : newFarmForm.costPerPerson }))}
+                        className={`p-3 rounded-2xl border-2 flex items-center justify-between transition-all text-left ${
+                          (newFarmForm.costType === 'payable' || (Number(newFarmForm.costPerPerson) > 0 && newFarmForm.costType !== 'free'))
+                            ? 'border-teal-600 bg-teal-50/60 ring-2 ring-teal-500/10'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                            💳
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-slate-800">Payable Visit</p>
+                            <p className="text-[10px] text-slate-400 font-medium">Ticket fee per guest</p>
+                          </div>
+                        </div>
+                      </button>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Cost Input (Shown if Payable selected) */}
+                    <div className="text-left">
+                      <label className={labelCls}>Admission Fee per Visitor (₹)</label>
+                      {newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0' ? (
+                        <div className="px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 text-emerald-700 text-xs font-bold flex items-center gap-1.5">
+                          <span>✨ Free Admission (₹0 Entry Fee)</span>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                          <input
+                            required
+                            type="number"
+                            min="1"
+                            value={newFarmForm.costPerPerson}
+                            onChange={(e) => setNewFarmForm({ ...newFarmForm, costPerPerson: e.target.value })}
+                            className={inputCls.replace('pl-10', 'pl-7 pr-4')}
+                            placeholder="E.g. 250"
+                          />
+                        </div>
+                      )}
+                    </div>
+
                     {/* Photo URL */}
                     <div className="text-left">
                       <label className={labelCls}>Farm Photo URL</label>
@@ -2168,8 +2228,12 @@ export default function Profile() {
                         </div>
                         <p className="text-[11px] text-slate-500 line-clamp-2 italic font-body">"{farm.description}"</p>
                         <div className="border-t border-slate-100/60 pt-2.5 mt-auto flex justify-between items-center text-[10px]">
-                          <span className="text-slate-400 font-bold uppercase tracking-wider font-headings">TICKET COST</span>
-                          <span className="font-black text-emerald-800 text-sm">₹{farm.costPerPerson}</span>
+                          <span className="text-slate-400 font-bold uppercase tracking-wider font-headings font-mono">TICKET TYPE</span>
+                          {(!farm.costPerPerson || Number(farm.costPerPerson) === 0) ? (
+                            <span className="font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">FREE OF COST</span>
+                          ) : (
+                            <span className="font-black text-slate-800 text-xs">₹{farm.costPerPerson} / guest</span>
+                          )}
                         </div>
                       </div>
                     </div>

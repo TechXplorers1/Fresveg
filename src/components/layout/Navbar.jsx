@@ -1,25 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Store, User, Menu, X, Leaf, LogOut, Search, Bike, ShieldCheck } from 'lucide-react';
+import { ShoppingCart, Store, User, Menu, X, Leaf, LogOut, Bike, ShieldCheck } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
-import { useProducts } from '../../context/ProductContext';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { cartItems } = useCart();
   const { user, userProfile, logout } = useAuth();
-  const { searchQuery, setSearchQuery } = useProducts();
   const navigate = useNavigate();
   
   const cartItemCount = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
-
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-    if (window.location.pathname !== '/') {
-      navigate('/#marketplace');
-    }
-  };
 
   const handleLogout = () => {
     logout();
@@ -38,20 +29,6 @@ export default function Navbar() {
               </div>
               <span className="font-extrabold text-2xl tracking-tight bg-gradient-to-r from-brand-dark to-brand bg-clip-text text-transparent">FresVeg</span>
             </Link>
-          </div>
-
-          {/* Desktop Search Bar */}
-          <div className="hidden md:block flex-1 max-w-lg px-8">
-            <div className="relative w-full group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand transition-colors" size={18} />
-              <input 
-                type="text" 
-                placeholder="Search fresh vegetables, fruits, and dairy..." 
-                value={searchQuery}
-                onChange={handleSearchChange}
-                className="w-full pl-11 pr-4 py-2.5 bg-gray-50/60 border border-gray-200/80 rounded-full text-sm focus:outline-none focus:bg-white focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all shadow-inner"
-              />
-            </div>
           </div>
 
           {/* Desktop Navigation */}
@@ -116,16 +93,6 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {isMenuOpen && (
          <div className="md:hidden bg-white/95 backdrop-blur-md border-t border-gray-100 p-4 space-y-3.5 shadow-xl absolute w-full left-0 z-50">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input 
-                type="text" 
-                placeholder="Search..." 
-                value={searchQuery}
-                onChange={(e) => { handleSearchChange(e); setIsMenuOpen(false); }}
-                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200/80 rounded-xl text-sm focus:outline-none focus:border-brand"
-              />
-            </div>
             {user && (
               <div className="px-3.5 py-2.5 bg-brand-light/40 rounded-xl flex items-center justify-between border border-brand/5">
                 <div>

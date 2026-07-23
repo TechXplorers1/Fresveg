@@ -4,6 +4,7 @@ import { realtimeDb } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, Users, Compass, Search, Sparkles, CheckCircle, Clock, Trash2, ShieldAlert, ArrowRight, BookOpen, X } from 'lucide-react';
+import ModernDatePicker from '../components/common/ModernDatePicker';
 
 const INITIAL_MOCK_FARMS = [
   {
@@ -20,9 +21,9 @@ const INITIAL_MOCK_FARMS = [
     id: 'mock-farm-2',
     farmName: 'Green Valley Organic Haven',
     location: 'Karjat, Maharashtra',
-    description: 'Learn about sustainable agriculture, witness our bio-gas plant, pick fresh organic leafy greens, and enjoy a traditional farm-to-table lunch.',
+    description: 'Learn about sustainable agriculture, witness our bio-gas plant, pick fresh organic leafy greens, and enjoy open field walks.',
     image: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80',
-    costPerPerson: 250,
+    costPerPerson: 0, // Free of cost
     vendorId: 'mock-vendor-2',
     vendorName: 'Green Valley Farm'
   },
@@ -35,6 +36,16 @@ const INITIAL_MOCK_FARMS = [
     costPerPerson: 300,
     vendorId: 'mock-vendor-3',
     vendorName: 'Sunshine Produce'
+  },
+  {
+    id: 'mock-farm-4',
+    farmName: 'Eco Botanical & Butterfly Grove',
+    location: 'Pune, Maharashtra',
+    description: 'Free community walkthrough! Explore native wildflower trails, herbal gardens, organic composting demos, and butterfly habitats.',
+    image: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600&q=80',
+    costPerPerson: 0, // Free of cost
+    vendorId: 'mock-vendor-4',
+    vendorName: 'Eco Butterfly Foundation'
   }
 ];
 
@@ -49,6 +60,7 @@ export default function VisitFarms() {
 
   // Search/Filter states
   const [searchQuery, setSearchQuery] = useState('');
+  const [costCategory, setCostCategory] = useState('all'); // 'all', 'free', 'payable'
   
   // Booking modal/drawer states
   const [selectedFarm, setSelectedFarm] = useState(null);
@@ -57,6 +69,10 @@ export default function VisitFarms() {
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [submittingBooking, setSubmittingBooking] = useState(false);
+
+  // Counts for category badges
+  const freeFarmsCount = farms.filter(f => !f.costPerPerson || Number(f.costPerPerson) === 0).length;
+  const payableFarmsCount = farms.filter(f => Number(f.costPerPerson) > 0).length;
 
   // 1. Fetch Farms from Firebase RTDB + Merge with Mock
   useEffect(() => {
@@ -114,12 +130,21 @@ export default function VisitFarms() {
     return () => unsubscribe();
   }, [user]);
 
-  // Handle Search Filtering
-  const filteredFarms = farms.filter(farm => 
-    farm.farmName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    farm.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    farm.vendorName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Handle Search & Category Filtering
+  const filteredFarms = farms.filter(farm => {
+    const matchesSearch =
+      farm.farmName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      farm.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      farm.vendorName.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const isFree = !farm.costPerPerson || Number(farm.costPerPerson) === 0;
+    const matchesCategory =
+      costCategory === 'all' ? true :
+      costCategory === 'free' ? isFree :
+      !isFree;
+
+    return matchesSearch && matchesCategory;
+  });
 
   // Start Booking Process
   const handleOpenBooking = (farm) => {
@@ -216,7 +241,7 @@ export default function VisitFarms() {
         </div>
       </div>
 
-      {/* ── Search and Tabs ── */}
+      {/* ── Search and Category Filter Tabs ── */}
       <div className="mb-10 flex flex-col md:flex-row justify-between items-center gap-5 bg-white/70 backdrop-blur-md p-4 rounded-3xl shadow-sm border border-white/60">
         {/* Search bar */}
         <div className="relative w-full md:max-w-md group">
@@ -229,8 +254,42 @@ export default function VisitFarms() {
             className="w-full pl-11 pr-4 py-2.5 bg-slate-50/60 border border-slate-200/80 rounded-2xl text-xs focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
           />
         </div>
-        <div className="text-xs text-slate-400 font-bold uppercase tracking-wider font-headings">
-          Showing {filteredFarms.length} Farm{filteredFarms.length !== 1 ? 's' : ''} listed
+
+        {/* Category Tabs: All / Free of Cost / Payable */}
+        <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-hide">
+          <button
+            type="button"
+            onClick={() => setCostCategory('all')}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${
+              costCategory === 'all'
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            All Farms ({farms.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setCostCategory('free')}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              costCategory === 'free'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60'
+            }`}
+          >
+            <Sparkles size={13} /> Free of Cost ({freeFarmsCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setCostCategory('payable')}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              costCategory === 'payable'
+                ? 'bg-teal-700 text-white shadow-md shadow-teal-500/20'
+                : 'bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200/60'
+            }`}
+          >
+            💳 Payable ({payableFarmsCount})
+          </button>
         </div>
       </div>
 
@@ -248,60 +307,91 @@ export default function VisitFarms() {
             <div className="text-center py-16 bg-white/70 backdrop-blur-md border border-white rounded-3xl shadow-sm max-w-lg mx-auto">
               <Compass className="mx-auto text-slate-350 mb-4 animate-spin" size={48} style={{ animationDuration: '6s' }} />
               <h3 className="text-lg font-bold font-headings text-slate-800 mb-1">No Farms Found</h3>
-              <p className="text-slate-500 text-xs mb-6 max-w-xs mx-auto">We couldn't find any farms matching your search query. Try typing another keyword.</p>
-              <button onClick={() => setSearchQuery('')} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95">Clear Search</button>
+              <p className="text-slate-500 text-xs mb-6 max-w-xs mx-auto">We couldn't find any farms matching your selected category or search filter.</p>
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setCostCategory('all');
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95"
+              >
+                Reset Filters
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {filteredFarms.map((farm) => (
-                <div key={farm.id} className="bg-white/70 backdrop-blur-md border border-white/60 rounded-3xl overflow-hidden shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col group h-full">
-                  
-                  {/* Farm Image */}
-                  <div className="relative h-48 overflow-hidden bg-slate-50">
-                    <img
-                      src={farm.image || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80'}
-                      alt={farm.farmName}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
+              {filteredFarms.map((farm) => {
+                const isFree = !farm.costPerPerson || Number(farm.costPerPerson) === 0;
 
-                  {/* Farm Info */}
-                  <div className="p-5 flex flex-col flex-grow text-left space-y-4">
-                    <div className="space-y-1">
-                      <h3 className="text-lg font-bold text-slate-800 font-headings group-hover:text-emerald-700 transition-colors line-clamp-1">
-                        {farm.farmName}
-                      </h3>
-                      <div className="flex items-center gap-1.5 text-xs text-slate-450 font-semibold font-body">
-                        <MapPin size={13} className="text-emerald-600 flex-shrink-0" />
-                        <span className="truncate">{farm.location}</span>
-                      </div>
+                return (
+                  <div key={farm.id} className="bg-white/70 backdrop-blur-md border border-white/60 rounded-3xl overflow-hidden shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col group h-full">
+                    
+                    {/* Farm Image */}
+                    <div className="relative h-48 overflow-hidden bg-slate-50">
+                      <img
+                        src={farm.image || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80'}
+                        alt={farm.farmName}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      
+                      {/* Cost Category Badge */}
+                      {isFree ? (
+                        <div className="absolute top-3 left-3 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-md flex items-center gap-1 border border-emerald-400">
+                          <Sparkles size={11} /> FREE ADMISSION
+                        </div>
+                      ) : (
+                        <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
+                          PAYABLE
+                        </div>
+                      )}
                     </div>
 
-                    <p className="text-slate-500 text-xs leading-relaxed line-clamp-3 font-medium italic">
-                      "{farm.description}"
-                    </p>
+                    {/* Farm Info */}
+                    <div className="p-5 flex flex-col flex-grow text-left space-y-4">
+                      <div className="space-y-1">
+                        <h3 className="text-lg font-bold text-slate-800 font-headings group-hover:text-emerald-700 transition-colors line-clamp-1">
+                          {farm.farmName}
+                        </h3>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-450 font-semibold font-body">
+                          <MapPin size={13} className="text-emerald-600 flex-shrink-0" />
+                          <span className="truncate">{farm.location}</span>
+                        </div>
+                      </div>
 
-                    <div className="border-t border-slate-100/80 pt-4 mt-auto flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider font-headings">Farm Owner</p>
-                        <p className="text-xs font-bold text-slate-700 truncate">{farm.vendorName}</p>
+                      <p className="text-slate-500 text-xs leading-relaxed line-clamp-3 font-medium italic">
+                        "{farm.description}"
+                      </p>
+
+                      <div className="border-t border-slate-100/80 pt-4 mt-auto flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider font-headings">Farm Owner</p>
+                          <p className="text-xs font-bold text-slate-700 truncate">{farm.vendorName}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider font-headings">Entry Cost</p>
+                          {isFree ? (
+                            <p className="font-black text-emerald-600 text-sm">FREE ENTRY <span className="text-[10px] text-emerald-600/70 font-bold">(₹0)</span></p>
+                          ) : (
+                            <p className="font-black text-slate-900 text-sm">₹{farm.costPerPerson} <span className="text-[10px] text-slate-400 font-semibold">/ guest</span></p>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider font-headings">Entry Cost</p>
-                        <p className="font-black text-emerald-800 text-sm">₹{farm.costPerPerson} <span className="text-[10px] text-slate-400 font-semibold">/ guest</span></p>
-                      </div>
+
+                      <button
+                        onClick={() => handleOpenBooking(farm)}
+                        className={`w-full text-white font-bold text-xs py-3 rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 font-headings ${
+                          isFree
+                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700'
+                            : 'bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black'
+                        }`}
+                      >
+                        {isFree ? 'Book Free Slot' : 'Book Farm Visit'} <ArrowRight size={13} />
+                      </button>
                     </div>
 
-                    <button
-                      onClick={() => handleOpenBooking(farm)}
-                      className="w-full bg-gradient-to-r from-emerald-600 via-emerald-650 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs py-3 rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 font-headings"
-                    >
-                      Book Farm Visit <ArrowRight size={13} />
-                    </button>
                   </div>
-
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -394,12 +484,12 @@ export default function VisitFarms() {
 
       {/* ── Booking Modal/Form Overlay ── */}
       {selectedFarm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs transition-opacity duration-300">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden transform scale-100 transition-all duration-300 border border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs transition-opacity duration-300 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full my-auto transform scale-100 transition-all duration-300 border border-slate-100 relative">
             <form onSubmit={handleConfirmBooking} className="flex flex-col">
               
               {/* Modal Header */}
-              <div className="px-6 py-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-left relative">
+              <div className="px-6 py-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-left relative rounded-t-3xl">
                 <h3 className="text-lg font-black font-headings">Book Refreshment Slot</h3>
                 <p className="text-[10px] text-emerald-100 font-medium uppercase tracking-wider mt-0.5">{selectedFarm.farmName}</p>
                 <button
@@ -431,26 +521,29 @@ export default function VisitFarms() {
                     <div className="bg-slate-50 border border-slate-150 p-4 rounded-2xl flex items-center justify-between shadow-inner">
                       <div>
                         <p className="text-[9px] text-slate-455 font-black uppercase tracking-wider font-headings">Admission Cost</p>
-                        <p className="text-xs text-slate-500 font-semibold mt-0.5">₹{selectedFarm.costPerPerson} / visitor</p>
+                        {(!selectedFarm.costPerPerson || Number(selectedFarm.costPerPerson) === 0) ? (
+                          <p className="text-xs text-emerald-600 font-bold mt-0.5">FREE ADMISSION</p>
+                        ) : (
+                          <p className="text-xs text-slate-500 font-semibold mt-0.5">₹{selectedFarm.costPerPerson} / visitor</p>
+                        )}
                       </div>
                       <div className="text-right">
                         <p className="text-[9px] text-slate-455 font-black uppercase tracking-wider font-headings">Estimated Cost</p>
-                        <p className="text-base font-black text-slate-850 font-sans mt-0.5">₹{selectedFarm.costPerPerson * visitorsCount}</p>
+                        {(!selectedFarm.costPerPerson || Number(selectedFarm.costPerPerson) === 0) ? (
+                          <p className="text-base font-black text-emerald-600 font-sans mt-0.5">FREE (₹0)</p>
+                        ) : (
+                          <p className="text-base font-black text-slate-850 font-sans mt-0.5">₹{selectedFarm.costPerPerson * visitorsCount}</p>
+                        )}
                       </div>
                     </div>
 
                     {/* Date Input */}
                     <div className="space-y-1">
                       <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider pl-1">Choose Visit Date</label>
-                      <div className="relative">
-                        <input
-                          type="date"
-                          required
-                          value={bookingDate}
-                          onChange={(e) => setBookingDate(e.target.value)}
-                          className="w-full px-4 py-3 rounded-2xl border border-slate-250 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none text-xs bg-white font-medium"
-                        />
-                      </div>
+                      <ModernDatePicker
+                        value={bookingDate}
+                        onChange={(newDate) => setBookingDate(newDate)}
+                      />
                     </div>
 
                     {/* Visitors Count */}
@@ -489,7 +582,11 @@ export default function VisitFarms() {
                             Booking...
                           </>
                         ) : (
-                          <>Confirm Visit Slot</>
+                          <>
+                            {(!selectedFarm.costPerPerson || Number(selectedFarm.costPerPerson) === 0)
+                              ? 'Confirm Free Slot'
+                              : 'Confirm Visit Slot'}
+                          </>
                         )}
                       </button>
                     </div>
