@@ -6,19 +6,59 @@ import { realtimeDb } from '../firebase';
 
 export default function Home() {
   const [homeContent, setHomeContent] = useState({
+    // Hero
     heroHeadline: "Fresh Organic Produce Directly From Farms",
     heroDescription: "Connect directly with local organic farmers. Freshly harvested vegetables, fruits, and pure dairy products delivered to your door in hours.",
     heroImage: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&q=80",
-    aboutHeadline: "About FresVeg",
-    aboutText1: "We are committed to providing the freshest, highest quality produce directly from our farms to your table. Our mission is to support local farmers while delivering exceptional products that nourish your family.",
-    aboutText2: "Every product is carefully selected, harvested at peak ripeness, and delivered with care to ensure you receive only the best nature has to offer.",
-    aboutImage: "https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?w=600&q=80",
+    
+    // Special Offers & Banners
     promo1Title: "Fresh Fruit Harvest Box",
     promo1Desc: "Get a handpicked assortment of organic seasonal fruits including strawberries, apples, and oranges.",
     promo1Code: "FRUIT20",
     promo2Title: "Bulk Veggies Discount",
     promo2Desc: "Stock up your kitchen with potatoes, onions, tomatoes, and greens. Harvested fresh and shipped in bulk.",
-    promo2Code: "BULK15"
+    promo2Code: "BULK15",
+
+    // Why Choose FresVeg?
+    whyTitle: "Why Choose FresVeg?",
+    whySubtitle: "We bridge the gap between farmers and consumers, ensuring you get the freshest produce while supporting local vendors.",
+    why1Title: "Premium Fresh",
+    why1Desc: "Sourced directly from local farmers ensuring maximum freshness, nutritional value, and unbelievable taste.",
+    why2Title: "Fast Delivery",
+    why2Desc: "Lightning fast delivery straight to your doorstep within hours of harvesting from the nearest farms.",
+    why3Title: "Quality Assured",
+    why3Desc: "Rigorous quality checks at every step to ensure you get only the finest and safest selection of produce.",
+
+    // Farm-to-Table Process
+    processTitle: "Our Farm-to-Table Process",
+    processSubtitle: "We maintain a clean, temperature-controlled, and highly efficient network to ship organic products from local soil directly to your shelf.",
+    process1Title: "1. Fresh Harvest",
+    process1Desc: "Farmers pick organic produce only after you place your order to ensure peak flavor.",
+    process2Title: "2. Eco Packaging",
+    process2Desc: "Items are sorted and wrapped in plastic-free biodegradable packets to protect the planet.",
+    process3Title: "3. Swift Transit",
+    process3Desc: "Delivery partners collect your box immediately and run optimized routes using maps.",
+    process4Title: "4. Doorstep Joy",
+    process4Desc: "Get contact-free drop off in under 4 hours, and scan farm codes for origin tracing.",
+
+    // What Our Customers Say
+    testimonialsTitle: "What Our Customers Say",
+    testimonialsSubtitle: "Read verified feedback from home cooks and families who enjoy fresh farm deliveries weekly.",
+    test1Quote: "The strawberries are exceptionally sweet and fresh, nothing like the supermarket ones. Plus, knowing it supports local farmers directly makes every order feel great.",
+    test1Name: "Sarah J.",
+    test1Role: "Home Cook",
+    test2Quote: "The bulk veggie box is a life saver for my meal prep. Everything stays crisp for over a week, and delivery is consistently quick. Highly recommended!",
+    test2Name: "David K.",
+    test2Role: "Fitness Enthusiast",
+    test3Quote: "We booked a farm tour weekend slots via 'Visit Farms' link, and our kids absolutely loved picking fruits and seeing cows. A perfect weekend refreshment setup!",
+    test3Name: "Emma L.",
+    test3Role: "Parent",
+
+    // About FresVeg
+    aboutHeadline: "About FresVeg",
+    aboutText1: "We are committed to providing the freshest, highest quality produce directly from our farms to your table. Our mission is to support local farmers while delivering exceptional products that nourish your family.",
+    aboutText2: "Every product is carefully selected, harvested at peak ripeness, and delivered with care to ensure you receive only the best nature has to offer.",
+    aboutImage: "https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?w=600&q=80"
   });
 
   useEffect(() => {
@@ -137,45 +177,45 @@ export default function Home() {
          </div>
       </section>
 
-      {/* Features */}
+      {/* Why Choose FresVeg? */}
       <section className="py-20 relative bg-emerald-500/5">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-               <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">Why Choose FresVeg?</h2>
-               <p className="text-gray-500 max-w-xl mx-auto text-sm">We bridge the gap between farmers and consumers, ensuring you get the freshest produce while supporting local vendors.</p>
+               <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">{homeContent.whyTitle || "Why Choose FresVeg?"}</h2>
+               <p className="text-gray-500 max-w-xl mx-auto text-sm">{homeContent.whySubtitle || "We bridge the gap between farmers and consumers, ensuring you get the freshest produce while supporting local vendors."}</p>
             </div>
             <div className="grid md:grid-cols-3 gap-8">
                <div className="p-8 rounded-3xl bg-white/60 backdrop-blur-sm border border-white shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group text-left">
                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand to-brand-dark shadow-md text-white flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                      <Leaf size={24} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">Premium Fresh</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">Sourced directly from local farmers ensuring maximum freshness, nutritional value, and unbelievable taste.</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">{homeContent.why1Title || "Premium Fresh"}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{homeContent.why1Desc || "Sourced directly from local farmers ensuring maximum freshness, nutritional value, and unbelievable taste."}</p>
                </div>
                <div className="p-8 rounded-3xl bg-white/60 backdrop-blur-sm border border-white shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group text-left">
                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand to-brand-dark shadow-md text-white flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                      <Truck size={24} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">Fast Delivery</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">Lightning fast delivery straight to your doorstep within hours of harvesting from the nearest farms.</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">{homeContent.why2Title || "Fast Delivery"}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{homeContent.why2Desc || "Lightning fast delivery straight to your doorstep within hours of harvesting from the nearest farms."}</p>
                </div>
                <div className="p-8 rounded-3xl bg-white/60 backdrop-blur-sm border border-white shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group text-left">
                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand to-brand-dark shadow-md text-white flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                      <ShieldCheck size={24} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">Quality Assured</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">Rigorous quality checks at every step to ensure you get only the finest and safest selection of produce.</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">{homeContent.why3Title || "Quality Assured"}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{homeContent.why3Desc || "Rigorous quality checks at every step to ensure you get only the finest and safest selection of produce."}</p>
                </div>
             </div>
          </div>
       </section>
 
-      {/* Supply Chain Journey */}
+      {/* Our Farm-to-Table Process */}
       <section className="py-20 bg-white">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-               <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">Our Farm-to-Table Process</h2>
-               <p className="text-gray-500 max-w-xl mx-auto text-sm">We maintain a clean, temperature-controlled, and highly efficient network to ship organic products from local soil directly to your shelf.</p>
+               <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">{homeContent.processTitle || "Our Farm-to-Table Process"}</h2>
+               <p className="text-gray-500 max-w-xl mx-auto text-sm">{homeContent.processSubtitle || "We maintain a clean, temperature-controlled, and highly efficient network to ship organic products from local soil directly to your shelf."}</p>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative">
@@ -186,8 +226,8 @@ export default function Home() {
                      <Sprout size={28} />
                   </div>
                   <div className="space-y-2">
-                     <h3 className="text-base font-extrabold text-gray-900">1. Fresh Harvest</h3>
-                     <p className="text-gray-505 text-xs leading-relaxed px-4">Farmers pick organic produce only after you place your order to ensure peak flavor.</p>
+                     <h3 className="text-base font-extrabold text-gray-900">{homeContent.process1Title || "1. Fresh Harvest"}</h3>
+                     <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process1Desc || "Farmers pick organic produce only after you place your order to ensure peak flavor."}</p>
                   </div>
                </div>
 
@@ -197,8 +237,8 @@ export default function Home() {
                      <Box size={28} />
                   </div>
                   <div className="space-y-2">
-                     <h3 className="text-base font-extrabold text-gray-900">2. Eco Packaging</h3>
-                     <p className="text-gray-505 text-xs leading-relaxed px-4">Items are sorted and wrapped in plastic-free biodegradable packets to protect the planet.</p>
+                     <h3 className="text-base font-extrabold text-gray-900">{homeContent.process2Title || "2. Eco Packaging"}</h3>
+                     <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process2Desc || "Items are sorted and wrapped in plastic-free biodegradable packets to protect the planet."}</p>
                   </div>
                </div>
 
@@ -208,8 +248,8 @@ export default function Home() {
                      <Truck size={28} />
                   </div>
                   <div className="space-y-2">
-                     <h3 className="text-base font-extrabold text-gray-900">3. Swift Transit</h3>
-                     <p className="text-gray-505 text-xs leading-relaxed px-4">Delivery partners collect your box immediately and run optimized routes using maps.</p>
+                     <h3 className="text-base font-extrabold text-gray-900">{homeContent.process3Title || "3. Swift Transit"}</h3>
+                     <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process3Desc || "Delivery partners collect your box immediately and run optimized routes using maps."}</p>
                   </div>
                </div>
 
@@ -219,8 +259,8 @@ export default function Home() {
                      <MapPin size={28} />
                   </div>
                   <div className="space-y-2">
-                     <h3 className="text-base font-extrabold text-gray-900">4. Doorstep Joy</h3>
-                     <p className="text-gray-505 text-xs leading-relaxed px-4">Get contact-free drop off in under 4 hours, and scan farm codes for origin tracing.</p>
+                     <h3 className="text-base font-extrabold text-gray-900">{homeContent.process4Title || "4. Doorstep Joy"}</h3>
+                     <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process4Desc || "Get contact-free drop off in under 4 hours, and scan farm codes for origin tracing."}</p>
                   </div>
                </div>
 
@@ -228,12 +268,12 @@ export default function Home() {
          </div>
       </section>
 
-      {/* Testimonials */}
+      {/* What Our Customers Say */}
       <section className="py-20 relative bg-gradient-to-b from-transparent to-brand-light/20">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-               <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">What Our Customers Say</h2>
-               <p className="text-gray-500 max-w-xl mx-auto text-sm">Read verified feedback from home cooks and families who enjoy fresh farm deliveries weekly.</p>
+               <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">{homeContent.testimonialsTitle || "What Our Customers Say"}</h2>
+               <p className="text-gray-500 max-w-xl mx-auto text-sm">{homeContent.testimonialsSubtitle || "Read verified feedback from home cooks and families who enjoy fresh farm deliveries weekly."}</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -245,15 +285,15 @@ export default function Home() {
                      <div className="flex items-center gap-0.5 text-amber-500">
                         {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
                      </div>
-                     <p className="text-gray-600 text-xs leading-relaxed italic">"The strawberries are exceptionally sweet and fresh, nothing like the supermarket ones. Plus, knowing it supports local farmers directly makes every order feel great."</p>
+                     <p className="text-gray-600 text-xs leading-relaxed italic">"{homeContent.test1Quote || 'The strawberries are exceptionally sweet and fresh, nothing like the supermarket ones. Plus, knowing it supports local farmers directly makes every order feel great.'}"</p>
                   </div>
                   <div className="flex items-center gap-3.5 mt-6 border-t border-gray-100 pt-4">
                      <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
-                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80" alt="Sarah J." className="w-full h-full object-cover" />
+                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80" alt={homeContent.test1Name || "Sarah J."} className="w-full h-full object-cover" />
                      </div>
                      <div>
-                        <h4 className="font-extrabold text-gray-900 text-xs">Sarah J.</h4>
-                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Home Cook</p>
+                        <h4 className="font-extrabold text-gray-900 text-xs">{homeContent.test1Name || "Sarah J."}</h4>
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{homeContent.test1Role || "Home Cook"}</p>
                      </div>
                   </div>
                </div>
@@ -265,15 +305,15 @@ export default function Home() {
                      <div className="flex items-center gap-0.5 text-amber-500">
                         {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
                      </div>
-                     <p className="text-gray-600 text-xs leading-relaxed italic">"The bulk veggie box is a life saver for my meal prep. Everything stays crisp for over a week, and delivery is consistently quick. Highly recommended!"</p>
+                     <p className="text-gray-600 text-xs leading-relaxed italic">"{homeContent.test2Quote || 'The bulk veggie box is a life saver for my meal prep. Everything stays crisp for over a week, and delivery is consistently quick. Highly recommended!'}"</p>
                   </div>
                   <div className="flex items-center gap-3.5 mt-6 border-t border-gray-100 pt-4">
                      <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
-                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80" alt="David K." className="w-full h-full object-cover" />
+                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80" alt={homeContent.test2Name || "David K."} className="w-full h-full object-cover" />
                      </div>
                      <div>
-                        <h4 className="font-extrabold text-gray-900 text-xs">David K.</h4>
-                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Fitness Enthusiast</p>
+                        <h4 className="font-extrabold text-gray-900 text-xs">{homeContent.test2Name || "David K."}</h4>
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{homeContent.test2Role || "Fitness Enthusiast"}</p>
                      </div>
                   </div>
                </div>
@@ -285,15 +325,15 @@ export default function Home() {
                      <div className="flex items-center gap-0.5 text-amber-500">
                         {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
                      </div>
-                     <p className="text-gray-600 text-xs leading-relaxed italic">"We booked a farm tour weekend slots via 'Visit Farms' link, and our kids absolutely loved picking fruits and seeing cows. A perfect weekend refreshment setup!"</p>
+                     <p className="text-gray-600 text-xs leading-relaxed italic">"{homeContent.test3Quote || "We booked a farm tour weekend slots via 'Visit Farms' link, and our kids absolutely loved picking fruits and seeing cows. A perfect weekend refreshment setup!"}"</p>
                   </div>
                   <div className="flex items-center gap-3.5 mt-6 border-t border-gray-100 pt-4">
                      <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
-                        <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80" alt="Emma L." className="w-full h-full object-cover" />
+                        <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80" alt={homeContent.test3Name || "Emma L."} className="w-full h-full object-cover" />
                      </div>
                      <div>
-                        <h4 className="font-extrabold text-gray-900 text-xs">Emma L.</h4>
-                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Parent</p>
+                        <h4 className="font-extrabold text-gray-900 text-xs">{homeContent.test3Name || "Emma L."}</h4>
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{homeContent.test3Role || "Parent"}</p>
                      </div>
                   </div>
                </div>
