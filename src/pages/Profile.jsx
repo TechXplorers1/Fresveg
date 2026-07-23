@@ -10,7 +10,7 @@ import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, 
 const CATEGORIES = ['Tomatoes', 'Potatoes', 'Onions', 'Brinjal', 'Carrots', 'Spinach', 'Capsicum', 'Broccoli', 'Garlic', 'Apples', 'Bananas', 'Strawberries', 'Oranges', 'Milk', 'Butter', 'Cheese', 'Yogurt', 'Paneer'];
 
 export default function Profile() {
-  const { user, userProfile, updateProfile, logout } = useAuth();
+  const { user, userProfile, loading, updateProfile, logout } = useAuth();
   const { products: allProducts, addProduct, updateProduct, deleteProduct } = useProducts();
   const navigate = useNavigate();
 
@@ -49,9 +49,9 @@ export default function Profile() {
 
   // ─── Add Product State ──────────────────────────────────────────────────────
   const [newProduct, setNewProduct] = useState({
-    name: '', price: '', category: '', image: '', shop: '', unit: 'kg',
+    name: '', price: '', mrp: '', stockQuantity: '', category: '', image: '', shop: '', unit: 'kg',
     description: '', origin: '', preference: 'Vegetarian', shelfLife: '',
-    netWeight: '', returnPolicy: '', offers: '', features: ''
+    netWeight: '', returnPolicy: '', offers: '', features: '', harvestDate: '', organicCert: '', storageInfo: ''
   });
 
   // ─── Add Shop States ────────────────────────────────────────────────────────
@@ -65,9 +65,9 @@ export default function Profile() {
   // ─── Edit / Delete Product State ────────────────────────────────────────────
   const [editingProductId, setEditingProductId] = useState(null);
   const [editProductForm, setEditProductForm] = useState({
-    name: '', price: '', category: '', image: '', unit: '',
+    name: '', price: '', mrp: '', stockQuantity: '', category: '', image: '', unit: '',
     description: '', origin: '', preference: '', shelfLife: '',
-    netWeight: '', returnPolicy: '', offers: '', features: ''
+    netWeight: '', returnPolicy: '', offers: '', features: '', harvestDate: '', organicCert: '', storageInfo: ''
   });
   const [deletingProductId, setDeletingProductId] = useState(null);
 
@@ -108,8 +108,7 @@ export default function Profile() {
     );
   };
 
-  // Protect route
-  if (!user) return <Navigate to="/auth" replace />;
+
 
   // ─── Shop Handlers ──────────────────────────────────────────────────────────
   const handleShopSetup = (e) => {
@@ -203,9 +202,9 @@ export default function Profile() {
 
   const handleOpenAddProductForShop = (shopName) => {
     setNewProduct({
-      name: '', price: '', category: '', image: '', shop: shopName, unit: 'kg',
+      name: '', price: '', mrp: '', stockQuantity: '', category: '', image: '', shop: shopName, unit: 'kg',
       description: '', origin: '', preference: 'Vegetarian', shelfLife: '',
-      netWeight: '', returnPolicy: '', offers: '', features: ''
+      netWeight: '', returnPolicy: '', offers: '', features: '', harvestDate: '', organicCert: '', storageInfo: ''
     });
     setShowAddForm(true);
   };
@@ -219,18 +218,20 @@ export default function Profile() {
     const productData = {
       ...newProduct,
       price: parseFloat(newProduct.price),
-      vendor: selectedShop.shopName,
-      shopLocation: selectedShop.location || '',
+      mrp: newProduct.mrp ? parseFloat(newProduct.mrp) : parseFloat(newProduct.price),
+      stockQuantity: newProduct.stockQuantity ? parseInt(newProduct.stockQuantity) : 100,
+      vendor: selectedShop?.shopName || 'Local Vendor',
+      shopLocation: selectedShop?.location || '',
       rating: 5.0,
-      offers: newProduct.offers.split('\n').filter(line => line.trim() !== ''),
-      features: newProduct.features.split('\n').filter(line => line.trim() !== ''),
+      offers: typeof newProduct.offers === 'string' ? newProduct.offers.split('\n').filter(line => line.trim() !== '') : newProduct.offers || [],
+      features: typeof newProduct.features === 'string' ? newProduct.features.split('\n').filter(line => line.trim() !== '') : newProduct.features || [],
       createdAt: new Date().toISOString()
     };
     addProduct(productData);
     setNewProduct({
-      name: '', price: '', category: '', image: '', shop: '', unit: 'kg',
+      name: '', price: '', mrp: '', stockQuantity: '', category: '', image: '', shop: '', unit: 'kg',
       description: '', origin: '', preference: 'Vegetarian', shelfLife: '',
-      netWeight: '', returnPolicy: '', offers: '', features: ''
+      netWeight: '', returnPolicy: '', offers: '', features: '', harvestDate: '', organicCert: '', storageInfo: ''
     });
     setShowAddForm(false);
   };
@@ -280,11 +281,28 @@ export default function Profile() {
     location: '',
     description: '',
     costPerPerson: '',
-    image: ''
+    costType: 'free',
+    image: '',
+    crops: '',
+    fruits: '',
+    livestock: '',
+    accommodations: '',
+    amenities: '',
+    farmProducts: ''
   });
   const [isSubmittingFarm, setIsSubmittingFarm] = useState(false);
   const [detectingFarmLocation, setDetectingFarmLocation] = useState(false);
   const [farmMapCoords, setFarmMapCoords] = useState(null);
+  const [editingFarmId, setEditingFarmId] = useState(null);
+  const [deletingFarmId, setDeletingFarmId] = useState(null);
+  const [editFarmForm, setEditFarmForm] = useState({
+    farmName: '',
+    location: '',
+    description: '',
+    costPerPerson: '',
+    costType: 'free',
+    image: ''
+  });
   const farmMapContainerRef = useRef(null);
   const farmMapRef = useRef(null);
   const farmMarkerRef = useRef(null);
@@ -514,16 +532,114 @@ export default function Profile() {
     }
   };
 
-  const handleDeleteFarm = async (farmId) => {
-    if (!window.confirm('Are you sure you want to delete this farm list?')) return;
-    try {
-      const farmRef = ref(realtimeDb, `farms/${farmId}`);
-      await set(farmRef, null);
-      alert('Farm deleted successfully.');
-    } catch (err) {
-      console.error('Failed to delete farm:', err);
-      alert('Error deleting farm: ' + err.message);
+  const handleEditFarmClick = (farm) => {
+    const slug = farm.farmName
+      ? farm.farmName.toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      : farm.id;
+    navigate(`/farm/${slug}?edit=true`);
+  };
+
+  const handleSaveFarmForm = async (e) => {
+    e.preventDefault();
+    if (!newFarmForm.farmName.trim() || !newFarmForm.location.trim()) {
+      alert('Please fill out Farm Name and Location.');
+      return;
     }
+
+    setIsSubmittingFarm(true);
+    try {
+      const isFree = newFarmForm.costType === 'free';
+      const finalCost = isFree ? 0 : (Number(newFarmForm.costPerPerson) || 0);
+
+      const parseList = (str) => {
+        if (!str) return [];
+        if (Array.isArray(str)) return str;
+        return str.split(',').map(s => s.trim()).filter(Boolean);
+      };
+
+      const parseAccommodations = (str) => {
+        const list = parseList(str);
+        if (list.length === 0) return [
+          { id: 'acc-1', title: 'Farmhouse Guest Suite', desc: 'Clean room with garden view', price: 'Included', icon: 'house' },
+          { id: 'acc-2', title: 'Rustic Clay Hut', desc: 'Traditional village stay', price: 'Included', icon: 'hut' }
+        ];
+        return list.map((title, idx) => ({
+          id: `acc-${idx + 1}`,
+          title,
+          desc: `Comfortable ${title.toLowerCase()} experience at the farm`,
+          price: 'Included',
+          icon: title.toLowerCase().includes('tent') ? 'tent' : title.toLowerCase().includes('hut') ? 'hut' : 'house'
+        }));
+      };
+
+      const parseProducts = (str) => {
+        if (!str) return [];
+        if (Array.isArray(str)) return str;
+        const lines = str.split('\n').map(l => l.trim()).filter(Boolean);
+        return lines.map((line, idx) => {
+          const matchPrice = line.match(/₹?\s*(\d+)/);
+          const price = matchPrice ? Number(matchPrice[1]) : 120;
+          const cleanName = line.replace(/\(.*\)/, '').replace(/₹?\s*\d+.*/, '').trim() || line;
+          return {
+            id: `fp-${Date.now()}-${idx}`,
+            name: cleanName,
+            price,
+            unit: 'pack',
+            image: newFarmForm.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80',
+            vendor: newFarmForm.farmName || 'Farm Direct'
+          };
+        });
+      };
+
+      const farmData = {
+        farmName: newFarmForm.farmName.trim(),
+        location: newFarmForm.location.trim(),
+        description: newFarmForm.description.trim(),
+        costPerPerson: finalCost,
+        image: newFarmForm.image.trim() || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80',
+        crops: parseList(newFarmForm.crops),
+        fruits: parseList(newFarmForm.fruits),
+        livestock: parseList(newFarmForm.livestock),
+        accommodations: parseAccommodations(newFarmForm.accommodations),
+        amenities: parseList(newFarmForm.amenities),
+        farmProducts: parseProducts(newFarmForm.farmProducts),
+        vendorId: user.uid,
+        vendorName: userProfile?.displayName || user?.displayName || 'Vendor',
+        createdAt: new Date().toISOString()
+      };
+
+      if (editingFarmId) {
+        const farmRef = ref(realtimeDb, `farms/${editingFarmId}`);
+        await update(farmRef, farmData);
+        alert('Farm updated successfully!');
+      } else {
+        const farmsRef = ref(realtimeDb, 'farms');
+        const newFarmRef = push(farmsRef);
+        await set(newFarmRef, farmData);
+        alert('Farm successfully listed!');
+      }
+
+      setEditingFarmId(null);
+      setNewFarmForm({
+        farmName: '', location: '', description: '', costPerPerson: '', image: '', costType: 'free',
+        crops: '', fruits: '', livestock: '', accommodations: '', amenities: '', farmProducts: ''
+      });
+      setShowAddFarmForm(false);
+    } catch (err) {
+      console.error('Failed to save farm:', err);
+      alert('Error saving farm: ' + err.message);
+    } finally {
+      setIsSubmittingFarm(false);
+    }
+  };
+
+  const handleCancelFarmForm = () => {
+    setEditingFarmId(null);
+    setNewFarmForm({
+      farmName: '', location: '', description: '', costPerPerson: '', image: '', costType: 'free',
+      crops: '', fruits: '', livestock: '', accommodations: '', amenities: '', farmProducts: ''
+    });
+    setShowAddFarmForm(false);
   };
 
   const handleAcceptBooking = async (bookingId) => {
@@ -859,7 +975,7 @@ export default function Profile() {
   };
 
   // ─── Shared field style ─────────────────────────────────────────────────────
-  const inputCls = 'w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none text-sm transition-all duration-200 bg-white/50 backdrop-blur-sm font-body';
+  const inputCls = 'w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none text-sm transition-all duration-200 bg-white font-body text-slate-800 placeholder:text-slate-400';
   const labelCls = 'block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 font-headings';
 
   // ─── Orders State & Fetching ────────────────────────────────────────────────
@@ -1185,6 +1301,19 @@ export default function Profile() {
       alert('Error: ' + error.message);
     }
   };
+  // ─── Route Protection & Session Loading ────────────────────────────────────
+  // Show loading state while Firebase restores auth state on refresh
+  if (loading) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-100 border-t-emerald-600"></div>
+        <p className="text-xs font-bold text-emerald-800 animate-pulse mt-4 font-headings">Restoring session...</p>
+      </div>
+    );
+  }
+
+  // Protect route (only redirect once auth loading is finished and user is not logged in)
+  if (!user) return <Navigate to="/auth" replace />;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -1246,13 +1375,28 @@ export default function Profile() {
                     <button
                       onClick={() => setActiveTab('setup')}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${
-                        activeTab === 'setup'
+                        activeTab === 'setup' && !showAddForm
                           ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
                           : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
                       }`}
                     >
                       <Store size={18} />
                       Set Up Your Shop
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('setup');
+                        const defaultShopName = vendorShops[0]?.shopName || '';
+                        handleOpenAddProductForShop(defaultShopName);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${
+                        activeTab === 'setup' && showAddForm
+                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                          : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
+                      }`}
+                    >
+                      <Package size={18} />
+                      Add Products
                     </button>
                     <button
                       onClick={() => setActiveTab('farms')}
@@ -1986,18 +2130,28 @@ export default function Profile() {
               </div>
             </div>
             <button
-              onClick={() => setShowAddFarmForm(!showAddFarmForm)}
+              onClick={() => {
+                if (showAddFarmForm || editingFarmId) {
+                  handleCancelFarmForm();
+                } else {
+                  setEditingFarmId(null);
+                  setNewFarmForm({ farmName: '', location: '', description: '', costPerPerson: '', image: '', costType: 'free' });
+                  setShowAddFarmForm(true);
+                }
+              }}
               className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-900/10 active:scale-[0.98]"
             >
-              {showAddFarmForm ? <X size={14} /> : <Plus size={14} />}
-              {showAddFarmForm ? 'Cancel' : 'Add New Farm'}
+              {(showAddFarmForm || editingFarmId) ? <X size={14} /> : <Plus size={14} />}
+              {(showAddFarmForm || editingFarmId) ? 'Cancel' : 'Add New Farm'}
             </button>
           </div>
 
-          {/* Add Farm Form */}
+          {/* Add / Edit Farm Form */}
           {showAddFarmForm && (
-            <form onSubmit={handleAddFarm} className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6 max-w-5xl animate-fade-in">
-              <h3 className="text-base font-bold text-slate-855 font-headings text-left">Farm Details</h3>
+            <form onSubmit={handleSaveFarmForm} className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6 max-w-5xl animate-fade-in">
+              <h3 className="text-base font-bold text-slate-855 font-headings text-left">
+                {editingFarmId ? 'Edit Farm Details' : 'Farm Details'}
+              </h3>
               
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
@@ -2152,6 +2306,89 @@ export default function Profile() {
                     ></textarea>
                   </div>
 
+                  {/* Additional Farm Offerings & Availabilities Section */}
+                  <div className="border-t border-slate-100 pt-4 space-y-3">
+                    <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider font-headings">
+                      🌿 Farm Page Features & Availabilities
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Crops Grown */}
+                      <div>
+                        <label className={labelCls}>🌾 Crops & Produce Grown</label>
+                        <input
+                          type="text"
+                          value={newFarmForm.crops || ''}
+                          onChange={(e) => setNewFarmForm({ ...newFarmForm, crops: e.target.value })}
+                          className={inputCls.replace('pl-10', 'px-3.5')}
+                          placeholder="E.g. Strawberries, Cherry Tomatoes, Sweet Corn"
+                        />
+                      </div>
+
+                      {/* Fruit Orchards */}
+                      <div>
+                        <label className={labelCls}>🍎 Fruit Orchards & Trees</label>
+                        <input
+                          type="text"
+                          value={newFarmForm.fruits || ''}
+                          onChange={(e) => setNewFarmForm({ ...newFarmForm, fruits: e.target.value })}
+                          className={inputCls.replace('pl-10', 'px-3.5')}
+                          placeholder="E.g. Mango Orchards, Guava Groves, Papaya"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Livestock */}
+                      <div>
+                        <label className={labelCls}>🐄 Livestock & Poultry</label>
+                        <input
+                          type="text"
+                          value={newFarmForm.livestock || ''}
+                          onChange={(e) => setNewFarmForm({ ...newFarmForm, livestock: e.target.value })}
+                          className={inputCls.replace('pl-10', 'px-3.5')}
+                          placeholder="E.g. Pure Gir Cows, Goats & Sheep, Poultry"
+                        />
+                      </div>
+
+                      {/* Accommodations */}
+                      <div>
+                        <label className={labelCls}>🛖 Accommodations Provided</label>
+                        <input
+                          type="text"
+                          value={newFarmForm.accommodations || ''}
+                          onChange={(e) => setNewFarmForm({ ...newFarmForm, accommodations: e.target.value })}
+                          className={inputCls.replace('pl-10', 'px-3.5')}
+                          placeholder="E.g. Farmhouse Rooms, Mud Huts, Camping Tents"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Amenities & Activities */}
+                    <div>
+                      <label className={labelCls}>🚜 Activities & Amenities</label>
+                      <input
+                        type="text"
+                        value={newFarmForm.amenities || ''}
+                        onChange={(e) => setNewFarmForm({ ...newFarmForm, amenities: e.target.value })}
+                        className={inputCls.replace('pl-10', 'px-3.5')}
+                        placeholder="E.g. Berry Picking, Guided Walk, Organic Breakfast, Tractor Ride"
+                      />
+                    </div>
+
+                    {/* Farm Products For Sale */}
+                    <div>
+                      <label className={labelCls}>🧺 Direct Farm Products For Sale (1 per line)</label>
+                      <textarea
+                        rows="2"
+                        value={newFarmForm.farmProducts || ''}
+                        onChange={(e) => setNewFarmForm({ ...newFarmForm, farmProducts: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none text-xs transition-all duration-200 bg-white/50 backdrop-blur-sm resize-none font-body"
+                        placeholder={'Fresh Organic Strawberries (₹180)\nRaw Organic Honey Jar (₹290)\nPure Cow Ghee (₹650)'}
+                      ></textarea>
+                    </div>
+                  </div>
+
                 </div>
 
                 {/* Right Column: Farm Interactive Map */}
@@ -2173,7 +2410,7 @@ export default function Profile() {
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddFarmForm(false)}
+                  onClick={handleCancelFarmForm}
                   className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold transition-all text-xs"
                 >
                   Cancel
@@ -2181,9 +2418,11 @@ export default function Profile() {
                 <button
                   type="submit"
                   disabled={isSubmittingFarm}
-                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md active:scale-95 text-xs flex items-center gap-1.5"
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md active:scale-95 text-xs flex items-center gap-1.5 font-headings"
                 >
-                  {isSubmittingFarm ? 'Listing...' : 'List Farm'}
+                  {isSubmittingFarm 
+                    ? (editingFarmId ? 'Updating...' : 'Listing...') 
+                    : (editingFarmId ? 'Update Farm' : 'List Farm')}
                 </button>
               </div>
 
@@ -2211,31 +2450,83 @@ export default function Profile() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {vendorFarms.map(farm => (
-                    <div key={farm.id} className="bg-white/70 border border-white/60 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col group">
-                      <div className="relative h-36 bg-slate-50">
-                        <img src={farm.image} alt={farm.farmName} className="w-full h-full object-cover group-hover:scale-103 transition-transform" />
-                        <button
-                          onClick={() => handleDeleteFarm(farm.id)}
-                          className="absolute top-2 right-2 bg-white/95 text-rose-500 hover:bg-rose-50 p-2 rounded-xl transition-colors shadow-md border border-slate-100"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                      <div className="p-4 flex flex-col flex-1 space-y-2">
-                        <div>
-                          <h4 className="font-bold text-slate-800 text-sm font-headings truncate">{farm.farmName}</h4>
-                          <p className="text-[10px] text-slate-450 font-semibold flex items-center gap-1 font-body mt-0.5"><MapPin size={11} className="text-emerald-600" />{farm.location}</p>
+                    <div key={farm.id} className="bg-white/70 border border-white/60 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col group min-h-[220px]">
+                      {deletingFarmId === farm.id ? (
+                        <div className="p-5 bg-rose-50/90 border border-rose-200 rounded-3xl flex flex-col justify-between flex-1 animate-fade-in text-left">
+                          <div>
+                            <div className="flex items-center gap-2 text-rose-600 mb-1.5">
+                              <Trash2 size={18} />
+                              <h4 className="font-bold text-sm font-headings">Delete Farm?</h4>
+                            </div>
+                            <p className="text-xs text-rose-700 font-medium font-body leading-relaxed">
+                              Are you sure you want to delete <span className="font-bold text-rose-900">{farm.farmName}</span>? This action cannot be undone.
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 pt-4">
+                            <button
+                              onClick={() => handleDeleteFarm(farm.id)}
+                              className="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2 px-3 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 font-headings"
+                            >
+                              Yes, Delete
+                            </button>
+                            <button
+                              onClick={() => setDeletingFarmId(null)}
+                              className="flex-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 py-2 px-3 rounded-xl text-xs font-bold transition-all active:scale-95 font-headings"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-2 italic font-body">"{farm.description}"</p>
-                        <div className="border-t border-slate-100/60 pt-2.5 mt-auto flex justify-between items-center text-[10px]">
-                          <span className="text-slate-400 font-bold uppercase tracking-wider font-headings font-mono">TICKET TYPE</span>
-                          {(!farm.costPerPerson || Number(farm.costPerPerson) === 0) ? (
-                            <span className="font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">FREE OF COST</span>
-                          ) : (
-                            <span className="font-black text-slate-800 text-xs">₹{farm.costPerPerson} / guest</span>
-                          )}
-                        </div>
-                      </div>
+                      ) : (
+                        <>
+                          <div className="relative h-36 bg-slate-50">
+                            <img src={farm.image} alt={farm.farmName} className="w-full h-full object-cover group-hover:scale-103 transition-transform" />
+                            <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                              <button
+                                onClick={() => handleEditFarmClick(farm)}
+                                className="bg-white/95 text-emerald-600 hover:bg-emerald-50 p-2 rounded-xl transition-colors shadow-md border border-slate-100"
+                                title="Edit Farm Details"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                              <button
+                                onClick={() => setDeletingFarmId(farm.id)}
+                                className="bg-white/95 text-rose-500 hover:bg-rose-50 p-2 rounded-xl transition-colors shadow-md border border-slate-100"
+                                title="Delete Farm"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="p-4 flex flex-col flex-1 space-y-2">
+                            <div>
+                              <h4 className="font-bold text-slate-800 text-sm font-headings truncate">{farm.farmName}</h4>
+                              <p className="text-[10px] text-slate-450 font-semibold flex items-center gap-1 font-body mt-0.5"><MapPin size={11} className="text-emerald-600" />{farm.location}</p>
+                            </div>
+                            <p className="text-[11px] text-slate-500 line-clamp-2 italic font-body">"{farm.description}"</p>
+                            <div className="border-t border-slate-100/60 pt-2.5 mt-auto flex justify-between items-center text-[10px]">
+                              <span className="text-slate-400 font-bold uppercase tracking-wider font-headings font-mono">TICKET TYPE</span>
+                              {(!farm.costPerPerson || Number(farm.costPerPerson) === 0) ? (
+                                <span className="font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">FREE OF COST</span>
+                              ) : (
+                                <span className="font-black text-slate-800 text-xs">₹{farm.costPerPerson} / guest</span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const slug = farm.farmName
+                                  ? farm.farmName.toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+                                  : farm.id;
+                                navigate(`/farm/${slug}`);
+                              }}
+                              className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] py-1.5 px-2.5 rounded-xl transition-all flex items-center justify-center gap-1 font-headings border border-emerald-200/60 mt-1"
+                            >
+                              <Compass size={12} /> Explore Farm Page
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -2518,13 +2809,6 @@ export default function Profile() {
                           <div className="flex items-center gap-3">
                             <button
                               type="button"
-                              onClick={() => handleOpenAddProductForShop(shop.shopName)}
-                              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-emerald-900/10 flex items-center gap-2 text-xs font-headings active:scale-[0.98]"
-                            >
-                              <Plus size={16} /> Add Product
-                            </button>
-                            <button
-                              type="button"
                               onClick={() => setDeletingShopIndex(viewingShopIndex)}
                               className="bg-rose-50 hover:bg-rose-100 text-rose-500 p-2.5 rounded-xl transition-all border border-rose-100/50"
                               title="Delete Shop"
@@ -2709,6 +2993,8 @@ export default function Profile() {
             </div>
           )}
 
+
+
           {/* ── Add New Shop Form Modal ────────────────────────────────────────── */}
           {showAddShopForm && (
             <div 
@@ -2850,18 +3136,18 @@ export default function Profile() {
                       <h3 className="text-sm font-bold text-emerald-605 uppercase tracking-widest flex items-center gap-2 font-headings">
                         <Package size={16} /> Basic Information
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="md:col-span-2">
-                          <label className={labelCls}>Product Name</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="md:col-span-2 lg:col-span-3">
+                          <label className={labelCls}>Product Name <span className="text-emerald-600 font-bold">*</span></label>
                           <div className="relative">
-                            <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-450" size={18} />
-                            <input required type="text" name="name" value={newProduct.name} onChange={handleInputChange} className={inputCls} placeholder="E.g. Organic Tomatoes" />
+                            <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
+                            <input required type="text" name="name" value={newProduct.name} onChange={handleInputChange} className={inputCls} placeholder="E.g. Organic Red Tomatoes" />
                           </div>
                         </div>
                         <div>
-                          <label className={labelCls}>Which Shop?</label>
+                          <label className={labelCls}>Which Shop? <span className="text-emerald-600 font-bold">*</span></label>
                           <div className="relative">
-                            <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-450" size={18} />
+                            <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
                             <select
                               required
                               name="shop"
@@ -2876,9 +3162,9 @@ export default function Profile() {
                           </div>
                         </div>
                         <div>
-                          <label className={labelCls}>Category</label>
+                          <label className={labelCls}>Category <span className="text-emerald-600 font-bold">*</span></label>
                           <div className="relative">
-                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-455" size={18} />
+                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
                             <select required name="category" value={newProduct.category} onChange={handleInputChange} className={`${inputCls} appearance-none bg-white font-medium`}>
                               <option value="">Select category...</option>
                               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -2886,16 +3172,38 @@ export default function Profile() {
                           </div>
                         </div>
                         <div>
-                          <label className={labelCls}>Price (₹)</label>
+                          <label className={labelCls}>Selling Price (₹) <span className="text-emerald-600 font-bold">*</span></label>
                           <div className="relative">
-                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-455" size={18} />
-                            <input required type="number" step="0.01" name="price" value={newProduct.price} onChange={handleInputChange} className={inputCls} placeholder="2.99" />
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
+                            <input required type="number" step="0.01" name="price" value={newProduct.price} onChange={handleInputChange} className={inputCls} placeholder="4.99" />
                           </div>
                         </div>
                         <div>
-                          <label className={labelCls}>Image URL</label>
+                          <label className={labelCls}>M.R.P. / Original Price (₹)</label>
                           <div className="relative">
-                            <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-455" size={18} />
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
+                            <input type="number" step="0.01" name="mrp" value={newProduct.mrp} onChange={handleInputChange} className={inputCls} placeholder="6.50" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className={labelCls}>Unit (e.g. kg, box) <span className="text-emerald-600 font-bold">*</span></label>
+                          <input required type="text" name="unit" value={newProduct.unit} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="kg" />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Net Weight (e.g. 500g)</label>
+                          <input type="text" name="netWeight" value={newProduct.netWeight} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="500g" />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Available Stock / Inventory (Units / kg)</label>
+                          <div className="relative">
+                            <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
+                            <input type="number" name="stockQuantity" value={newProduct.stockQuantity} onChange={handleInputChange} className={inputCls} placeholder="E.g. 1000" />
+                          </div>
+                        </div>
+                        <div className="md:col-span-2 lg:col-span-3">
+                          <label className={labelCls}>Image URL <span className="text-emerald-600 font-bold">*</span></label>
+                          <div className="relative">
+                            <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
                             <input required type="text" name="image" value={newProduct.image} onChange={handleInputChange} className={inputCls} placeholder="https://example.com/image.jpg" />
                           </div>
                         </div>
@@ -2905,17 +3213,9 @@ export default function Profile() {
                     {/* Section: Product Specifications */}
                     <div className="space-y-4">
                       <h3 className="text-sm font-bold text-emerald-605 uppercase tracking-widest flex items-center gap-2 font-headings">
-                        <Check size={16} /> Product Specifications
+                        <Check size={16} /> Product Specifications & Freshness
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div>
-                          <label className={labelCls}>Unit (e.g. kg, box)</label>
-                          <input required type="text" name="unit" value={newProduct.unit} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="kg" />
-                        </div>
-                        <div>
-                          <label className={labelCls}>Net Weight</label>
-                          <input type="text" name="netWeight" value={newProduct.netWeight} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="500g" />
-                        </div>
                         <div>
                           <label className={labelCls}>Food Preference</label>
                           <select name="preference" value={newProduct.preference} onChange={handleInputChange} className={`${inputCls.replace('pl-10', 'px-4')} appearance-none bg-white font-medium`}>
@@ -2931,6 +3231,18 @@ export default function Profile() {
                         <div>
                           <label className={labelCls}>Max Shelf Life</label>
                           <input type="text" name="shelfLife" value={newProduct.shelfLife} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="7 days" />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Harvest / Freshness Date</label>
+                          <input type="text" name="harvestDate" value={newProduct.harvestDate} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="Harvested Today" />
+                        </div>
+                        <div>
+                          <label className={labelCls}>FSSAI / Organic Cert. No.</label>
+                          <input type="text" name="organicCert" value={newProduct.organicCert} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="FSSAI-1002930492" />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Storage & Handling Info</label>
+                          <input type="text" name="storageInfo" value={newProduct.storageInfo} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="Keep refrigerated at 4°C" />
                         </div>
                       </div>
                     </div>

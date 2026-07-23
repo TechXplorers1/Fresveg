@@ -3,7 +3,7 @@ import { ref, onValue, push, set, remove } from 'firebase/database';
 import { realtimeDb } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, Users, Compass, Search, Sparkles, CheckCircle, Clock, Trash2, ShieldAlert, ArrowRight, BookOpen, X } from 'lucide-react';
+import { MapPin, Calendar, Users, Compass, Search, Sparkles, CheckCircle, Clock, Trash2, ShieldAlert, ArrowRight, BookOpen, X, Minus, Plus } from 'lucide-react';
 import ModernDatePicker from '../components/common/ModernDatePicker';
 
 const INITIAL_MOCK_FARMS = [
@@ -377,16 +377,28 @@ export default function VisitFarms() {
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => handleOpenBooking(farm)}
-                        className={`w-full text-white font-bold text-xs py-3 rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 font-headings ${
-                          isFree
-                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700'
-                            : 'bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black'
-                        }`}
-                      >
-                        {isFree ? 'Book Free Slot' : 'Book Farm Visit'} <ArrowRight size={13} />
-                      </button>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const slug = farm.farmName
+                              ? farm.farmName.toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+                              : farm.id;
+                            navigate(`/farm/${slug}`);
+                          }}
+                          className="flex-1 bg-white border-2 border-emerald-600/80 text-emerald-700 hover:bg-emerald-50 font-bold text-xs py-2.5 px-3 rounded-2xl transition-all shadow-xs active:scale-95 flex items-center justify-center gap-1.5 font-headings"
+                        >
+                          <Compass size={14} className="text-emerald-600" /> Explore Farm
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenBooking(farm)}
+                          className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs py-2.5 px-3 rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 font-headings"
+                        >
+                          <Calendar size={14} /> Book Slot
+                        </button>
+                      </div>
                     </div>
 
                   </div>
@@ -549,16 +561,33 @@ export default function VisitFarms() {
                     {/* Visitors Count */}
                     <div className="space-y-1">
                       <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider pl-1">Number of Visitors</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          required
-                          min="1"
-                          max="20"
-                          value={visitorsCount}
-                          onChange={(e) => setVisitorsCount(Math.max(1, Number(e.target.value)))}
-                          className="w-full px-4 py-3 rounded-2xl border border-slate-250 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none text-xs bg-white font-medium"
-                        />
+                      <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 p-2 rounded-2xl">
+                        <button
+                          type="button"
+                          onClick={() => setVisitorsCount(Math.max(1, (parseInt(visitorsCount) || 1) - 1))}
+                          className="w-8 h-8 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 font-bold hover:bg-slate-100 active:scale-95 flex-shrink-0"
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <div className="flex-1 flex items-center justify-center gap-1">
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            required
+                            value={visitorsCount}
+                            onChange={(e) => setVisitorsCount(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-16 text-center font-black text-slate-800 text-sm font-sans bg-transparent outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 rounded-lg py-1 border border-slate-200"
+                          />
+                          <span className="text-xs font-bold text-slate-500">Visitor(s)</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setVisitorsCount((parseInt(visitorsCount) || 0) + 1)}
+                          className="w-8 h-8 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 font-bold hover:bg-slate-100 active:scale-95 flex-shrink-0"
+                        >
+                          <Plus size={14} />
+                        </button>
                       </div>
                     </div>
 

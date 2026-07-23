@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Leaf, ShieldCheck, Truck, Tag, Percent, Sprout, Box, MapPin, Star, Quote } from 'lucide-react';
 import { ref, onValue } from 'firebase/database';
 import { realtimeDb } from '../firebase';
+import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
+  const { userProfile } = useAuth();
   const [homeContent, setHomeContent] = useState({
     // Hero
     heroHeadline: "Fresh Organic Produce Directly From Farms",
@@ -93,9 +95,11 @@ export default function Home() {
                      <Link to="/marketplace" className="bg-brand hover:bg-brand-dark text-white px-8 py-4 rounded-full font-bold text-sm tracking-wide shadow-lg shadow-brand/20 transition-all hover:-translate-y-0.5 active:translate-y-0">
                         Explore Marketplace
                      </Link>
-                     <Link to="/auth?redirect=profile" className="bg-white/70 hover:bg-white text-gray-800 border border-gray-200 px-8 py-4 rounded-full font-bold text-sm tracking-wide shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 active:translate-y-0 backdrop-blur-md">
-                        Become a Vendor
-                     </Link>
+                     {userProfile?.role !== 'vendor' && (
+                        <Link to="/auth?redirect=profile" className="bg-white/70 hover:bg-white text-gray-800 border border-gray-200 px-8 py-4 rounded-full font-bold text-sm tracking-wide shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 active:translate-y-0 backdrop-blur-md">
+                           Become a Vendor
+                        </Link>
+                     )}
                   </div>
                </div>
                <div className="lg:col-span-5 relative flex justify-center">

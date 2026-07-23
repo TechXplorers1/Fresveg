@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
-import { ShoppingCart, Target, ShieldCheck, Truck, Star, Info, Tag, ArrowLeft, Store, RefreshCw, BadgePercent, Leaf, Zap, Minus, Plus } from 'lucide-react';
+import { ShoppingCart, Target, ShieldCheck, Truck, Star, Info, Tag, ArrowLeft, ArrowRight, Store, RefreshCw, BadgePercent, Leaf, Zap, Minus, Plus } from 'lucide-react';
 
 export default function ProductDetails() {
   const { id } = useParams();
@@ -48,6 +48,14 @@ export default function ProductDetails() {
   const displayReturnPolicy = product.returnPolicy || "This product is eligible for return within 48 hours of delivery. if the item is delivered in a damaged or defective condition, you may request a refund natively through the Marketplace application.";
   
   const cartItem = cartItems.find(item => String(item.id) === String(product.id));
+
+  // ─── Shop Suggestions Logic ────────────────────────────────────────────────
+  const sameShopProducts = products.filter(p => p.vendor === product.vendor && String(p.id) !== String(product.id));
+  
+  // If the same shop has fewer than 4 products, fill remaining slots with same-category or related products
+  const categoryProducts = products.filter(p => p.category === product.category && String(p.id) !== String(product.id) && !sameShopProducts.some(sp => String(sp.id) === String(p.id)));
+  
+  const suggestedProducts = [...sameShopProducts, ...categoryProducts].slice(0, 4);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen">
@@ -118,7 +126,7 @@ export default function ProductDetails() {
         <div className="lg:col-span-7 space-y-8">
            
            {/* Section 1: Title & Core Specs */}
-           <div className="pb-6 border-b border-slate-100">
+           <div className="pb-6 border-b border-slate-100 text-left">
              <div className="flex flex-wrap items-center gap-2 mb-4">
                <span className="bg-emerald-50 text-emerald-800 border border-emerald-100/50 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
                  {product.category}
@@ -160,15 +168,15 @@ export default function ProductDetails() {
                  <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-emerald-600">
                     <Store size={22} />
                  </div>
-                 <div>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-0.5">Sold By Vendor</p>
+                 <div className="text-left">
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-0.5">Sold By Vendor / Shop</p>
                     <p className="font-bold text-slate-800 text-lg font-headings">{product.vendor}</p>
                  </div>
               </div>
            </div>
 
            {/* Offers */}
-           <div>
+           <div className="text-left">
              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2 font-headings">
                <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
                  <BadgePercent size={16} />
@@ -186,7 +194,7 @@ export default function ProductDetails() {
            </div>
 
            {/* Features & Details */}
-           <div>
+           <div className="text-left">
              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2 font-headings">
                <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
                  <Target size={16} />
@@ -203,7 +211,7 @@ export default function ProductDetails() {
            </div>
 
            {/* Description */}
-           <div>
+           <div className="text-left">
              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2 font-headings">
                <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
                  <Info size={16} />
@@ -236,7 +244,7 @@ export default function ProductDetails() {
            </div>
 
            {/* Return Policy */}
-           <div>
+           <div className="text-left">
              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2 font-headings">
                <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
                  <RefreshCw size={16} />
@@ -250,6 +258,104 @@ export default function ProductDetails() {
 
          </div>
        </div>
+
+       {/* ─── Suggested Products Section (Same Shop / Related) ───────────────── */}
+       {suggestedProducts.length > 0 && (
+         <div className="mt-16 border-t border-slate-200/80 pt-12 text-left">
+           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+             <div>
+               <div className="flex items-center gap-2 text-emerald-600 mb-1">
+                 <Store size={18} />
+                 <span className="text-xs font-black uppercase tracking-wider font-headings">Shop Collection</span>
+               </div>
+               <h2 className="text-2xl font-black text-slate-800 font-headings">
+                 More Products From <span className="text-emerald-700">{product.vendor}</span>
+               </h2>
+             </div>
+             <button 
+               onClick={() => navigate('/marketplace')}
+               className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 font-headings active:scale-95 transition-all self-start sm:self-auto bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-xl border border-emerald-100/50"
+             >
+               Explore All Products <ArrowRight size={14} />
+             </button>
+           </div>
+
+           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+             {suggestedProducts.map((item) => (
+               <div 
+                 key={item.id}
+                 onClick={() => {
+                   navigate(`/product/${item.id}`);
+                   window.scrollTo({ top: 0, behavior: 'smooth' });
+                 }}
+                 className="bg-white/70 backdrop-blur-md border border-white/60 rounded-3xl p-4 shadow-sm hover:shadow-xl hover:shadow-emerald-950/[0.03] transition-all duration-300 flex flex-col group cursor-pointer"
+               >
+                 <div className="relative h-40 bg-slate-50 rounded-2xl overflow-hidden mb-3 flex items-center justify-center p-3">
+                   <img 
+                     src={item.image || 'https://via.placeholder.com/200'} 
+                     alt={item.name} 
+                     className="max-h-full object-contain group-hover:scale-108 transition-transform duration-300"
+                   />
+                   <span className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-emerald-800 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border border-slate-100">
+                     {item.category}
+                   </span>
+                 </div>
+
+                 <div className="flex-1 flex flex-col justify-between">
+                   <div>
+                     <h4 className="font-bold text-slate-800 text-sm font-headings truncate group-hover:text-emerald-600 transition-colors mb-1">{item.name}</h4>
+                     <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 font-body"><Store size={10} className="text-emerald-600" />{item.vendor}</p>
+                   </div>
+
+                   <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
+                     <div>
+                       <span className="text-xs text-slate-400 line-through block">₹{(item.price * 1.2).toFixed(2)}</span>
+                       <span className="font-black text-slate-800 text-base font-sans">₹{parseFloat(item.price).toFixed(2)}</span>
+                       <span className="text-[10px] text-slate-400 font-medium"> / {item.unit || 'kg'}</span>
+                     </div>
+
+                      {(() => {
+                        const itemCart = cartItems.find(c => String(c.id) === String(item.id));
+                        return itemCart ? (
+                           <div className="flex items-center gap-1.5 bg-slate-100/90 border border-slate-200/80 rounded-xl p-1 shadow-xs" onClick={(e) => e.stopPropagation()}>
+                              <button 
+                                 type="button"
+                                 onClick={() => updateQuantity(item.id, itemCart.quantity - 1)}
+                                 className="w-6 h-6 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all duration-200 active:scale-90 font-black"
+                              >
+                                 <Minus size={12} strokeWidth={3} />
+                              </button>
+                              <span className="text-xs font-black text-slate-800 px-1 font-sans text-center min-w-[16px]">{itemCart.quantity}</span>
+                              <button 
+                                 type="button"
+                                 onClick={() => updateQuantity(item.id, itemCart.quantity + 1)}
+                                 className="w-6 h-6 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all duration-200 active:scale-90 font-black"
+                              >
+                                 <Plus size={12} strokeWidth={3} />
+                              </button>
+                           </div>
+                        ) : (
+                           <button
+                              type="button"
+                              onClick={(e) => {
+                                 e.stopPropagation();
+                                 addToCart(item);
+                              }}
+                              className="bg-emerald-600 text-white hover:bg-emerald-700 p-2.5 rounded-xl transition-all duration-300 shadow-md shadow-emerald-900/10 active:scale-95 flex items-center justify-center"
+                              title="Add to Cart"
+                           >
+                              <ShoppingCart size={15} />
+                           </button>
+                        );
+                      })()}
+                   </div>
+                 </div>
+               </div>
+             ))}
+           </div>
+         </div>
+       )}
+
      </div>
    );
  }

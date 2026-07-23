@@ -7,7 +7,9 @@ import {
   onAuthStateChanged,
   updateProfile as updateFirebaseProfile,
   RecaptchaVerifier,
-  signInWithPhoneNumber
+  signInWithPhoneNumber,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { ref, set, get, update } from 'firebase/database';
 
@@ -16,18 +18,53 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('fresveg_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [userProfile, setUserProfile] = useState(() => {
+    try {
+      const saved = localStorage.getItem('fresveg_profile');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [loading, setLoading] = useState(true);
   const [confirmationResult, setConfirmationResult] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
-        await loadUserProfile(user);
+    // Force browserLocalPersistence so Firebase Auth session is persisted across browser refreshes
+    setPersistence(auth, browserLocalPersistence).catch(err => {
+      console.warn('Firebase persistence setup:', err);
+    });
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userObj = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL
+        };
+        setUser(userObj);
+        try {
+          localStorage.setItem('fresveg_user', JSON.stringify(userObj));
+        } catch (e) {}
+        await loadUserProfile(firebaseUser);
       } else {
+        setUser(null);
         setUserProfile(null);
+        try {
+          localStorage.removeItem('fresveg_user');
+          localStorage.removeItem('fresveg_profile');
+        } catch (e) {}
       }
       setLoading(false);
     });
@@ -38,6 +75,17 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
+      const userObj = {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName,
+        photoURL: result.user.photoURL
+      };
+      setUser(userObj);
+      try {
+        localStorage.setItem('fresveg_user', JSON.stringify(userObj));
+      } catch (e) {}
+      await loadUserProfile(result.user);
       return result.user;
     } catch (error) {
       throw error;
@@ -48,6 +96,16 @@ export const AuthProvider = ({ children }) => {
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       await updateFirebaseProfile(result.user, { displayName });
+      const userObj = {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: displayName,
+        photoURL: result.user.photoURL
+      };
+      setUser(userObj);
+      try {
+        localStorage.setItem('fresveg_user', JSON.stringify(userObj));
+      } catch (e) {}
       return result.user;
     } catch (error) {
       throw error;
@@ -56,7 +114,6 @@ export const AuthProvider = ({ children }) => {
 
   const sendPhoneOTP = async (phoneNumber) => {
     try {
-      // Validate phone number format
       if (!phoneNumber.startsWith('+')) {
         throw new Error('Phone number must include country code (e.g., +1)');
       }
@@ -66,7 +123,7 @@ export const AuthProvider = ({ children }) => {
       
       const recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'invisible',
-        callback: (response) => {
+        callback: () => {
           console.log('reCAPTCHA verified');
         },
         'expired-callback': () => {
@@ -92,6 +149,17 @@ export const AuthProvider = ({ children }) => {
   const verifyPhoneOTP = async (otp) => {
     try {
       const result = await confirmationResult.confirm(otp);
+      const userObj = {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName,
+        photoURL: result.user.photoURL
+      };
+      setUser(userObj);
+      try {
+        localStorage.setItem('fresveg_user', JSON.stringify(userObj));
+      } catch (e) {}
+      await loadUserProfile(result.user);
       return result.user;
     } catch (error) {
       throw error;
@@ -101,7 +169,17 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await signOut(auth);
+      setUser(null);
+      setUserProfile(null);
+      try {
+        localStorage.removeItem('fresveg_user');
+        localStorage.removeItem('fresveg_profile');
+      } catch (e) {}
     } catch (error) {
+      setUser(null);
+      setUserProfile(null);
+      localStorage.removeItem('fresveg_user');
+      localStorage.removeItem('fresveg_profile');
       throw error;
     }
   };
@@ -114,8 +192,8 @@ export const AuthProvider = ({ children }) => {
       if (newData.displayName) authData.displayName = newData.displayName;
       if (newData.photoURL) authData.photoURL = newData.photoURL;
 
-      if (Object.keys(authData).length > 0) {
-        await updateFirebaseProfile(user, authData);
+      if (Object.keys(authData).length > 0 && auth.currentUser) {
+        await updateFirebaseProfile(auth.currentUser, authData);
       }
 
       const userRef = ref(realtimeDb, `users/${user.uid}`);
@@ -130,15 +208,20 @@ export const AuthProvider = ({ children }) => {
   const saveRole = async (role) => {
     try {
       if (user) {
-        await set(ref(realtimeDb, `users/${user.uid}`), {
+        const userRef = ref(realtimeDb, `users/${user.uid}`);
+        const newProfileData = {
           uid: user.uid,
           email: user.email,
           displayName: user.displayName,
           role: role,
           createdAt: new Date().toISOString()
-        });
-        // Reload profile after saving
-        await loadUserProfile();
+        };
+        await set(userRef, newProfileData);
+        setUserProfile(newProfileData);
+        try {
+          localStorage.setItem('fresveg_profile', JSON.stringify(newProfileData));
+        } catch (e) {}
+        await loadUserProfile(user);
       }
     } catch (error) {
       console.error('Error saving role:', error);
@@ -151,32 +234,42 @@ export const AuthProvider = ({ children }) => {
       if (authUser) {
         const userRef = ref(realtimeDb, `users/${authUser.uid}`);
         const snapshot = await get(userRef);
+        let profileData;
         if (snapshot.exists()) {
-          setUserProfile(snapshot.val());
+          profileData = snapshot.val();
         } else {
-          // If no profile exists, create a basic one
-          setUserProfile({
+          profileData = {
             uid: authUser.uid,
             email: authUser.email,
             displayName: authUser.displayName,
-            role: 'customer', // default role
+            role: 'customer',
             createdAt: new Date().toISOString()
-          });
+          };
         }
+        setUserProfile(profileData);
+        try {
+          localStorage.setItem('fresveg_profile', JSON.stringify(profileData));
+        } catch (e) {}
       } else {
         setUserProfile(null);
+        try {
+          localStorage.removeItem('fresveg_profile');
+        } catch (e) {}
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
-      // Set basic profile from Firebase Auth if DB fails
       if (authUser) {
-        setUserProfile({
+        const fallbackProfile = {
           uid: authUser.uid,
           email: authUser.email,
           displayName: authUser.displayName,
           role: 'customer',
           createdAt: new Date().toISOString()
-        });
+        };
+        setUserProfile(fallbackProfile);
+        try {
+          localStorage.setItem('fresveg_profile', JSON.stringify(fallbackProfile));
+        } catch (e) {}
       }
     }
   };

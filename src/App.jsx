@@ -11,6 +11,7 @@ import Profile from './pages/Profile';
 import ProductDetails from './pages/ProductDetails';
 import OrderTracking from './pages/OrderTracking';
 import VisitFarms from './pages/VisitFarms';
+import FarmDetails from './pages/FarmDetails';
 import Marketplace from './pages/Marketplace';
 import Admin from './pages/Admin';
 import { CartProvider } from './context/CartContext';
@@ -44,6 +45,7 @@ function App() {
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/product/:id" element={<ProductDetails />} />
+                  <Route path="/farm/:id" element={<FarmDetails />} />
                   <Route path="/order/:orderId" element={<OrderTracking />} />
                   <Route path="/visit-farms" element={<VisitFarms />} />
                   <Route path="/marketplace" element={<Marketplace />} />

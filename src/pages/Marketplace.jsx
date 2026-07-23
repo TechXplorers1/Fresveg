@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, Star, Search, Filter, Plus, Minus, X } from 'lucide-react';
+import { ShoppingCart, Star, Search, Filter, Plus, Minus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
 
@@ -17,6 +17,102 @@ export default function Marketplace() {
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [discountFilters, setDiscountFilters] = useState([]);
   const [showFilters, setShowFilters] = useState(true);
+
+  // Reset search query when entering or leaving Marketplace page
+  useEffect(() => {
+    setSearchQuery('');
+    return () => {
+      setSearchQuery('');
+    };
+  }, [setSearchQuery]);
+
+  // Refs & mouse drag state for category carousels
+  const categoriesTilesRef = useRef(null);
+  const categoryPillsRef = useRef(null);
+
+  const [isMouseDownTiles, setIsMouseDownTiles] = useState(false);
+  const [startXPointerTiles, setStartXPointerTiles] = useState(0);
+  const [scrollLeftStartTiles, setScrollLeftStartTiles] = useState(0);
+
+  const [isMouseDownPills, setIsMouseDownPills] = useState(false);
+  const [startXPointerPills, setStartXPointerPills] = useState(0);
+  const [scrollLeftStartPills, setScrollLeftStartPills] = useState(0);
+
+  // Non-passive wheel listeners to convert vertical mouse wheel scrolling into horizontal carousel sliding
+  useEffect(() => {
+    const tilesEl = categoriesTilesRef.current;
+    const pillsEl = categoryPillsRef.current;
+
+    const onWheelTiles = (e) => {
+      if (tilesEl && e.deltaY !== 0) {
+        e.preventDefault();
+        tilesEl.scrollLeft += e.deltaY * 1.2;
+      }
+    };
+
+    const onWheelPills = (e) => {
+      if (pillsEl && e.deltaY !== 0) {
+        e.preventDefault();
+        pillsEl.scrollLeft += e.deltaY * 1.2;
+      }
+    };
+
+    if (tilesEl) tilesEl.addEventListener('wheel', onWheelTiles, { passive: false });
+    if (pillsEl) pillsEl.addEventListener('wheel', onWheelPills, { passive: false });
+
+    return () => {
+      if (tilesEl) tilesEl.removeEventListener('wheel', onWheelTiles);
+      if (pillsEl) pillsEl.removeEventListener('wheel', onWheelPills);
+    };
+  }, []);
+
+  // Arrow button click scroll helper
+  const scrollRow = (refEl, direction) => {
+    if (refEl.current) {
+      const scrollAmount = direction === 'left' ? -300 : 300;
+      refEl.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  // Drag handlers for Browse Categories tiles
+  const handleMouseDownTiles = (e) => {
+    if (!categoriesTilesRef.current) return;
+    setIsMouseDownTiles(true);
+    setStartXPointerTiles(e.pageX - categoriesTilesRef.current.offsetLeft);
+    setScrollLeftStartTiles(categoriesTilesRef.current.scrollLeft);
+  };
+
+  const handleMouseMoveTiles = (e) => {
+    if (!isMouseDownTiles || !categoriesTilesRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - categoriesTilesRef.current.offsetLeft;
+    const walk = (x - startXPointerTiles) * 1.5;
+    categoriesTilesRef.current.scrollLeft = scrollLeftStartTiles - walk;
+  };
+
+  const handleMouseUpTiles = () => {
+    setIsMouseDownTiles(false);
+  };
+
+  // Drag handlers for Category filter pills
+  const handleMouseDownPills = (e) => {
+    if (!categoryPillsRef.current) return;
+    setIsMouseDownPills(true);
+    setStartXPointerPills(e.pageX - categoryPillsRef.current.offsetLeft);
+    setScrollLeftStartPills(categoryPillsRef.current.scrollLeft);
+  };
+
+  const handleMouseMovePills = (e) => {
+    if (!isMouseDownPills || !categoryPillsRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - categoryPillsRef.current.offsetLeft;
+    const walk = (x - startXPointerPills) * 1.5;
+    categoryPillsRef.current.scrollLeft = scrollLeftStartPills - walk;
+  };
+
+  const handleMouseUpPills = () => {
+    setIsMouseDownPills(false);
+  };
 
   const handleCategoryClick = (category) => {
     setActiveCategory(category);
@@ -76,11 +172,40 @@ export default function Marketplace() {
       {/* Category Tiles */}
       <section className="py-6 relative">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl font-extrabold text-gray-900 mb-6 tracking-tight flex items-center gap-2">
-              Browse Categories <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
-            </h2>
+            <div className="flex justify-between items-center mb-6">
+               <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+                 Browse Categories <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
+               </h2>
 
-            <div className="flex gap-5 overflow-x-auto pb-6 scrollbar-hide snap-x items-center">
+               {/* Navigation Controls for Mouse Users */}
+               <div className="flex items-center gap-2">
+                  <button
+                     type="button"
+                     onClick={() => scrollRow(categoriesTilesRef, 'left')}
+                     className="w-9 h-9 rounded-xl bg-white/80 border border-gray-200 text-gray-600 hover:text-brand hover:border-brand/40 hover:bg-brand-light/30 shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                     title="Scroll Left"
+                  >
+                     <ChevronLeft size={18} />
+                  </button>
+                  <button
+                     type="button"
+                     onClick={() => scrollRow(categoriesTilesRef, 'right')}
+                     className="w-9 h-9 rounded-xl bg-white/80 border border-gray-200 text-gray-600 hover:text-brand hover:border-brand/40 hover:bg-brand-light/30 shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                     title="Scroll Right"
+                  >
+                     <ChevronRight size={18} />
+                  </button>
+               </div>
+            </div>
+
+            <div 
+               ref={categoriesTilesRef}
+               onMouseDown={handleMouseDownTiles}
+               onMouseMove={handleMouseMoveTiles}
+               onMouseUp={handleMouseUpTiles}
+               onMouseLeave={handleMouseUpTiles}
+               className="flex gap-5 overflow-x-auto pb-6 scrollbar-hide snap-x items-center select-none cursor-grab active:cursor-grabbing"
+            >
                <button onClick={() => handleCategoryClick('Tomatoes')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
                   <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
                      <img src="/cherry_tomatoes.png" alt="Tomatoes" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
@@ -227,13 +352,40 @@ export default function Marketplace() {
                </div>
             </div>
 
-            {/* Category buttons at top */}
-            <div className="flex gap-2.5 mb-10 overflow-x-auto pb-3 scrollbar-hide snap-x">
-               {['All', 'Tomatoes', 'Potatoes', 'Onions', 'Brinjal', 'Carrots', 'Spinach', 'Capsicum', 'Broccoli', 'Garlic', 'Apples', 'Bananas', 'Strawberries', 'Oranges', 'Milk', 'Butter', 'Cheese', 'Yogurt', 'Paneer'].map(cat => (
-                  <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-5 py-2 rounded-full text-xs font-bold transition-all duration-200 whitespace-nowrap scroll-snap-align-start ${activeCategory === cat ? 'bg-gradient-to-br from-brand to-brand-dark text-white shadow-lg shadow-brand/20' : 'bg-white/60 backdrop-blur-md text-gray-500 border border-gray-200/50 hover:border-brand/40 hover:text-brand'}`}>
-                     {cat}
-                  </button>
-               ))}
+            {/* Category buttons at top with Arrow controls */}
+            <div className="mb-10 flex items-center gap-2">
+               <button
+                  type="button"
+                  onClick={() => scrollRow(categoryPillsRef, 'left')}
+                  className="flex-shrink-0 w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-600 hover:text-brand hover:border-brand shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                  title="Scroll Left"
+               >
+                  <ChevronLeft size={16} />
+               </button>
+
+               <div 
+                  ref={categoryPillsRef}
+                  onMouseDown={handleMouseDownPills}
+                  onMouseMove={handleMouseMovePills}
+                  onMouseUp={handleMouseUpPills}
+                  onMouseLeave={handleMouseUpPills}
+                  className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-hide snap-x select-none cursor-grab active:cursor-grabbing flex-grow"
+               >
+                  {['All', 'Tomatoes', 'Potatoes', 'Onions', 'Brinjal', 'Carrots', 'Spinach', 'Capsicum', 'Broccoli', 'Garlic', 'Apples', 'Bananas', 'Strawberries', 'Oranges', 'Milk', 'Butter', 'Cheese', 'Yogurt', 'Paneer'].map(cat => (
+                     <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-5 py-2 rounded-full text-xs font-bold transition-all duration-200 whitespace-nowrap scroll-snap-align-start ${activeCategory === cat ? 'bg-gradient-to-br from-brand to-brand-dark text-white shadow-lg shadow-brand/20' : 'bg-white/60 backdrop-blur-md text-gray-500 border border-gray-200/50 hover:border-brand/40 hover:text-brand'}`}>
+                        {cat}
+                     </button>
+                  ))}
+               </div>
+
+               <button
+                  type="button"
+                  onClick={() => scrollRow(categoryPillsRef, 'right')}
+                  className="flex-shrink-0 w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-600 hover:text-brand hover:border-brand shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                  title="Scroll Right"
+               >
+                  <ChevronRight size={16} />
+               </button>
             </div>
 
             {/* Main content with sidebar and products */}
@@ -244,28 +396,31 @@ export default function Marketplace() {
                     <div className="bg-white/70 backdrop-blur-md rounded-3xl p-6 shadow-xl shadow-emerald-950/[0.02] border border-white max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pr-2">
                       <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
                          <h3 className="text-base font-extrabold text-gray-900">Filters</h3>
-                         <div className="flex gap-2">
+                         <div className="flex gap-2 items-center">
                             <button
                               type="button"
                               onClick={() => setShowFilters(!showFilters)}
-                              className="px-3 py-1.5 text-2xs font-extrabold bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors"
+                              className="px-3 py-1.5 text-2xs font-extrabold bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors cursor-pointer"
                             >
                               Hide
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPriceRanges([]);
-                                setRatingFilters([]);
-                                setSelectedBrands([]);
-                                setDiscountFilters([]);
-                                setSearchQuery('');
-                                setSortBy('none');
-                              }}
-                              className="px-3 py-1.5 text-2xs font-extrabold border border-brand/20 bg-brand-light text-brand rounded-xl hover:bg-brand hover:text-white transition-all"
-                            >
-                              Clear
-                            </button>
+                            {(activeCategory !== 'All' || sortBy !== 'none' || searchQuery !== '' || priceRanges.length > 0 || ratingFilters.length > 0 || selectedBrands.length > 0 || discountFilters.length > 0) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPriceRanges([]);
+                                  setRatingFilters([]);
+                                  setSelectedBrands([]);
+                                  setDiscountFilters([]);
+                                  setSearchQuery('');
+                                  setSortBy('none');
+                                  setActiveCategory('All');
+                                }}
+                                className="px-3 py-1.5 text-2xs font-extrabold border border-brand/20 bg-brand-light text-brand rounded-xl hover:bg-brand hover:text-white transition-all cursor-pointer"
+                              >
+                                Clear All
+                              </button>
+                            )}
                          </div>
                       </div>
                       
@@ -277,9 +432,13 @@ export default function Marketplace() {
                                Search Products
                             </span>
                             {searchQuery && (
-                               <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold shadow-xs">
-                                  Active
-                               </span>
+                               <button
+                                  type="button"
+                                  onClick={() => setSearchQuery('')}
+                                  className="text-[10px] text-emerald-700 hover:text-red-600 font-bold underline cursor-pointer"
+                               >
+                                  Clear
+                               </button>
                             )}
                          </label>
                          <div className="relative group">
@@ -306,18 +465,40 @@ export default function Marketplace() {
 
                       {/* Sort By */}
                       <div className="mb-6">
-                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Sort By</label>
+                         <div className="flex justify-between items-center mb-3">
+                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Sort By</label>
+                            {sortBy !== 'none' && (
+                               <button
+                                  type="button"
+                                  onClick={() => setSortBy('none')}
+                                  className="text-[10px] font-bold text-brand hover:underline cursor-pointer"
+                               >
+                                  Clear
+                               </button>
+                            )}
+                         </div>
                          <div className="space-y-1.5">
-                            <button onClick={() => setSortBy('none')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all ${sortBy === 'none' ? 'bg-brand text-white shadow-sm' : 'text-gray-600 hover:bg-brand-light/30'}`}>Recommended</button>
-                            <button onClick={() => setSortBy('price_asc')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all ${sortBy === 'price_asc' ? 'bg-brand text-white shadow-sm' : 'text-gray-600 hover:bg-brand-light/30'}`}>Price: Low to High</button>
-                            <button onClick={() => setSortBy('price_desc')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all ${sortBy === 'price_desc' ? 'bg-brand text-white shadow-sm' : 'text-gray-600 hover:bg-brand-light/30'}`}>Price: High to Low</button>
-                            <button onClick={() => setSortBy('rating')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all ${sortBy === 'rating' ? 'bg-brand text-white shadow-sm' : 'text-gray-600 hover:bg-brand-light/30'}`}>Highest Rated</button>
+                            <button onClick={() => setSortBy('none')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all cursor-pointer ${sortBy === 'none' ? 'bg-brand text-white shadow-sm' : 'text-gray-600 hover:bg-brand-light/30'}`}>Recommended</button>
+                            <button onClick={() => setSortBy('price_asc')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all cursor-pointer ${sortBy === 'price_asc' ? 'bg-brand text-white shadow-sm' : 'text-gray-600 hover:bg-brand-light/30'}`}>Price: Low to High</button>
+                            <button onClick={() => setSortBy('price_desc')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all cursor-pointer ${sortBy === 'price_desc' ? 'bg-brand text-white shadow-sm' : 'text-gray-600 hover:bg-brand-light/30'}`}>Price: High to Low</button>
+                            <button onClick={() => setSortBy('rating')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all cursor-pointer ${sortBy === 'rating' ? 'bg-brand text-white shadow-sm' : 'text-gray-600 hover:bg-brand-light/30'}`}>Highest Rated</button>
                          </div>
                       </div>
 
                       {/* Price Range */}
                       <div className="mb-6">
-                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Price Range</label>
+                         <div className="flex justify-between items-center mb-3">
+                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Price Range</label>
+                            {priceRanges.length > 0 && (
+                               <button
+                                  type="button"
+                                  onClick={() => setPriceRanges([])}
+                                  className="text-[10px] font-bold text-brand hover:underline cursor-pointer"
+                               >
+                                  Clear
+                               </button>
+                            )}
+                         </div>
                          <div className="space-y-2.5">
                             <label className="flex items-center cursor-pointer group">
                                <input 
@@ -330,7 +511,7 @@ export default function Marketplace() {
                                      setPriceRanges(priceRanges.filter(r => r !== 'under5'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors">Under $5</span>
                             </label>
@@ -345,7 +526,7 @@ export default function Marketplace() {
                                      setPriceRanges(priceRanges.filter(r => r !== '5to10'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors">$5 - $10</span>
                             </label>
@@ -360,7 +541,7 @@ export default function Marketplace() {
                                      setPriceRanges(priceRanges.filter(r => r !== '10to20'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors">$10 - $20</span>
                             </label>
@@ -375,7 +556,7 @@ export default function Marketplace() {
                                      setPriceRanges(priceRanges.filter(r => r !== 'over20'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors">Over $20</span>
                             </label>
@@ -384,7 +565,18 @@ export default function Marketplace() {
 
                       {/* Rating */}
                       <div className="mb-6">
-                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Rating</label>
+                         <div className="flex justify-between items-center mb-3">
+                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Rating</label>
+                            {ratingFilters.length > 0 && (
+                               <button
+                                  type="button"
+                                  onClick={() => setRatingFilters([])}
+                                  className="text-[10px] font-bold text-brand hover:underline cursor-pointer"
+                               >
+                                  Clear
+                               </button>
+                            )}
+                         </div>
                          <div className="space-y-2.5">
                             <label className="flex items-center cursor-pointer group">
                                <input 
@@ -397,7 +589,7 @@ export default function Marketplace() {
                                      setRatingFilters(ratingFilters.filter(r => r !== '4.5'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors flex items-center">
                                   <Star size={13} className="fill-amber-400 text-amber-400 mr-1" /> 4.5 & above
@@ -414,7 +606,7 @@ export default function Marketplace() {
                                      setRatingFilters(ratingFilters.filter(r => r !== '4.0'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors flex items-center">
                                   <Star size={13} className="fill-amber-400 text-amber-400 mr-1" /> 4.0 & above
@@ -431,7 +623,7 @@ export default function Marketplace() {
                                      setRatingFilters(ratingFilters.filter(r => r !== '3.5'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors flex items-center">
                                   <Star size={13} className="fill-amber-400 text-amber-400 mr-1" /> 3.5 & above
@@ -442,7 +634,18 @@ export default function Marketplace() {
 
                       {/* Brands */}
                       <div className="mb-6">
-                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Brands</label>
+                         <div className="flex justify-between items-center mb-3">
+                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Brands</label>
+                            {selectedBrands.length > 0 && (
+                               <button
+                                  type="button"
+                                  onClick={() => setSelectedBrands([])}
+                                  className="text-[10px] font-bold text-brand hover:underline cursor-pointer"
+                               >
+                                  Clear
+                               </button>
+                            )}
+                         </div>
                          <div className="space-y-2.5">
                             <label className="flex items-center cursor-pointer group">
                                <input 
@@ -455,7 +658,7 @@ export default function Marketplace() {
                                      setSelectedBrands(selectedBrands.filter(b => b !== 'Green Valley Farm'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors">Green Valley Farm</span>
                             </label>
@@ -470,7 +673,7 @@ export default function Marketplace() {
                                      setSelectedBrands(selectedBrands.filter(b => b !== 'Berry Farm'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors">Berry Farm</span>
                             </label>
@@ -485,7 +688,7 @@ export default function Marketplace() {
                                      setSelectedBrands(selectedBrands.filter(b => b !== 'Happy Cows Dairy'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors">Happy Cows Dairy</span>
                             </label>
@@ -500,7 +703,7 @@ export default function Marketplace() {
                                      setSelectedBrands(selectedBrands.filter(b => b !== 'Sunshine Produce'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors">Sunshine Produce</span>
                             </label>
@@ -509,7 +712,18 @@ export default function Marketplace() {
 
                       {/* Discount */}
                       <div className="mb-6">
-                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Discount</label>
+                         <div className="flex justify-between items-center mb-3">
+                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Discount</label>
+                            {discountFilters.length > 0 && (
+                               <button
+                                  type="button"
+                                  onClick={() => setDiscountFilters([])}
+                                  className="text-[10px] font-bold text-brand hover:underline cursor-pointer"
+                               >
+                                  Clear
+                               </button>
+                            )}
+                         </div>
                          <div className="space-y-2.5">
                             <label className="flex items-center cursor-pointer group">
                                <input 
@@ -522,7 +736,7 @@ export default function Marketplace() {
                                      setDiscountFilters(discountFilters.filter(d => d !== '10'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors">10% or more</span>
                             </label>
@@ -537,7 +751,7 @@ export default function Marketplace() {
                                      setDiscountFilters(discountFilters.filter(d => d !== '20'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors">20% or more</span>
                             </label>
@@ -552,7 +766,7 @@ export default function Marketplace() {
                                      setDiscountFilters(discountFilters.filter(d => d !== '30'));
                                    }
                                  }}
-                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4" 
+                                 className="rounded border-gray-300 text-brand focus:ring-brand w-4 h-4 cursor-pointer" 
                                />
                                <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-brand transition-colors">30% or more</span>
                             </label>
@@ -640,30 +854,36 @@ export default function Marketplace() {
                                        <span className="text-[11px] text-gray-400 font-semibold">/{product.unit}</span>
                                     </div>
                                     {(() => {
-                                       const cartItem = cartItems.find(item => item.id === product.id);
+                                       const cartItem = cartItems.find(item => String(item.id) === String(product.id));
                                        return cartItem ? (
-                                          <div className="flex items-center gap-1 bg-slate-50 border border-slate-150 rounded-lg p-0.5 shadow-inner" onClick={(e) => e.stopPropagation()}>
+                                          <div className="flex items-center gap-1.5 bg-slate-100/90 border border-slate-200/80 rounded-xl p-1 shadow-xs" onClick={(e) => e.stopPropagation()}>
                                              <button 
+                                                type="button"
                                                 onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
-                                                className="w-5 h-5 flex items-center justify-center bg-emerald-600 text-white hover:bg-emerald-700 rounded-md transition-all duration-200 active:scale-90 font-black text-2xs"
+                                                className="w-6 h-6 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all duration-200 active:scale-90 font-black"
+                                                title="Decrease quantity"
                                              >
-                                                <Minus size={8} strokeWidth={3} />
+                                                <Minus size={11} strokeWidth={3} />
                                              </button>
-                                             <span className="text-[10px] font-black text-slate-850 w-4 text-center font-sans">{cartItem.quantity}</span>
+                                             <span className="text-xs font-black text-slate-800 px-1 font-sans text-center min-w-[16px]">{cartItem.quantity}</span>
                                              <button 
+                                                type="button"
                                                 onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
-                                                className="w-5 h-5 flex items-center justify-center bg-emerald-600 text-white hover:bg-emerald-700 rounded-md transition-all duration-200 active:scale-90 font-black text-2xs"
+                                                className="w-6 h-6 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all duration-200 active:scale-90 font-black"
+                                                title="Increase quantity"
                                              >
-                                                <Plus size={8} strokeWidth={3} />
+                                                <Plus size={11} strokeWidth={3} />
                                              </button>
                                           </div>
                                        ) : (
                                           <button
+                                             type="button"
                                              onClick={(e) => {
                                                 e.stopPropagation();
                                                 addToCart(product);
                                              }}
-                                             className="bg-brand-light text-brand hover:bg-brand hover:text-white p-2.5 rounded-2xl transition-all duration-300 focus:ring-4 focus:ring-brand/10 outline-none shadow-sm"
+                                             className="bg-emerald-600 text-white hover:bg-emerald-700 p-2.5 rounded-xl transition-all duration-300 shadow-md shadow-emerald-900/10 active:scale-95 flex items-center justify-center"
+                                             title="Add to Cart"
                                           >
                                              <ShoppingCart size={16} />
                                           </button>
