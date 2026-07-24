@@ -8,6 +8,7 @@ import { ref, onValue, update, set, push } from 'firebase/database';
 import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power, Compass, CheckCircle, Users } from 'lucide-react';
 
 const CATEGORIES = ['Tomatoes', 'Potatoes', 'Onions', 'Brinjal', 'Carrots', 'Spinach', 'Capsicum', 'Broccoli', 'Garlic', 'Apples', 'Bananas', 'Strawberries', 'Oranges', 'Milk', 'Butter', 'Cheese', 'Yogurt', 'Paneer'];
+const STANDARD_UNITS = ['kg', 'gm', 'litre', 'ml', 'BOX', 'Packet', 'Bunch', 'Piece', 'Dozen'];
 
 export default function Profile() {
   const { user, userProfile, loading, updateProfile, logout } = useAuth();
@@ -2885,7 +2886,17 @@ export default function Profile() {
                   ) : (
                     /* ── Shops List View ── */
                     <div className="flex-1 w-full text-left">
-                      <h2 className="text-2xl font-bold text-slate-800 mb-4 font-headings">My Shops ({vendorShops.length})</h2>
+                      <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-slate-800 font-headings">My Shops ({vendorShops.length})</h2>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddShopForm(true)}
+                          className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-emerald-900/10 flex items-center justify-center gap-1.5 active:scale-[0.98] font-headings text-xs uppercase tracking-wider cursor-pointer"
+                        >
+                          <Plus size={18} />
+                          Add Shop
+                        </button>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {vendorShops.map((shop, i) => (
                           <div key={i} className="bg-white/40 backdrop-blur-sm p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-100/50 transition-all duration-300">
@@ -3034,16 +3045,6 @@ export default function Profile() {
                           </div>
                         ))}
                       </div>
-
-                      {/* Add Shop button */}
-                      <button
-                        type="button"
-                        onClick={() => setShowAddShopForm(true)}
-                        className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md shadow-emerald-900/10 flex items-center justify-center gap-2 active:scale-[0.98] font-headings mt-6"
-                      >
-                        <Plus size={20} />
-                        Add Shop
-                      </button>
                     </div>
                   )}
                 </div>
@@ -3355,19 +3356,46 @@ export default function Profile() {
                                   <input type="text" name="netWeight" value={newProduct.netWeight} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="500g" />
                                 </div>
                                 <div>
-                                  <label className={labelCls}>Unit (e.g. kg, box) <span className="text-emerald-600 font-bold">*</span></label>
+                                  <label className={labelCls}>Unit (e.g. kg, box, gm, ml) <span className="text-emerald-600 font-bold">*</span></label>
                                   <select
                                     required
-                                    name="unit"
-                                    value={newProduct.unit}
-                                    onChange={handleInputChange}
+                                    name="unitSelect"
+                                    value={STANDARD_UNITS.includes(newProduct.unit) ? newProduct.unit : 'Other'}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      if (val === 'Other') {
+                                        setNewProduct({ ...newProduct, unit: '' });
+                                      } else {
+                                        setNewProduct({ ...newProduct, unit: val });
+                                      }
+                                    }}
                                     className={`${inputCls.replace('pl-10', 'px-4')} appearance-none bg-white font-medium`}
                                   >
                                     <option value="kg">KG</option>
+                                    <option value="gm">gm (grams)</option>
+                                    <option value="litre">litre (L)</option>
+                                    <option value="ml">ml (millilitres)</option>
                                     <option value="BOX">BOX</option>
                                     <option value="Packet">Packet</option>
-                                    <option value="litre">litre</option>
+                                    <option value="Bunch">Bunch</option>
+                                    <option value="Piece">Piece / Pcs</option>
+                                    <option value="Dozen">Dozen</option>
+                                    <option value="Other">Other...</option>
                                   </select>
+
+                                  {!STANDARD_UNITS.includes(newProduct.unit) && (
+                                    <div className="mt-2.5 animate-fade-in">
+                                      <input
+                                        required
+                                        type="text"
+                                        name="unit"
+                                        value={newProduct.unit}
+                                        onChange={handleInputChange}
+                                        className={inputCls.replace('pl-10', 'px-4')}
+                                        placeholder="Enter custom unit (e.g. crate, bundle, jar, tray)"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                                 <div>
                                   <label className={labelCls}>Available Stock / Inventory (Units / kg)</label>
@@ -3621,19 +3649,46 @@ export default function Profile() {
 
                                 {/* 7. Unit (e.g. kg, box) * (Dropdown) */}
                                 <div>
-                                  <label className={labelCls}>Unit (e.g. kg, box) <span className="text-emerald-600 font-bold">*</span></label>
+                                  <label className={labelCls}>Unit (e.g. kg, box, gm, ml) <span className="text-emerald-600 font-bold">*</span></label>
                                   <select
                                     required
-                                    name="unit"
-                                    value={editProductForm.unit}
-                                    onChange={(e) => setEditProductForm({ ...editProductForm, unit: e.target.value })}
+                                    name="unitSelect"
+                                    value={STANDARD_UNITS.includes(editProductForm.unit) ? editProductForm.unit : 'Other'}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      if (val === 'Other') {
+                                        setEditProductForm({ ...editProductForm, unit: '' });
+                                      } else {
+                                        setEditProductForm({ ...editProductForm, unit: val });
+                                      }
+                                    }}
                                     className={`${inputCls.replace('pl-10', 'px-4')} appearance-none bg-white font-medium`}
                                   >
                                     <option value="kg">KG</option>
+                                    <option value="gm">gm (grams)</option>
+                                    <option value="litre">litre (L)</option>
+                                    <option value="ml">ml (millilitres)</option>
                                     <option value="BOX">BOX</option>
                                     <option value="Packet">Packet</option>
-                                    <option value="litre">litre</option>
+                                    <option value="Bunch">Bunch</option>
+                                    <option value="Piece">Piece / Pcs</option>
+                                    <option value="Dozen">Dozen</option>
+                                    <option value="Other">Other...</option>
                                   </select>
+
+                                  {!STANDARD_UNITS.includes(editProductForm.unit) && (
+                                    <div className="mt-2.5 animate-fade-in">
+                                      <input
+                                        required
+                                        type="text"
+                                        name="unit"
+                                        value={editProductForm.unit}
+                                        onChange={(e) => setEditProductForm({ ...editProductForm, unit: e.target.value })}
+                                        className={inputCls.replace('pl-10', 'px-4')}
+                                        placeholder="Enter custom unit (e.g. crate, bundle, jar, tray)"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
 
                                 {/* 8. Available Stock / Inventory (Units / kg) */}
