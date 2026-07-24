@@ -81,11 +81,52 @@ const INITIAL_MOCK_PRODUCTS = [
   { id: 37, name: 'Malai Paneer', price: 6.00, mrp: 8.50, unit: '250g', category: 'Paneer', image: 'https://images.unsplash.com/photo-1589115715509-bba91b264e16?w=500&q=80', vendor: 'Meadow Farms', rating: 4.9 }
 ];
 
+export const DEFAULT_CATEGORIES = [
+  'Tomatoes', 'Potatoes', 'Onions', 'Brinjal', 'Carrots', 'Spinach', 
+  'Capsicum', 'Broccoli', 'Garlic', 'Apples', 'Bananas', 'Strawberries', 
+  'Oranges', 'Milk', 'Butter', 'Cheese', 'Yogurt', 'Paneer'
+];
+
 export const ProductProvider = ({ children }) => {
   const [products, setProducts] = useState(INITIAL_MOCK_PRODUCTS);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [deletedMockIds, setDeletedMockIds] = useState([]);
+
+  // Listen for categories in Realtime DB
+  useEffect(() => {
+    const categoriesRef = ref(realtimeDb, 'productCategories');
+    const unsubscribe = onValue(categoriesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && Array.isArray(data) && data.length > 0) {
+        setCategories(data);
+      } else if (data && typeof data === 'object') {
+        const catList = Object.values(data).filter(Boolean);
+        if (catList.length > 0) setCategories(catList);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const addCategory = async (categoryName) => {
+    const trimmed = categoryName.trim();
+    if (!trimmed) throw new Error('Category name cannot be empty.');
+    if (categories.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+      throw new Error('Category already exists.');
+    }
+    const updated = [...categories, trimmed];
+    setCategories(updated);
+    await set(ref(realtimeDb, 'productCategories'), updated);
+    return updated;
+  };
+
+  const deleteCategory = async (categoryName) => {
+    const updated = categories.filter(c => c !== categoryName);
+    setCategories(updated);
+    await set(ref(realtimeDb, 'productCategories'), updated);
+    return updated;
+  };
 
   useEffect(() => {
     const deletedRef = ref(realtimeDb, 'deletedMockProducts');
@@ -290,6 +331,9 @@ const cleanFirebaseData = (data) => {
       addProduct, 
       updateProduct,
       deleteProduct,
+      categories,
+      addCategory,
+      deleteCategory,
       searchQuery, 
       setSearchQuery 
     }}>

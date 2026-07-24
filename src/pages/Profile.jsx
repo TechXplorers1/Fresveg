@@ -11,7 +11,8 @@ const CATEGORIES = ['Tomatoes', 'Potatoes', 'Onions', 'Brinjal', 'Carrots', 'Spi
 
 export default function Profile() {
   const { user, userProfile, loading, updateProfile, logout } = useAuth();
-  const { products: allProducts, addProduct, updateProduct, deleteProduct } = useProducts();
+  const { products: allProducts, addProduct, updateProduct, deleteProduct, categories: dynamicCategories } = useProducts();
+  const categories = dynamicCategories && dynamicCategories.length > 0 ? dynamicCategories : CATEGORIES;
   const navigate = useNavigate();
 
   // ─── Vendor Custom Dashboard State ──────────────────────────────────────────
