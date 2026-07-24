@@ -151,7 +151,7 @@ export default function ProductDetails() {
              </div>
 
              <div className="flex flex-col">
-               <span className="text-xs text-slate-400 line-through mb-1">M.R.P: ₹{(product.price * 1.25).toFixed(2)}</span>
+               <span className="text-xs text-slate-400 line-through mb-1">M.R.P: ₹{parseFloat(product.mrp || (product.price * 1.25)).toFixed(2)}</span>
                <div className="flex items-baseline gap-1">
                  <span className="text-4xl font-black text-slate-800 font-sans">₹{parseFloat(product.price).toFixed(2)}</span>
                  <span className="text-sm text-slate-400 font-semibold font-headings">/ {product.unit}</span>
@@ -309,7 +309,7 @@ export default function ProductDetails() {
 
                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
                      <div>
-                       <span className="text-xs text-slate-400 line-through block">₹{(item.price * 1.2).toFixed(2)}</span>
+                        <span className="text-xs text-slate-400 line-through block">₹{parseFloat(item.mrp || (item.price * 1.25)).toFixed(2)}</span>
                        <span className="font-black text-slate-800 text-base font-sans">₹{parseFloat(item.price).toFixed(2)}</span>
                        <span className="text-[10px] text-slate-400 font-medium"> / {item.unit || 'kg'}</span>
                      </div>

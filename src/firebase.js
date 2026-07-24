@@ -28,7 +28,7 @@ const analytics = getAnalytics(app);
 // Initialize Firebase services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const realtimeDb = getDatabase(app);
+export const realtimeDb = getDatabase(app, "https://fresveg-default-rtdb.firebaseio.com");
 export const storage = getStorage(app);
 
 // Enable offline persistence for Firestore
