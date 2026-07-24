@@ -18,7 +18,14 @@ export default function Profile() {
   // ─── Vendor Custom Dashboard State ──────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('addresses'); // 'addresses', 'orders', 'setup'
 
-  const handleVendorLogout = async () => {
+  const [showSignoutConfirm, setShowSignoutConfirm] = useState(false);
+
+  const handleVendorLogout = () => {
+    setShowSignoutConfirm(true);
+  };
+
+  const handleConfirmLogout = async () => {
+    setShowSignoutConfirm(false);
     try {
       await logout();
       navigate('/');
@@ -32,10 +39,16 @@ export default function Profile() {
 
   const [selectedShopFilter, setSelectedShopFilter] = useState(null);
 
-  // Vendor sees products from all their shops combined (or selected filtered shop)
+  const isVendor = userProfile?.role === 'vendor';
+
+  // Vendor sees ONLY products belonging strictly to their registered shops or user UID
   const vendorProducts = allProducts.filter(p => {
-    const belongsToVendor = (p.vendorId && user?.uid && p.vendorId === user.uid) ||
-      vendorShops.some(shop => shop.shopName?.trim().toLowerCase() === p.vendor?.trim().toLowerCase());
+    const matchesVendorId = Boolean(p.vendorId && user?.uid && String(p.vendorId) === String(user.uid));
+    const matchesShopName = Boolean(vendorShops.some(shop => shop.shopName && p.vendor && shop.shopName.trim().toLowerCase() === p.vendor.trim().toLowerCase()));
+    
+    // Strict ownership: must match vendor's shop name OR vendor UID
+    const belongsToVendor = matchesVendorId || matchesShopName;
+
     if (!belongsToVendor) return false;
 
     if (selectedShopFilter) {
@@ -44,13 +57,12 @@ export default function Profile() {
     return true;
   });
 
-  const isVendor = userProfile?.role === 'vendor';
-
 
 
   // ─── UI Visibility States ───────────────────────────────────────────────────
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAddShopForm, setShowAddShopForm] = useState(false);
+  const [successModalData, setSuccessModalData] = useState(null);
 
   // ─── Add Product State ──────────────────────────────────────────────────────
   const [newProduct, setNewProduct] = useState({
@@ -250,7 +262,10 @@ export default function Profile() {
       // Single Product Creation via ProductContext
       await addProduct(productData);
 
-      alert('✅ Product successfully added to Firebase Database!');
+      setSuccessModalData({
+        title: 'Product Added Successfully',
+        message: `Product ${productData.name} added to the shop ${targetShopName} successfully.`
+      });
 
       setNewProduct({
         name: '', price: '', mrp: '', stockQuantity: '', category: '', image: '', shop: '', unit: 'kg',
@@ -1449,17 +1464,16 @@ export default function Profile() {
                     </button>
                     <button
                       onClick={() => {
-                        setActiveTab('setup');
-                        const defaultShopName = vendorShops[0]?.shopName || '';
-                        handleOpenAddProductForShop(defaultShopName);
+                        setActiveTab('my_products');
+                        setShowAddForm(false);
                       }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'setup' && showAddForm
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'my_products'
                         ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
                         : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
                         }`}
                     >
                       <Package size={18} />
-                      Add Products
+                      My Products
                     </button>
                     <button
                       onClick={() => setActiveTab('farms')}
@@ -1651,31 +1665,34 @@ export default function Profile() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {savedAddresses.map((addr) => (
-                    <div key={addr.id} className="bg-white/40 hover:bg-white/90 p-5 rounded-3xl border border-slate-100 hover:border-emerald-100 hover:shadow-md transition-all duration-300 relative group">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-100/30 px-2.5 py-1 rounded-md uppercase tracking-wider">
-                          {addr.label || 'Other'}
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold text-slate-800 font-headings">{addr.street}</p>
-                      <p className="text-xs text-slate-400 mt-1">{addr.city}, {addr.state} - {addr.zipCode}</p>
-                      <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-black">{addr.country}</p>
+                    <div key={addr.id} className="bg-white/70 hover:bg-white p-5 rounded-3xl border border-slate-100 hover:border-emerald-100 hover:shadow-md transition-all duration-300 flex flex-col justify-between group">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <span className="text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-100/50 px-2.5 py-1 rounded-md uppercase tracking-wider">
+                            {addr.label || 'Other'}
+                          </span>
+                          
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => handleEditAddressClick(addr)}
+                              className="text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all p-1.5 rounded-xl border border-slate-100"
+                              title="Edit Address"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAddress(addr.id)}
+                              className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all p-1.5 rounded-xl border border-slate-100"
+                              title="Delete Address"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
 
-                      <div className="absolute top-4 right-4 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                        <button
-                          onClick={() => handleEditAddressClick(addr)}
-                          className="text-slate-450 hover:text-emerald-600 hover:bg-white transition-all p-1.5 rounded-lg shadow-sm border border-slate-100"
-                          title="Edit Address"
-                        >
-                          <Pencil size={12} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteAddress(addr.id)}
-                          className="text-slate-450 hover:text-rose-600 hover:bg-white transition-all p-1.5 rounded-lg shadow-sm border border-slate-100"
-                          title="Delete Address"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        <p className="text-sm font-bold text-slate-800 font-headings leading-snug break-words">{addr.street}</p>
+                        <p className="text-xs text-slate-500 font-medium font-body mt-1 break-words">{addr.city}, {addr.state} - {addr.zipCode}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-black font-headings">{addr.country}</p>
                       </div>
                     </div>
                   ))}
@@ -2659,10 +2676,10 @@ export default function Profile() {
             </div>
           )}
 
+          {/* ─── Vendor: Set Up Your Shop Tab ──────────────────────────────────── */}
           {(isVendor && activeTab === 'setup') && (
-            <>
-              {/* ── Vendor: No Shop Yet ──────────────────────────────────────────────── */}
-              {vendorShops.length === 0 && (
+            <div className="space-y-8 animate-fade-in text-left">
+              {vendorShops.length === 0 ? (
                 <div className="bg-white/70 backdrop-blur-md border border-white/60 p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] max-w-xl mx-auto mt-8 animate-fade-in">
                   <div className="text-center mb-6">
                     <div className="bg-emerald-50 text-emerald-600 border border-emerald-100/50 p-4 rounded-3xl inline-block mb-4">
@@ -2724,10 +2741,7 @@ export default function Profile() {
                     </button>
                   </form>
                 </div>
-              )}
-
-              {/* ── Vendor: Has Shops ────────────────────────────────────────────────── */}
-              {userProfile?.role === 'vendor' && activeTab === 'setup' && vendorShops.length > 0 && (
+              ) : (
                 <div className="mt-8">
                   {viewingShopIndex !== null ? (
                     /* ── Shop Detail Page View ── */
@@ -2737,7 +2751,6 @@ export default function Profile() {
 
                       return (
                         <div className="space-y-8 animate-fade-in">
-                          {/* Back button */}
                           <button
                             onClick={() => {
                               setViewingShopIndex(null);
@@ -2748,9 +2761,7 @@ export default function Profile() {
                             <ArrowLeft size={16} /> Back to My Shops
                           </button>
 
-                          {/* Shop Details Header Card */}
                           <div className="bg-white/70 backdrop-blur-md border border-white/60 rounded-3xl overflow-hidden shadow-xl shadow-emerald-950/[0.02]">
-                            {/* Banner Image */}
                             <div className="h-56 w-full bg-gradient-to-r from-emerald-800 to-teal-950 relative flex items-center justify-center">
                               {shop.image ? (
                                 <img src={shop.image} alt={shop.shopName} className="w-full h-full object-cover" />
@@ -2760,7 +2771,6 @@ export default function Profile() {
                                   <p className="text-sm font-semibold tracking-wider uppercase opacity-80 font-headings">Fresh Produce Store</p>
                                 </div>
                               )}
-                              {/* Edit Button Overlay */}
                               <button
                                 onClick={() => handleEditShopClick(shop, viewingShopIndex)}
                                 className="absolute bottom-4 right-4 bg-white/90 hover:bg-white text-emerald-600 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 font-headings"
@@ -2769,10 +2779,8 @@ export default function Profile() {
                               </button>
                             </div>
 
-                            {/* Shop details */}
                             <div className="p-6 md:p-8">
                               {editingShopIndex === viewingShopIndex ? (
-                                /* Editing form inside detail page */
                                 <form onSubmit={handleUpdateShop} className="space-y-4 max-w-xl">
                                   <h3 className="text-lg font-bold text-slate-800 mb-2 font-headings">Edit Shop Details</h3>
                                   <div>
@@ -2822,7 +2830,6 @@ export default function Profile() {
                                   </div>
                                 </form>
                               ) : deletingShopIndex === viewingShopIndex ? (
-                                /* Delete Shop Confirmation block */
                                 <div className="py-6 flex flex-col items-center justify-center text-center gap-2 max-w-md mx-auto">
                                   <Trash2 className="text-red-500 animate-bounce" size={32} />
                                   <h3 className="text-lg font-bold text-slate-800 font-headings">Delete {shop.shopName}?</h3>
@@ -2849,7 +2856,6 @@ export default function Profile() {
                                   </div>
                                 </div>
                               ) : (
-                                /* Display Shop details */
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                   <div className="space-y-4">
                                     <h2 className="text-3xl font-black text-slate-850 font-headings">{shop.shopName}</h2>
@@ -2877,161 +2883,156 @@ export default function Profile() {
                       );
                     })()
                   ) : (
-                    /* My Shops panel */
-                    <div className="mb-8 bg-white/70 backdrop-blur-md border border-white/60 p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02]">
-                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                        <div className="flex-1 w-full">
-                          <h2 className="text-2xl font-bold text-slate-800 mb-4 font-headings">My Shops ({vendorShops.length})</h2>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {vendorShops.map((shop, i) => (
-                              <div key={i} className="bg-white/40 backdrop-blur-sm p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-100/50 transition-all duration-300">
-                                {editingShopIndex === i ? (
-                                  /* ── Inline Edit Shop Form ── */
-                                  <form onSubmit={handleUpdateShop} className="space-y-3">
-                                    <p className="text-xs font-black text-emerald-700 uppercase tracking-wider mb-2 font-headings">Editing Shop</p>
-                                    <div>
-                                      <label className={labelCls}>Shop Name</label>
-                                      <div className="relative">
-                                        <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                        <input required type="text" value={editShopForm.shopName} onChange={(e) => setEditShopForm({ ...editShopForm, shopName: e.target.value })} className={inputCls} />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <label className={labelCls}>Location <span className="text-emerald-650 font-bold">*</span></label>
-                                      <div className="relative">
-                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                        <input required type="text" value={editShopForm.location} onChange={(e) => setEditShopForm({ ...editShopForm, location: e.target.value })} className={inputCls} style={{ paddingRight: '150px' }} placeholder="E.g. Andheri West, Mumbai, Maharashtra" />
-                                        <button
-                                          type="button"
-                                          onClick={() => handleGetCurrentLocation(setEditShopForm, editShopForm)}
-                                          disabled={detectingShopLocation}
-                                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-50 hover:bg-emerald-100 disabled:bg-slate-100 disabled:text-slate-400 text-emerald-600 text-xs font-bold px-2 py-1 rounded-md transition-colors border border-emerald-100/50 flex items-center gap-1"
-                                        >
-                                          {detectingShopLocation ? (
-                                            <span className="w-2.5 h-2.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></span>
-                                          ) : (
-                                            <Navigation size={10} />
-                                          )}
-                                          {detectingShopLocation ? 'Detecting...' : 'Add current location'}
-                                        </button>
-                                      </div>
-                                      <p className="text-[10px] text-emerald-600 mt-1 flex items-start gap-1 font-body leading-relaxed">
-                                        <Navigation size={10} className="mt-0.5 flex-shrink-0" /> Enter your full address so customers can see your shop on Google Maps when tracking orders.
-                                      </p>
-                                    </div>
-                                    <div>
-                                      <label className={labelCls}>GST Number</label>
-                                      <div className="relative">
-                                        <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                        <input required type="text" value={editShopForm.gstNumber} onChange={(e) => setEditShopForm({ ...editShopForm, gstNumber: e.target.value })} className={inputCls} />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <label className={labelCls}>Shop Photo URL</label>
-                                      <div className="relative">
-                                        <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                        <input type="text" value={editShopForm.image} onChange={(e) => setEditShopForm({ ...editShopForm, image: e.target.value })} className={inputCls} placeholder="https://images.unsplash.com/..." />
-                                      </div>
-                                    </div>
-                                    <div className="flex gap-2 pt-1">
-                                      <button type="submit" className="flex items-center gap-1 bg-emerald-650 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all"><Check size={14} /> Save</button>
-                                      <button type="button" onClick={() => setEditingShopIndex(null)} className="flex items-center gap-1 bg-slate-105 text-slate-600 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"><X size={14} /> Cancel</button>
-                                    </div>
-                                  </form>
-                                ) : deletingShopIndex === i ? (
-                                  /* ── Delete Confirmation ── */
-                                  <div className="p-4 flex flex-col items-center justify-center text-center gap-2">
-                                    <Trash2 className="text-red-500 animate-bounce" size={24} />
-                                    <p className="text-sm font-bold text-slate-800 font-headings">Delete {shop.shopName}?</p>
-                                    <p className="text-[10px] text-slate-400 font-body">Deleting this shop will also hide its products. This cannot be undone.</p>
-                                    <div className="flex gap-2 mt-2">
-                                      <button type="button" onClick={() => handleDeleteShop(i)} className="bg-gradient-to-r from-rose-500 to-red-650 hover:from-rose-600 hover:to-red-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-900/10">Yes, Delete</button>
-                                      <button type="button" onClick={() => setDeletingShopIndex(null)} className="bg-slate-100 text-slate-650 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all">Cancel</button>
-                                    </div>
+                    /* ── Shops List View ── */
+                    <div className="flex-1 w-full text-left">
+                      <h2 className="text-2xl font-bold text-slate-800 mb-4 font-headings">My Shops ({vendorShops.length})</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {vendorShops.map((shop, i) => (
+                          <div key={i} className="bg-white/40 backdrop-blur-sm p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-100/50 transition-all duration-300">
+                            {editingShopIndex === i ? (
+                              <form onSubmit={handleUpdateShop} className="space-y-3">
+                                <p className="text-xs font-black text-emerald-700 uppercase tracking-wider mb-2 font-headings">Editing Shop</p>
+                                <div>
+                                  <label className={labelCls}>Shop Name</label>
+                                  <div className="relative">
+                                    <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input required type="text" value={editShopForm.shopName} onChange={(e) => setEditShopForm({ ...editShopForm, shopName: e.target.value })} className={inputCls} />
                                   </div>
-                                ) : (
-                                  /* ── Shop Card View ── */
-                                  <>
-                                    {/* Shop Header */}
-                                    <div className="flex justify-between items-start mb-3">
-                                      <div className="flex items-center gap-2">
-                                        <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100/30">
-                                          <Store size={14} className="text-emerald-600" />
-                                        </div>
-                                        <h3 className="font-extrabold text-slate-800 font-headings">{shop.shopName}</h3>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <button onClick={() => handleEditShopClick(shop, i)} className="text-slate-400 hover:text-emerald-600 transition-colors p-1.5 rounded-lg hover:bg-emerald-50" title="Edit Shop">
-                                          <Pencil size={14} />
-                                        </button>
-                                        <button onClick={() => setDeletingShopIndex(i)} className="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-rose-50" title="Delete Shop">
-                                          <Trash2 size={14} />
-                                        </button>
-                                      </div>
-                                    </div>
-
-                                    {/* Location row */}
-                                    <div className="flex items-center justify-between gap-2 mb-3">
-                                      <div className="flex items-center gap-2 text-sm text-slate-500 min-w-0 font-body">
-                                        <MapPin size={13} className="text-emerald-600 flex-shrink-0" />
-                                        <span className="truncate font-semibold">{shop.location || <span className="text-red-400 italic">No location set</span>}</span>
-                                      </div>
-                                      {shop.location && (
-                                        <a
-                                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.location)}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-1 text-xs font-bold text-emerald-600 border border-emerald-250 px-2 py-1 rounded-lg hover:bg-emerald-50/50 transition-colors flex-shrink-0 font-headings"
-                                        >
-                                          <ExternalLink size={11} /> Maps
-                                        </a>
-                                      )}
-                                    </div>
-
-                                    {/* Google Maps Embed Preview */}
-                                    {shop.location ? (
-                                      <div className="rounded-2xl overflow-hidden border border-slate-150 shadow-inner mb-3" style={{ height: '160px' }}>
-                                        <iframe
-                                          title={`Map for ${shop.shopName}`}
-                                          src={`https://maps.google.com/maps?q=${encodeURIComponent(shop.location + (shop.shopName ? ' ' + shop.shopName : ''))}&output=embed&z=14`}
-                                          width="100%"
-                                          height="100%"
-                                          style={{ border: 0 }}
-                                          loading="lazy"
-                                          referrerPolicy="no-referrer-when-downgrade"
-                                        />
-                                      </div>
-                                    ) : (
-                                      <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-rose-150 bg-rose-50/30 mb-3 py-5 px-3 text-center">
-                                        <Navigation size={22} className="text-rose-300 mb-1" />
-                                        <p className="text-xs font-bold text-rose-500 font-headings">Shop location not set</p>
-                                        <p className="text-[10px] text-slate-400 mt-0.5 font-body">Click the pencil icon to add your location so customers can track their orders.</p>
-                                      </div>
-                                    )}
-
-                                    {/* GST */}
-                                    <div className="flex items-center gap-2 text-xs text-slate-400 border-b border-slate-100 pb-3 font-body">
-                                      <FileText size={12} />
-                                      <span>GST: {shop.gstNumber}</span>
-                                    </div>
-
-                                    {/* View Shop Button */}
+                                </div>
+                                <div>
+                                  <label className={labelCls}>Location <span className="text-emerald-650 font-bold">*</span></label>
+                                  <div className="relative">
+                                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input required type="text" value={editShopForm.location} onChange={(e) => setEditShopForm({ ...editShopForm, location: e.target.value })} className={inputCls} style={{ paddingRight: '150px' }} placeholder="E.g. Andheri West, Mumbai, Maharashtra" />
                                     <button
                                       type="button"
-                                      onClick={() => {
-                                        setViewingShopIndex(i);
-                                        setSelectedShopFilter(shop.shopName);
-                                      }}
-                                      className="w-full mt-3 flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-900/10 active:scale-[0.98] font-headings"
+                                      onClick={() => handleGetCurrentLocation(setEditShopForm, editShopForm)}
+                                      disabled={detectingShopLocation}
+                                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-50 hover:bg-emerald-100 disabled:bg-slate-100 disabled:text-slate-400 text-emerald-600 text-xs font-bold px-2 py-1 rounded-md transition-colors border border-emerald-100/50 flex items-center gap-1"
                                     >
-                                      <Store size={12} /> View Shop
+                                      {detectingShopLocation ? (
+                                        <span className="w-2.5 h-2.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></span>
+                                      ) : (
+                                        <Navigation size={10} />
+                                      )}
+                                      {detectingShopLocation ? 'Detecting...' : 'Add current location'}
                                     </button>
-                                  </>
-                                )}
+                                  </div>
+                                  <p className="text-[10px] text-emerald-600 mt-1 flex items-start gap-1 font-body leading-relaxed">
+                                    <Navigation size={10} className="mt-0.5 flex-shrink-0" /> Enter your full address so customers can see your shop on Google Maps when tracking orders.
+                                  </p>
+                                </div>
+                                <div>
+                                  <label className={labelCls}>GST Number</label>
+                                  <div className="relative">
+                                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input required type="text" value={editShopForm.gstNumber} onChange={(e) => setEditShopForm({ ...editShopForm, gstNumber: e.target.value })} className={inputCls} />
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className={labelCls}>Shop Photo URL</label>
+                                  <div className="relative">
+                                    <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input type="text" value={editShopForm.image} onChange={(e) => setEditShopForm({ ...editShopForm, image: e.target.value })} className={inputCls} placeholder="https://images.unsplash.com/..." />
+                                  </div>
+                                </div>
+                                <div className="flex gap-2 pt-1">
+                                  <button type="submit" className="flex items-center gap-1 bg-emerald-650 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all"><Check size={14} /> Save</button>
+                                  <button type="button" onClick={() => setEditingShopIndex(null)} className="flex items-center gap-1 bg-slate-105 text-slate-600 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"><X size={14} /> Cancel</button>
+                                </div>
+                              </form>
+                            ) : deletingShopIndex === i ? (
+                              /* ── Delete Confirmation ── */
+                              <div className="p-4 flex flex-col items-center justify-center text-center gap-2">
+                                <Trash2 className="text-red-500 animate-bounce" size={24} />
+                                <p className="text-sm font-bold text-slate-800 font-headings">Delete {shop.shopName}?</p>
+                                <p className="text-[10px] text-slate-400 font-body">Deleting this shop will also hide its products. This cannot be undone.</p>
+                                <div className="flex gap-2 mt-2">
+                                  <button type="button" onClick={() => handleDeleteShop(i)} className="bg-gradient-to-r from-rose-500 to-red-650 hover:from-rose-600 hover:to-red-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-900/10">Yes, Delete</button>
+                                  <button type="button" onClick={() => setDeletingShopIndex(null)} className="bg-slate-100 text-slate-650 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all">Cancel</button>
+                                </div>
                               </div>
-                            ))}
+                            ) : (
+                              /* ── Shop Card View ── */
+                              <>
+                                {/* Shop Header */}
+                                <div className="flex justify-between items-start mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100/30">
+                                      <Store size={14} className="text-emerald-600" />
+                                    </div>
+                                    <h3 className="font-extrabold text-slate-800 font-headings">{shop.shopName}</h3>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <button onClick={() => handleEditShopClick(shop, i)} className="text-slate-400 hover:text-emerald-600 transition-colors p-1.5 rounded-lg hover:bg-emerald-50" title="Edit Shop">
+                                      <Pencil size={14} />
+                                    </button>
+                                    <button onClick={() => setDeletingShopIndex(i)} className="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-rose-50" title="Delete Shop">
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Location row */}
+                                <div className="flex items-center justify-between gap-2 mb-3">
+                                  <div className="flex items-center gap-2 text-sm text-slate-500 min-w-0 font-body">
+                                    <MapPin size={13} className="text-emerald-600 flex-shrink-0" />
+                                    <span className="truncate font-semibold">{shop.location || <span className="text-red-400 italic">No location set</span>}</span>
+                                  </div>
+                                  {shop.location && (
+                                    <a
+                                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.location)}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1 text-xs font-bold text-emerald-600 border border-emerald-250 px-2 py-1 rounded-lg hover:bg-emerald-50/50 transition-colors flex-shrink-0 font-headings"
+                                    >
+                                      <ExternalLink size={11} /> Maps
+                                    </a>
+                                  )}
+                                </div>
+
+                                {/* Google Maps Embed Preview */}
+                                {shop.location ? (
+                                  <div className="rounded-2xl overflow-hidden border border-slate-150 shadow-inner mb-3" style={{ height: '160px' }}>
+                                    <iframe
+                                      title={`Map for ${shop.shopName}`}
+                                      src={`https://maps.google.com/maps?q=${encodeURIComponent(shop.location + (shop.shopName ? ' ' + shop.shopName : ''))}&output=embed&z=14`}
+                                      width="100%"
+                                      height="100%"
+                                      style={{ border: 0 }}
+                                      loading="lazy"
+                                      referrerPolicy="no-referrer-when-downgrade"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-rose-150 bg-rose-50/30 mb-3 py-5 px-3 text-center">
+                                    <Navigation size={22} className="text-rose-300 mb-1" />
+                                    <p className="text-xs font-bold text-rose-500 font-headings">Shop location not set</p>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 font-body">Click the pencil icon to add your location so customers can track their orders.</p>
+                                  </div>
+                                )}
+
+                                {/* GST */}
+                                <div className="flex items-center gap-2 text-xs text-slate-400 border-b border-slate-100 pb-3 font-body">
+                                  <FileText size={12} />
+                                  <span>GST: {shop.gstNumber}</span>
+                                </div>
+
+                                {/* View Shop Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setViewingShopIndex(i);
+                                    setSelectedShopFilter(shop.shopName);
+                                  }}
+                                  className="w-full mt-3 flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-900/10 active:scale-[0.98] font-headings"
+                                >
+                                  <Store size={12} /> View Shop
+                                </button>
+                              </>
+                            )}
                           </div>
-                        </div>
+                        ))}
                       </div>
 
                       {/* Add Shop button */}
@@ -3045,10 +3046,121 @@ export default function Profile() {
                       </button>
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+          {/* ─── Vendor: My Products Tab ────────────────────────────────────────── */}
+          {(isVendor && activeTab === 'my_products') && (
+            <div className="space-y-8 animate-fade-in text-left">
+              <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02]">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+                  <div>
+                    <h2 className="text-xl font-extrabold font-headings text-slate-800 flex items-center gap-2">
+                      <Package className="text-emerald-600" size={22} />
+                      {selectedShopFilter ? `Products at ${selectedShopFilter}` : 'My Products'} ({vendorProducts.length})
+                    </h2>
+                    <p className="text-xs text-slate-450 font-body mt-0.5">Manage catalog pricing, stock levels, and publish new products.</p>
+                  </div>
 
+                  <div className="flex items-center gap-2.5 self-start sm:self-auto">
+                    {selectedShopFilter && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedShopFilter(null)}
+                        className="flex items-center gap-1.5 bg-slate-100 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/50 px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] font-headings"
+                      >
+                        <X size={12} /> Show All Shops
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const defaultShopName = vendorShops[0]?.shopName || '';
+                        handleOpenAddProductForShop(defaultShopName);
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-4 py-2.5 rounded-2xl text-xs uppercase tracking-wider transition-all shadow-md shadow-emerald-600/20 active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      <Plus size={16} /> Add Products
+                    </button>
+                  </div>
+                </div>
 
+                {vendorProducts.length === 0 ? (
+                  <div className="bg-white/40 border border-dashed border-slate-200 rounded-3xl p-12 text-center">
+                    <Package className="mx-auto text-slate-350 mb-4" size={48} />
+                    <h3 className="text-lg font-bold font-headings text-slate-800 mb-1">No products yet</h3>
+                    <p className="text-sm text-slate-550 font-body mb-4">Get started by adding your first product to your shop.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const defaultShopName = vendorShops[0]?.shopName || '';
+                        handleOpenAddProductForShop(defaultShopName);
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-5 py-2.5 rounded-2xl text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 inline-flex items-center gap-1.5"
+                    >
+                      <Plus size={16} /> Add Products
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {vendorProducts.map(product => (
+                      <div key={product.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md hover:border-emerald-100/50 transition-all duration-300">
+                        {deletingProductId === product.id ? (
+                          <div className="p-5 flex flex-col items-center justify-center h-full text-center gap-3">
+                            <Trash2 className="text-rose-500 animate-bounce" size={32} />
+                            <p className="text-sm font-bold text-slate-800 font-headings">Delete <span className="text-emerald-600">{product.name}</span>?</p>
+                            <p className="text-xs text-slate-405 font-body">This cannot be undone.</p>
+                            <div className="flex gap-2">
+                              <button onClick={() => handleDeleteProduct(product.id)} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md">Yes, Delete</button>
+                              <button onClick={() => setDeletingProductId(null)} className="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all">Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="h-44 overflow-hidden bg-slate-50 flex items-center justify-center relative group">
+                              {product.image
+                                ? <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                : <ImageIcon className="text-slate-300" size={48} />
+                              }
+                              <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-305">
+                                <button
+                                  onClick={() => handleEditProductClick(product)}
+                                  className="bg-white/90 backdrop-blur-sm text-emerald-600 hover:bg-emerald-650 hover:text-white p-2 rounded-xl shadow-md border border-slate-100 transition-colors"
+                                  title="Edit Product"
+                                >
+                                  <Pencil size={14} />
+                                </button>
+                                <button
+                                  onClick={() => setDeletingProductId(product.id)}
+                                  className="bg-white/90 backdrop-blur-sm text-rose-550 hover:bg-rose-600 hover:text-white p-2 rounded-xl shadow-md border border-slate-100 transition-colors"
+                                  title="Delete Product"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="p-4">
+                              <div className="text-[10px] font-black text-emerald-650 mb-1.5 uppercase tracking-wider font-headings">{product.category}</div>
+                              <h3 className="font-bold text-slate-800 mb-1 truncate font-headings text-sm">{product.name}</h3>
+                              <div className="flex items-center justify-between mt-3">
+                                <div className="font-extrabold text-slate-900 text-base font-body">₹{parseFloat(product.price).toFixed(2)}</div>
+                                <div className="bg-slate-50 text-slate-405 px-2.5 py-1 rounded-full text-[10px] font-semibold truncate max-w-[120px] flex items-center gap-1 border border-slate-100 font-body">
+                                  <Store size={10} /> {product.vendor}
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
-                  {/* ── Add New Shop Form Modal ────────────────────────────────────────── */}
+        </div> {/* closes lg:col-span-9 space-y-8 */}
                   {showAddShopForm && (
                     <div
                       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
@@ -3719,94 +3831,75 @@ export default function Profile() {
                     </div>
                   )}
 
-                  {/* ── Your Products ─────────────────────────────────────────────────── */}
-                  <div>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-                      <h2 className="text-xl font-bold font-headings text-slate-800">
-                        {selectedShopFilter ? `Products at ${selectedShopFilter}` : 'Your Products'} ({vendorProducts.length})
-                      </h2>
-                      {selectedShopFilter && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedShopFilter(null)}
-                          className="flex items-center gap-1.5 bg-slate-100 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/50 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all self-start shadow-sm active:scale-[0.98] font-headings"
-                        >
-                          <X size={12} /> Show All Shops
-                        </button>
-                      )}
-                    </div>
-                    {vendorProducts.length === 0 ? (
-                      <div className="bg-white/40 border border-dashed border-slate-200 rounded-3xl p-12 text-center">
-                        <Package className="mx-auto text-slate-350 mb-4" size={48} />
-                        <h3 className="text-lg font-bold font-headings text-slate-800 mb-1">No products yet</h3>
-                        <p className="text-sm text-slate-550 font-body">Get started by adding your first product to your shop.</p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {vendorProducts.map(product => (
-                          <div key={product.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md hover:border-emerald-100/50 transition-all duration-300">
 
-                            {deletingProductId === product.id ? (
-                              /* ── Delete Confirmation ── */
-                              <div className="p-5 flex flex-col items-center justify-center h-full text-center gap-3">
-                                <Trash2 className="text-rose-500 animate-bounce" size={32} />
-                                <p className="text-sm font-bold text-slate-800 font-headings">Delete <span className="text-emerald-600">{product.name}</span>?</p>
-                                <p className="text-xs text-slate-405 font-body">This cannot be undone.</p>
-                                <div className="flex gap-2">
-                                  <button onClick={() => handleDeleteProduct(product.id)} className="bg-gradient-to-r from-rose-500 to-red-650 hover:from-rose-600 hover:to-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-900/10">Yes, Delete</button>
-                                  <button onClick={() => setDeletingProductId(null)} className="bg-slate-100 text-slate-655 px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all">Cancel</button>
-                                </div>
-                              </div>
-                            ) : (
-                              /* ── Normal Product Card ── */
-                              <>
-                                <div className="h-44 overflow-hidden bg-slate-50 flex items-center justify-center relative group">
-                                  {product.image
-                                    ? <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                    : <ImageIcon className="text-slate-300" size={48} />
-                                  }
-                                  {/* Action buttons overlay */}
-                                  <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-305">
-                                    <button
-                                      onClick={() => handleEditProductClick(product)}
-                                      className="bg-white/90 backdrop-blur-sm text-emerald-600 hover:bg-emerald-650 hover:text-white p-2 rounded-xl shadow-md border border-slate-100 transition-colors"
-                                      title="Edit Product"
-                                    >
-                                      <Pencil size={14} />
-                                    </button>
-                                    <button
-                                      onClick={() => setDeletingProductId(product.id)}
-                                      className="bg-white/90 backdrop-blur-sm text-rose-550 hover:bg-rose-600 hover:text-white p-2 rounded-xl shadow-md border border-slate-100 transition-colors"
-                                      title="Delete Product"
-                                    >
-                                      <Trash2 size={14} />
-                                    </button>
-                                  </div>
-                                </div>
-                                <div className="p-4">
-                                  <div className="text-[10px] font-black text-emerald-650 mb-1.5 uppercase tracking-wider font-headings">{product.category}</div>
-                                  <h3 className="font-bold text-slate-800 mb-1 truncate font-headings text-sm">{product.name}</h3>
-                                  <div className="flex items-center justify-between mt-3">
-                                    <div className="font-extrabold text-slate-900 text-base font-body">₹{parseFloat(product.price).toFixed(2)}</div>
-                                    <div className="bg-slate-50 text-slate-405 px-2.5 py-1 rounded-full text-[10px] font-semibold truncate max-w-[120px] flex items-center gap-1 border border-slate-100 font-body">
-                                      <Store size={10} /> {product.vendor}
-                                    </div>
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                </div>
-              )}
-            </>
-          )}
-        </div>
       </div>
+
+      {/* Custom Success Popup Modal */}
+      {successModalData && (
+        <div className="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-emerald-100 space-y-6 text-center animate-scale-up">
+            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner border border-emerald-200/60">
+              <CheckCircle size={32} />
+            </div>
+            
+            <div>
+              <h3 className="text-xl font-extrabold text-slate-900 font-headings">
+                {successModalData.title || 'Success!'}
+              </h3>
+              <p className="text-sm text-slate-600 font-medium mt-2 leading-relaxed font-body">
+                {successModalData.message}
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setSuccessModalData(null)}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-6 rounded-2xl text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-600/20 active:scale-95 cursor-pointer"
+              >
+                Okay, Great!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Signout Confirmation Popup Modal */}
+      {showSignoutConfirm && (
+        <div className="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-slate-100 space-y-6 text-center animate-scale-up">
+            <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto shadow-inner border border-rose-100">
+              <LogOutIcon size={30} className="ml-1" />
+            </div>
+
+            <div>
+              <h3 className="text-xl font-extrabold text-slate-900 font-headings">
+                Confirm Signout
+              </h3>
+              <p className="text-sm text-slate-600 font-medium mt-2 leading-relaxed font-body">
+                Are you sure you want to Signout?
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleConfirmLogout}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-extrabold py-3 px-4 rounded-2xl text-xs uppercase tracking-wider transition-all shadow-md shadow-red-600/20 active:scale-95 cursor-pointer"
+              >
+                Yes, Signout
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSignoutConfirm(false)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold py-3 px-4 rounded-2xl text-xs uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

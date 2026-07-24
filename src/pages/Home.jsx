@@ -181,6 +181,94 @@ export default function Home() {
             </div>
          </section>
 
+         {/* About Section */}
+         <section className="py-24">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+               <div className="grid md:grid-cols-2 gap-16 items-center">
+                  <div className="text-left space-y-6">
+                     <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+                        {homeContent.aboutHeadline} <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
+                     </h2>
+                     <div className="space-y-4 text-gray-500 text-sm leading-relaxed">
+                        <p>
+                           {homeContent.aboutText1}
+                        </p>
+                        <p>
+                           {homeContent.aboutText2}
+                        </p>
+                     </div>
+                     <Link to="/marketplace" className="inline-flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-8 py-3.5 rounded-full font-bold text-sm tracking-wide transition-all shadow-lg shadow-brand/10 hover:-translate-y-0.5 active:translate-y-0">
+                        Shop Now <ArrowRight size={18} />
+                     </Link>
+                  </div>
+                  <div className="relative flex justify-center">
+                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-brand-light rounded-full blur-3xl opacity-60"></div>
+                     <div className="rounded-3xl overflow-hidden shadow-2xl border-4 border-white relative z-10 max-w-md w-full hover:scale-101 transition-transform">
+                        <img src={homeContent.aboutImage} alt="Farm Fresh Produce" className="w-full h-88 object-cover" />
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </section>
+
+          {/* Our Farm-to-Table Process */}
+          <section className="py-20 bg-white">
+             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-16">
+                   <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">{homeContent.processTitle || "Our Farm-to-Table Process"}</h2>
+                   <p className="text-gray-500 max-w-xl mx-auto text-sm">{homeContent.processSubtitle || "We maintain a clean, temperature-controlled, and highly efficient network to ship organic products from local soil directly to your shelf."}</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative">
+
+                   {/* Step 1 */}
+                   <div className="space-y-4 text-center group">
+                      <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                         <Sprout size={28} />
+                      </div>
+                      <div className="space-y-2">
+                         <h3 className="text-base font-extrabold text-gray-900">{homeContent.process1Title || "1. Fresh Harvest"}</h3>
+                         <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process1Desc || "Farmers pick organic produce only after you place your order to ensure peak flavor."}</p>
+                      </div>
+                   </div>
+
+                   {/* Step 2 */}
+                   <div className="space-y-4 text-center group">
+                      <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                         <Box size={28} />
+                      </div>
+                      <div className="space-y-2">
+                         <h3 className="text-base font-extrabold text-gray-900">{homeContent.process2Title || "2. Eco Packaging"}</h3>
+                         <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process2Desc || "Items are sorted and wrapped in plastic-free biodegradable packets to protect the planet."}</p>
+                      </div>
+                   </div>
+
+                   {/* Step 3 */}
+                   <div className="space-y-4 text-center group">
+                      <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                         <Truck size={28} />
+                      </div>
+                      <div className="space-y-2">
+                         <h3 className="text-base font-extrabold text-gray-900">{homeContent.process3Title || "3. Swift Transit"}</h3>
+                         <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process3Desc || "Delivery partners collect your box immediately and run optimized routes using maps."}</p>
+                      </div>
+                   </div>
+
+                   {/* Step 4 */}
+                   <div className="space-y-4 text-center group">
+                      <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                         <MapPin size={28} />
+                      </div>
+                      <div className="space-y-2">
+                         <h3 className="text-base font-extrabold text-gray-900">{homeContent.process4Title || "4. Doorstep Joy"}</h3>
+                         <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process4Desc || "Get contact-free drop off in under 4 hours, and scan farm codes for origin tracing."}</p>
+                      </div>
+                   </div>
+
+                </div>
+             </div>
+          </section>
+
          {/* Why Choose FresVeg? */}
          <section className="py-20 relative bg-emerald-500/5">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -214,164 +302,131 @@ export default function Home() {
             </div>
          </section>
 
-         {/* Our Farm-to-Table Process */}
-         <section className="py-20 bg-white">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-               <div className="text-center mb-16">
-                  <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">{homeContent.processTitle || "Our Farm-to-Table Process"}</h2>
-                  <p className="text-gray-500 max-w-xl mx-auto text-sm">{homeContent.processSubtitle || "We maintain a clean, temperature-controlled, and highly efficient network to ship organic products from local soil directly to your shelf."}</p>
-               </div>
-
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative">
-
-                  {/* Step 1 */}
-                  <div className="space-y-4 text-center group">
-                     <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                        <Sprout size={28} />
-                     </div>
-                     <div className="space-y-2">
-                        <h3 className="text-base font-extrabold text-gray-900">{homeContent.process1Title || "1. Fresh Harvest"}</h3>
-                        <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process1Desc || "Farmers pick organic produce only after you place your order to ensure peak flavor."}</p>
-                     </div>
-                  </div>
-
-                  {/* Step 2 */}
-                  <div className="space-y-4 text-center group">
-                     <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                        <Box size={28} />
-                     </div>
-                     <div className="space-y-2">
-                        <h3 className="text-base font-extrabold text-gray-900">{homeContent.process2Title || "2. Eco Packaging"}</h3>
-                        <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process2Desc || "Items are sorted and wrapped in plastic-free biodegradable packets to protect the planet."}</p>
-                     </div>
-                  </div>
-
-                  {/* Step 3 */}
-                  <div className="space-y-4 text-center group">
-                     <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                        <Truck size={28} />
-                     </div>
-                     <div className="space-y-2">
-                        <h3 className="text-base font-extrabold text-gray-900">{homeContent.process3Title || "3. Swift Transit"}</h3>
-                        <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process3Desc || "Delivery partners collect your box immediately and run optimized routes using maps."}</p>
-                     </div>
-                  </div>
-
-                  {/* Step 4 */}
-                  <div className="space-y-4 text-center group">
-                     <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                        <MapPin size={28} />
-                     </div>
-                     <div className="space-y-2">
-                        <h3 className="text-base font-extrabold text-gray-900">{homeContent.process4Title || "4. Doorstep Joy"}</h3>
-                        <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process4Desc || "Get contact-free drop off in under 4 hours, and scan farm codes for origin tracing."}</p>
-                     </div>
-                  </div>
-
-               </div>
-            </div>
-         </section>
-
          {/* What Our Customers Say */}
-         <section className="py-20 relative bg-gradient-to-b from-transparent to-brand-light/20">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-               <div className="text-center mb-16">
+         <section className="py-20 relative overflow-hidden bg-gradient-to-b from-transparent to-brand-light/20">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
+               <div className="text-center">
                   <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">{homeContent.testimonialsTitle || "What Our Customers Say"}</h2>
-                  <p className="text-gray-500 max-w-xl mx-auto text-sm">{homeContent.testimonialsSubtitle || "Read verified feedback from home cooks and families who enjoy fresh farm deliveries weekly."}</p>
-               </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-
-                  {/* Testimonial 1 */}
-                  <div className="bg-white/70 backdrop-blur-md rounded-3xl p-8 border border-white shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between text-left relative">
-                     <Quote className="absolute right-8 top-8 text-emerald-100" size={40} />
-                     <div className="space-y-4 relative z-10">
-                        <div className="flex items-center gap-0.5 text-amber-500">
-                           {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
-                        </div>
-                        <p className="text-gray-600 text-xs leading-relaxed italic">"{homeContent.test1Quote || 'The strawberries are exceptionally sweet and fresh, nothing like the supermarket ones. Plus, knowing it supports local farmers directly makes every order feel great.'}"</p>
-                     </div>
-                     <div className="flex items-center gap-3.5 mt-6 border-t border-gray-100 pt-4">
-                        <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
-                           <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80" alt={homeContent.test1Name || "Sarah J."} className="w-full h-full object-cover" />
-                        </div>
-                        <div>
-                           <h4 className="font-extrabold text-gray-900 text-xs">{homeContent.test1Name || "Sarah J."}</h4>
-                           <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{homeContent.test1Role || "Home Cook"}</p>
-                        </div>
-                     </div>
-                  </div>
-
-                  {/* Testimonial 2 */}
-                  <div className="bg-white/70 backdrop-blur-md rounded-3xl p-8 border border-white shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between text-left relative">
-                     <Quote className="absolute right-8 top-8 text-emerald-100" size={40} />
-                     <div className="space-y-4 relative z-10">
-                        <div className="flex items-center gap-0.5 text-amber-500">
-                           {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
-                        </div>
-                        <p className="text-gray-600 text-xs leading-relaxed italic">"{homeContent.test2Quote || 'The bulk veggie box is a life saver for my meal prep. Everything stays crisp for over a week, and delivery is consistently quick. Highly recommended!'}"</p>
-                     </div>
-                     <div className="flex items-center gap-3.5 mt-6 border-t border-gray-100 pt-4">
-                        <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
-                           <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80" alt={homeContent.test2Name || "David K."} className="w-full h-full object-cover" />
-                        </div>
-                        <div>
-                           <h4 className="font-extrabold text-gray-900 text-xs">{homeContent.test2Name || "David K."}</h4>
-                           <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{homeContent.test2Role || "Fitness Enthusiast"}</p>
-                        </div>
-                     </div>
-                  </div>
-
-                  {/* Testimonial 3 */}
-                  <div className="bg-white/70 backdrop-blur-md rounded-3xl p-8 border border-white shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between text-left relative">
-                     <Quote className="absolute right-8 top-8 text-emerald-100" size={40} />
-                     <div className="space-y-4 relative z-10">
-                        <div className="flex items-center gap-0.5 text-amber-500">
-                           {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
-                        </div>
-                        <p className="text-gray-600 text-xs leading-relaxed italic">"{homeContent.test3Quote || "We booked a farm tour weekend slots via 'Visit Farms' link, and our kids absolutely loved picking fruits and seeing cows. A perfect weekend refreshment setup!"}"</p>
-                     </div>
-                     <div className="flex items-center gap-3.5 mt-6 border-t border-gray-100 pt-4">
-                        <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
-                           <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80" alt={homeContent.test3Name || "Emma L."} className="w-full h-full object-cover" />
-                        </div>
-                        <div>
-                           <h4 className="font-extrabold text-gray-900 text-xs">{homeContent.test3Name || "Emma L."}</h4>
-                           <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{homeContent.test3Role || "Parent"}</p>
-                        </div>
-                     </div>
-                  </div>
-
+                  <p className="text-gray-500 max-w-xl mx-auto text-sm">{homeContent.testimonialsSubtitle || "Read verified feedback from home cooks, families, and chef partners who enjoy fresh farm deliveries weekly."}</p>
                </div>
             </div>
-         </section>
 
-         {/* About Section */}
-         <section className="py-24">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-               <div className="grid md:grid-cols-2 gap-16 items-center">
-                  <div className="text-left space-y-6">
-                     <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                        {homeContent.aboutHeadline} <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
-                     </h2>
-                     <div className="space-y-4 text-gray-500 text-sm leading-relaxed">
-                        <p>
-                           {homeContent.aboutText1}
-                        </p>
-                        <p>
-                           {homeContent.aboutText2}
-                        </p>
+            {/* Scrolling Marquee Container */}
+            <div className="relative w-full overflow-hidden py-4 group">
+               {/* Subtle gradient side masks for smooth edge fade */}
+               <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-r from-[#f5f9f4] to-transparent z-20 pointer-events-none"></div>
+               <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-l from-[#f5f9f4] to-transparent z-20 pointer-events-none"></div>
+
+               <div className="animate-scroll-marquee flex gap-6 px-4">
+                  {[
+                     {
+                        name: homeContent.test1Name || "Sarah Jenkins",
+                        role: homeContent.test1Role || "Home Chef & Foodie",
+                        quote: homeContent.test1Quote || "The strawberries and organic spinach are exceptionally sweet and fresh! Plus, knowing it supports local farmers directly makes every order feel great.",
+                        image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80",
+                        rating: 5
+                     },
+                     {
+                        name: homeContent.test2Name || "David K. Sharma",
+                        role: homeContent.test2Role || "Fitness Enthusiast",
+                        quote: homeContent.test2Quote || "The bulk veggie box is a life saver for my meal prep. Everything stays crisp for over a week, and delivery is consistently quick. Highly recommended!",
+                        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80",
+                        rating: 5
+                     },
+                     {
+                        name: homeContent.test3Name || "Emma L. Davis",
+                        role: homeContent.test3Role || "Parent & Nutritionist",
+                        quote: homeContent.test3Quote || "We booked a farm tour weekend slot via 'Visit Farms', and our kids absolutely loved picking fresh apples and seeing the cows. A perfect family weekend setup!",
+                        image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80",
+                        rating: 5
+                     },
+                     {
+                        name: "Rajesh V. Patel",
+                        role: "Local Restaurant Owner",
+                        quote: "Ordering farm-fresh vegetables directly through FresVeg saved our kitchen over 20% on wholesale costs while improving our dish quality tremendously.",
+                        image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80",
+                        rating: 5
+                     },
+                     {
+                        name: "Anita Roy",
+                        role: "Organic Living Advocate",
+                        quote: "Pure cow ghee and raw honey jars from local farms are unbeatable in quality. You can taste the genuine purity in every single spoonful!",
+                        image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&q=80",
+                        rating: 5
+                     },
+                     {
+                        name: "Michael Rodriguez",
+                        role: "Daily Shopper",
+                        quote: "The live order tracking map and rider contact details give me total peace of mind. Delivery always arrives right on time before breakfast!",
+                        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80",
+                        rating: 5
+                     },
+                     /* Duplicated array sequence to form 100% seamless infinite loop */
+                     {
+                        name: homeContent.test1Name || "Sarah Jenkins",
+                        role: homeContent.test1Role || "Home Chef & Foodie",
+                        quote: homeContent.test1Quote || "The strawberries and organic spinach are exceptionally sweet and fresh! Plus, knowing it supports local farmers directly makes every order feel great.",
+                        image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80",
+                        rating: 5
+                     },
+                     {
+                        name: homeContent.test2Name || "David K. Sharma",
+                        role: homeContent.test2Role || "Fitness Enthusiast",
+                        quote: homeContent.test2Quote || "The bulk veggie box is a life saver for my meal prep. Everything stays crisp for over a week, and delivery is consistently quick. Highly recommended!",
+                        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80",
+                        rating: 5
+                     },
+                     {
+                        name: homeContent.test3Name || "Emma L. Davis",
+                        role: homeContent.test3Role || "Parent & Nutritionist",
+                        quote: homeContent.test3Quote || "We booked a farm tour weekend slot via 'Visit Farms', and our kids absolutely loved picking fresh apples and seeing the cows. A perfect family weekend setup!",
+                        image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80",
+                        rating: 5
+                     },
+                     {
+                        name: "Rajesh V. Patel",
+                        role: "Local Restaurant Owner",
+                        quote: "Ordering farm-fresh vegetables directly through FresVeg saved our kitchen over 20% on wholesale costs while improving our dish quality tremendously.",
+                        image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80",
+                        rating: 5
+                     },
+                     {
+                        name: "Anita Roy",
+                        role: "Organic Living Advocate",
+                        quote: "Pure cow ghee and raw honey jars from local farms are unbeatable in quality. You can taste the genuine purity in every single spoonful!",
+                        image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&q=80",
+                        rating: 5
+                     },
+                     {
+                        name: "Michael Rodriguez",
+                        role: "Daily Shopper",
+                        quote: "The live order tracking map and rider contact details give me total peace of mind. Delivery always arrives right on time before breakfast!",
+                        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80",
+                        rating: 5
+                     }
+                  ].map((test, index) => (
+                     <div
+                        key={index}
+                        className="w-[320px] sm:w-[360px] shrink-0 bg-white/80 backdrop-blur-md rounded-3xl p-6 sm:p-7 border border-white shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between text-left relative"
+                     >
+                        <Quote className="absolute right-6 top-6 text-emerald-100/80" size={36} />
+                        <div className="space-y-3 relative z-10">
+                           <div className="flex items-center gap-0.5 text-amber-400">
+                              {[...Array(test.rating)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
+                           </div>
+                           <p className="text-gray-600 text-xs leading-relaxed italic font-body">"{test.quote}"</p>
+                        </div>
+                        <div className="flex items-center gap-3 mt-5 border-t border-slate-100 pt-4">
+                           <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden shrink-0 border border-slate-200/60">
+                              <img src={test.image} alt={test.name} className="w-full h-full object-cover" />
+                           </div>
+                           <div className="min-w-0">
+                              <h4 className="font-extrabold text-gray-900 text-xs truncate font-headings">{test.name}</h4>
+                              <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider truncate font-body">{test.role}</p>
+                           </div>
+                        </div>
                      </div>
-                     <Link to="/marketplace" className="inline-flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-8 py-3.5 rounded-full font-bold text-sm tracking-wide transition-all shadow-lg shadow-brand/10 hover:-translate-y-0.5 active:translate-y-0">
-                        Shop Now <ArrowRight size={18} />
-                     </Link>
-                  </div>
-                  <div className="relative flex justify-center">
-                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-brand-light rounded-full blur-3xl opacity-60"></div>
-                     <div className="rounded-3xl overflow-hidden shadow-2xl border-4 border-white relative z-10 max-w-md w-full hover:scale-101 transition-transform">
-                        <img src={homeContent.aboutImage} alt="Farm Fresh Produce" className="w-full h-88 object-cover" />
-                     </div>
-                  </div>
+                  ))}
                </div>
             </div>
          </section>

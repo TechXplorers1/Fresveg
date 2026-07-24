@@ -290,9 +290,19 @@ export default function Admin() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="bg-brand hover:bg-brand-dark text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md shadow-brand/20 active:scale-95 flex items-center gap-2 shrink-0"
+                  className="bg-brand hover:bg-brand-dark text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md shadow-brand/20 active:scale-95 flex items-center gap-2 shrink-0 disabled:opacity-60"
                 >
-                  <Save size={15} /> {isSaving ? 'Saving...' : 'Save All Home Changes'}
+                  {isSaving ? (
+                    <>
+                      <RefreshCw size={15} className="animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={15} />
+                      <span>Save All Home Changes</span>
+                    </>
+                  )}
                 </button>
               </div>
 
@@ -821,9 +831,19 @@ export default function Admin() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="bg-brand hover:bg-brand-dark text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-brand/30 active:scale-95 flex items-center gap-2"
+                  className="bg-brand hover:bg-brand-dark text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-brand/30 active:scale-95 flex items-center gap-2 disabled:opacity-60"
                 >
-                  <Save size={16} /> {isSaving ? 'Saving Changes...' : 'Save All Changes'}
+                  {isSaving ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      <span>Saving Changes...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      <span>Save All Changes</span>
+                    </>
+                  )}
                 </button>
               </div>
 
@@ -941,7 +961,17 @@ export default function Admin() {
                     disabled={isAddingCategory || !newCategoryInput.trim()}
                     className="bg-brand hover:bg-brand-dark text-white px-6 py-3 rounded-2xl font-extrabold text-xs transition-all shadow-md shadow-brand/20 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 shrink-0"
                   >
-                    <Plus size={16} /> {isAddingCategory ? 'Adding...' : 'Add Category'}
+                    {isAddingCategory ? (
+                      <>
+                        <RefreshCw size={16} className="animate-spin" />
+                        <span>Adding...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={16} />
+                        <span>Add Category</span>
+                      </>
+                    )}
                   </button>
                 </form>
               </div>

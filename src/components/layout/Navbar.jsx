@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showSignoutConfirm, setShowSignoutConfirm] = useState(false);
   const { cartItems } = useCart();
   const { user, userProfile, logout } = useAuth();
   const navigate = useNavigate();
@@ -13,7 +14,8 @@ export default function Navbar() {
   
   const cartItemCount = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
-  const handleLogout = () => {
+  const handleConfirmLogout = () => {
+    setShowSignoutConfirm(false);
     logout();
     navigate('/');
   };
@@ -99,7 +101,7 @@ export default function Navbar() {
                     <span className="text-xs font-bold text-slate-800 max-w-[110px] truncate">{userProfile?.displayName || user?.displayName || 'User'}</span>
                     <span className="text-[9px] font-black text-emerald-600 uppercase tracking-wider">{getRoleLabel(userProfile?.role)}</span>
                   </div>
-                  <button onClick={handleLogout} className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-xl hover:bg-red-50" title="Sign Out">
+                  <button onClick={() => setShowSignoutConfirm(true)} className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-xl hover:bg-red-50" title="Sign Out">
                     <LogOut size={18} />
                   </button>
                 </div>
@@ -164,11 +166,48 @@ export default function Navbar() {
             {!user ? (
               <Link to="/auth" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2.5 text-center bg-brand hover:bg-brand-dark text-white rounded-xl font-bold text-sm transition-colors mt-2">Sign In</Link>
             ) : (
-              <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-left font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors mt-2">
+              <button onClick={() => { setIsMenuOpen(false); setShowSignoutConfirm(true); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-left font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors mt-2">
                 <LogOut size={16} /> Logout
               </button>
             )}
          </div>
+      )}
+
+      {/* Signout Confirmation Popup Modal */}
+      {showSignoutConfirm && (
+        <div className="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-slate-100 space-y-6 text-center animate-scale-up">
+            <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto shadow-inner border border-rose-100">
+              <LogOut size={30} className="ml-1" />
+            </div>
+
+            <div>
+              <h3 className="text-xl font-extrabold text-slate-900 font-headings">
+                Confirm Signout
+              </h3>
+              <p className="text-sm text-slate-600 font-medium mt-2 leading-relaxed font-body">
+                Are you sure you want to Signout?
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleConfirmLogout}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-extrabold py-3 px-4 rounded-2xl text-xs uppercase tracking-wider transition-all shadow-md shadow-red-600/20 active:scale-95 cursor-pointer"
+              >
+                Yes, Signout
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSignoutConfirm(false)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold py-3 px-4 rounded-2xl text-xs uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </nav>
   );

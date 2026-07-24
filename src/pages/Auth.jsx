@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, ArrowRight, Lock, Mail, ShoppingBag, Store, AlertCircle, Bike, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { User, ArrowRight, Lock, Mail, ShoppingBag, Store, AlertCircle, Bike, ShieldCheck, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -188,7 +188,17 @@ export default function Auth() {
             )}
 
             <button type="submit" disabled={loading} className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-all shadow-md shadow-brand/10 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 text-sm tracking-wide mt-2">
-              {loading ? 'Please wait...' : (isLogin ? 'Sign In' : (step === 1 ? 'Continue' : 'Complete Signup'))} <ArrowRight size={16} />
+              {loading ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <span>{isLogin ? 'Sign In' : (step === 1 ? 'Continue' : 'Complete Signup')}</span>
+                  <ArrowRight size={16} />
+                </>
+              )}
             </button>
           </form>
 

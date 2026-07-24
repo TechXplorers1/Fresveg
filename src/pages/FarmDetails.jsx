@@ -1125,42 +1125,8 @@ export default function FarmDetails() {
                     </div>
                     <div className="space-y-2 text-left">
                       <h4 className="font-bold text-slate-800 text-xs font-headings line-clamp-1">{product.name}</h4>
-                      <div className="flex items-center justify-between pt-1">
+                      <div className="pt-1">
                         <span className="font-extrabold text-slate-900 text-sm font-sans">₹{product.price} <span className="text-[10px] text-slate-400">/{product.unit}</span></span>
-                        
-                        {/* Instant Cart Button / Pill */}
-                        {(() => {
-                          const itemCart = cartItems.find(c => String(c.id) === String(product.id));
-                          return itemCart ? (
-                            <div className="flex items-center gap-1.5 bg-slate-100/90 border border-slate-200/80 rounded-xl p-1 shadow-xs" onClick={(e) => e.stopPropagation()}>
-                              <button 
-                                type="button"
-                                onClick={() => updateQuantity(product.id, itemCart.quantity - 1)}
-                                className="w-6 h-6 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all duration-200 active:scale-90 font-black"
-                                title="Decrease quantity"
-                              >
-                                <Minus size={11} strokeWidth={3} />
-                              </button>
-                              <span className="text-xs font-black text-slate-800 px-1 font-sans text-center min-w-[16px]">{itemCart.quantity}</span>
-                              <button 
-                                type="button"
-                                onClick={() => updateQuantity(product.id, itemCart.quantity + 1)}
-                                className="w-6 h-6 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all duration-200 active:scale-90 font-black"
-                                title="Increase quantity"
-                              >
-                                <Plus size={11} strokeWidth={3} />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => addToCart(product)}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1 font-headings"
-                            >
-                              <ShoppingCart size={13} /> Add
-                            </button>
-                          );
-                        })()}
                       </div>
                     </div>
                   </div>

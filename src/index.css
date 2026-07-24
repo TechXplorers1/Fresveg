@@ -52,6 +52,20 @@
   .animate-pulse-glow {
     animation: pulseGlow 2s infinite ease-in-out;
   }
+
+  /* Infinite Testimonial Marquee */
+  @keyframes scrollMarquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .animate-scroll-marquee {
+    display: flex;
+    width: max-content;
+    animation: scrollMarquee 35s linear infinite;
+  }
+  .animate-scroll-marquee:hover {
+    animation-play-state: paused;
+  }
 }
 
 /* Premium Leaflet Map & Custom Marker Styles */
