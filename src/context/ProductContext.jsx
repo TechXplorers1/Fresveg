@@ -255,14 +255,18 @@ const cleanFirebaseData = (data) => {
       const dbProductRef = ref(realtimeDb, `products/${newKey}`);
       await set(dbProductRef, sanitizedProduct);
       console.log('Successfully written to Firebase RTDB products/' + newKey, sanitizedProduct);
-
-      if (sanitizedProduct.vendorId) {
-        const userProdRef = ref(realtimeDb, `users/${sanitizedProduct.vendorId}/userProducts/${newKey}`);
-        await set(userProdRef, sanitizedProduct);
-      }
     } catch (error) {
       console.error('Error saving product to Firebase Realtime DB:', error);
-      alert('Error writing product to Firebase: ' + error.message);
+    }
+
+    // 3. Optional secondary user link
+    if (sanitizedProduct.vendorId && sanitizedProduct.vendorId !== 'vendor-default') {
+      try {
+        const userProdRef = ref(realtimeDb, `users/${sanitizedProduct.vendorId}/userProducts/${newKey}`);
+        await set(userProdRef, true);
+      } catch (err) {
+        console.warn('Optional vendor userProducts write skipped:', err.message);
+      }
     }
 
     return sanitizedProduct;
