@@ -68,8 +68,12 @@ export default function Navbar() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-2">
             <Link to="/" className={getLinkStyle('/')}>Home</Link>
-            <Link to="/marketplace" className={getLinkStyle('/marketplace')}>Marketplace</Link>
-            <Link to="/visit-farms" className={getLinkStyle('/visit-farms')}>Visit Farms</Link>
+            {userProfile?.role !== 'vendor' && userProfile?.role !== 'delivery_person' && (
+              <>
+                <Link to="/marketplace" className={getLinkStyle('/marketplace')}>Marketplace</Link>
+                <Link to="/visit-farms" className={getLinkStyle('/visit-farms')}>Visit Farms</Link>
+              </>
+            )}
             {userProfile?.role === 'admin' && (
                <Link to="/admin" className={getLinkStyle('/admin')}>
                  <ShieldCheck size={16} className="text-emerald-600" /> Admin Panel
@@ -143,8 +147,12 @@ export default function Navbar() {
               </div>
             )}
             <Link to="/" onClick={() => setIsMenuOpen(false)} className={getMobileLinkStyle('/')}>Home</Link>
-            <Link to="/marketplace" onClick={() => setIsMenuOpen(false)} className={getMobileLinkStyle('/marketplace')}>Marketplace</Link>
-            <Link to="/visit-farms" onClick={() => setIsMenuOpen(false)} className={getMobileLinkStyle('/visit-farms')}>Visit Farms</Link>
+            {userProfile?.role !== 'vendor' && userProfile?.role !== 'delivery_person' && (
+              <>
+                <Link to="/marketplace" onClick={() => setIsMenuOpen(false)} className={getMobileLinkStyle('/marketplace')}>Marketplace</Link>
+                <Link to="/visit-farms" onClick={() => setIsMenuOpen(false)} className={getMobileLinkStyle('/visit-farms')}>Visit Farms</Link>
+              </>
+            )}
             {userProfile?.role === 'admin' && (
                <Link to="/admin" onClick={() => setIsMenuOpen(false)} className={`${getMobileLinkStyle('/admin')} flex items-center gap-1.5`}>
                  <ShieldCheck size={16} className="text-emerald-600" /> Admin Panel

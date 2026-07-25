@@ -99,6 +99,7 @@ export default function FarmDetails() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(isEditParam);
   const [savingChanges, setSavingChanges] = useState(false);
+  const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
 
   // Editable Form State
   const [editForm, setEditForm] = useState(null);
@@ -110,8 +111,9 @@ export default function FarmDetails() {
   const [newFruit, setNewFruit] = useState('');
   const [newAnimal, setNewAnimal] = useState('');
 
-  // Add Product Modal in Edit Mode
+  // Add/Edit Product Modal in Edit Mode
   const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [editingProductId, setEditingProductId] = useState(null);
   const [newProduct, setNewProduct] = useState({ name: '', price: '', unit: 'pack', image: '' });
 
   // Add Accommodation Modal in Edit Mode
@@ -175,19 +177,13 @@ export default function FarmDetails() {
       if (matchedFarm) {
         const fullFarm = {
           ...matchedFarm,
-          crops: matchedFarm.crops || ['Organic Produce', 'Vegetable Crops', 'Herbs'],
-          fruits: matchedFarm.fruits || ['Fruit Orchards'],
-          livestock: matchedFarm.livestock || ['Poultry & Animals'],
-          accommodations: matchedFarm.accommodations || [
-            { id: 'a1', title: 'Farmhouse Room', desc: 'Clean, comfortable room with farm views.', price: 'Included', icon: 'house' },
-            { id: 'a2', title: 'Mud Hut & Hammocks', desc: 'Relaxing mud hut stay under shade trees.', price: 'Included', icon: 'hut' }
-          ],
+          crops: matchedFarm.crops || [],
+          fruits: matchedFarm.fruits || [],
+          livestock: matchedFarm.livestock || [],
+          accommodations: matchedFarm.accommodations || [],
           farmProducts: matchedFarm.farmProducts || [],
-          gallery: matchedFarm.gallery || [
-            { id: 'g1', url: matchedFarm.image || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1000&q=80', caption: 'Main Farm Field & Orchard' },
-            { id: 'g2', url: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=1000&q=80', caption: 'Organic Harvest Patch' }
-          ],
-          amenities: matchedFarm.amenities || ['Guided Farm Tour', 'Organic Snacks', 'Photo Spots']
+          gallery: matchedFarm.gallery || [],
+          amenities: matchedFarm.amenities || []
         };
         setFarm(fullFarm);
         setEditForm({
@@ -215,19 +211,13 @@ export default function FarmDetails() {
           costPerPerson: 250,
           vendorName: 'Organic Farm Owner',
           rating: 4.9,
-          crops: ['Organic Strawberries', 'Tomatoes', 'Sweet Corn', 'Spinach'],
-          fruits: ['Mango Orchards', 'Guava Groves', 'Papaya'],
-          livestock: ['Gir Cows', 'Goats & Sheep', 'Poultry'],
-          accommodations: [
-            { id: 'a1', title: 'Farmhouse Guest Suite', desc: 'Spacious room overlooking green fields.', price: 'Included', icon: 'house' },
-            { id: 'a2', title: 'Rustic Clay Hut', desc: 'Traditional village stay with thatch roof.', price: 'Included', icon: 'hut' }
-          ],
+          crops: [],
+          fruits: [],
+          livestock: [],
+          accommodations: [],
           farmProducts: [],
-          gallery: [
-            { id: 'g1', url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1000&q=80', caption: 'Lush Green Fields' },
-            { id: 'g2', url: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=1000&q=80', caption: 'Fresh Harvest' }
-          ],
-          amenities: ['Farm Walk', 'Fruit Picking', 'Tractor Ride', 'Fresh Organic Tea']
+          gallery: [],
+          amenities: []
         };
         setFarm(fallbackFarm);
         setEditForm({
@@ -415,7 +405,7 @@ export default function FarmDetails() {
       await set(farmRef, updatedFarmData);
       setFarm(updatedFarmData);
       setIsEditing(false);
-      alert('✨ Farm page changes saved live successfully!');
+      setShowSaveSuccessModal(true);
     } catch (err) {
       console.error('Failed to save farm changes:', err);
       alert('Error saving farm changes: ' + err.message);
@@ -531,28 +521,57 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, livestock: prev.livestock.filter((_, i) => i !== idx) }));
   };
 
+  const handleEditProductClick = (product) => {
+    setEditingProductId(product.id);
+    setNewProduct({
+      name: product.name || '',
+      price: product.price || '',
+      unit: product.unit || 'pack',
+      image: product.image || ''
+    });
+    setShowAddProductModal(true);
+  };
+
   const handleSaveNewProduct = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!newProduct.name.trim() || !newProduct.price) {
       alert('Please enter product name and price.');
       return;
     }
-    const prodObj = {
-      id: `fp-${Date.now()}`,
-      name: newProduct.name.trim(),
-      price: Number(newProduct.price) || 100,
-      unit: newProduct.unit.trim() || 'pack',
-      image: newProduct.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80',
-      vendor: farm.farmName,
-      category: 'Farm Direct Harvest'
-    };
-    setEditForm(prev => ({ ...prev, farmProducts: [...prev.farmProducts, prodObj] }));
+    if (editingProductId) {
+      setEditForm(prev => ({
+        ...prev,
+        farmProducts: (prev.farmProducts || []).map(p => 
+          p.id === editingProductId 
+            ? {
+                ...p,
+                name: newProduct.name.trim(),
+                price: Number(newProduct.price) || 0,
+                unit: newProduct.unit.trim() || 'pack',
+                image: newProduct.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80'
+              }
+            : p
+        )
+      }));
+      setEditingProductId(null);
+    } else {
+      const prodObj = {
+        id: `fp-${Date.now()}`,
+        name: newProduct.name.trim(),
+        price: Number(newProduct.price) || 100,
+        unit: newProduct.unit.trim() || 'pack',
+        image: newProduct.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80',
+        vendor: farm?.farmName || 'Farm Direct',
+        category: 'Farm Direct Harvest'
+      };
+      setEditForm(prev => ({ ...prev, farmProducts: [...(prev.farmProducts || []), prodObj] }));
+    }
     setShowAddProductModal(false);
     setNewProduct({ name: '', price: '', unit: 'pack', image: '' });
   };
 
   const handleRemoveProductItem = (prodId) => {
-    setEditForm(prev => ({ ...prev, farmProducts: prev.farmProducts.filter(p => p.id !== prodId) }));
+    setEditForm(prev => ({ ...prev, farmProducts: (prev.farmProducts || []).filter(p => p.id !== prodId) }));
   };
 
   const handleSaveNewAcc = (e) => {
@@ -849,15 +868,17 @@ export default function FarmDetails() {
           </div>
         </div>
 
-        <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 rounded-3xl text-left shadow-sm flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center flex-shrink-0 font-bold text-xl">
-            📸
+        {(activeGallery.length > 0 || isEditing) && (
+          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 rounded-3xl text-left shadow-sm flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center flex-shrink-0 font-bold text-xl">
+              📸
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider font-headings">Photo Gallery</p>
+              <p className="font-extrabold text-slate-800 text-sm font-headings">{activeGallery.length} Farm Photos</p>
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider font-headings">Photo Gallery</p>
-            <p className="font-extrabold text-slate-800 text-sm font-headings">{activeGallery.length} Farm Photos</p>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* ── Main Farm Experience Details Grid ────────────────────────────── */}
@@ -867,92 +888,69 @@ export default function FarmDetails() {
         <div className="lg:col-span-8 space-y-10">
           
           {/* Section 0: Farm Photo Gallery & Visual Tour 📸 */}
-          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center font-bold text-lg">
-                  📸
+          {(activeGallery.length > 0 || isEditing) && (
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center font-bold text-lg">
+                    📸
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold font-headings text-slate-800">Farm Gallery & Visual Tour</h2>
+                    <p className="text-xs text-slate-400 font-medium font-body">Explore real photos of our fields, crops, stays, animals, and sunsets</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold font-headings text-slate-800">Farm Gallery & Visual Tour</h2>
-                  <p className="text-xs text-slate-400 font-medium font-body">Explore real photos of our fields, crops, stays, animals, and sunsets</p>
-                </div>
-              </div>
-              {isEditing && (
-                <button
-                  onClick={() => setShowAddPhotoModal(true)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95"
-                >
-                  <Plus size={14} /> Add Farm Photo
-                </button>
-              )}
-            </div>
-
-            {/* Photo Grid Showcase */}
-            {activeGallery.length === 0 ? (
-              <div className="py-8 text-center bg-white/50 border border-dashed border-slate-200 rounded-2xl">
-                <p className="text-xs text-slate-400 font-medium">No gallery photos added yet.</p>
                 {isEditing && (
                   <button
                     onClick={() => setShowAddPhotoModal(true)}
-                    className="mt-3 bg-emerald-600 text-white px-4 py-1.5 rounded-xl text-xs font-bold"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95"
                   >
-                    + Add Photo Now
+                    <Plus size={14} /> Add Farm Photo
                   </button>
                 )}
               </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-                {activeGallery.map((photo, idx) => (
-                  <div
-                    key={photo.id || idx}
-                    className="relative h-36 sm:h-44 rounded-2xl overflow-hidden group cursor-pointer border border-slate-200/80 shadow-xs hover:shadow-lg transition-all"
-                    onClick={() => setLightboxIndex(idx)}
-                  >
-                    <img
-                      src={photo.url}
-                      alt={photo.caption || 'Farm Photo'}
-                      className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent opacity-85 group-hover:opacity-95 transition-opacity"></div>
-                    
-                    {photo.caption && (
-                      <p className="absolute bottom-2.5 left-2.5 right-2.5 text-[11px] font-bold text-white font-body truncate drop-shadow-sm">
-                        {photo.caption}
-                      </p>
-                    )}
 
-                    <div className="absolute top-2 right-2 flex items-center gap-1">
-                      {isEditing ? (
-                        <>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleSetCoverPhoto(photo.url); }}
-                            className="bg-black/70 hover:bg-emerald-600 text-white text-[9px] font-bold px-2 py-1 rounded-lg border border-white/30 backdrop-blur-md transition-colors"
-                            title="Set as Main Banner Cover"
-                          >
-                            Set Cover
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleRemoveGalleryPhoto(photo.id || idx); }}
-                            className="bg-black/70 hover:bg-rose-600 text-white p-1 rounded-lg border border-white/30 backdrop-blur-md transition-colors"
-                            title="Delete Photo"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </>
-                      ) : (
-                        <span className="p-1.5 bg-black/40 backdrop-blur-md rounded-lg text-white border border-white/20">
-                          <Maximize2 size={12} />
-                        </span>
+              {/* Photo Grid Showcase */}
+              {activeGallery.length === 0 ? (
+                <div className="py-8 text-center bg-white/50 border border-dashed border-slate-200 rounded-2xl">
+                  <p className="text-xs text-slate-400 font-medium">No gallery photos added yet.</p>
+                  {isEditing && (
+                    <button
+                      onClick={() => setShowAddPhotoModal(true)}
+                      className="mt-3 bg-emerald-600 text-white px-4 py-1.5 rounded-xl text-xs font-bold"
+                    >
+                      + Add Photo Now
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+                  {activeGallery.map((photo, idx) => (
+                    <div
+                      key={photo.id || idx}
+                      className="relative h-36 sm:h-44 rounded-2xl overflow-hidden group cursor-pointer border border-slate-200/80 shadow-xs hover:shadow-lg transition-all"
+                      onClick={() => setLightboxIndex(idx)}
+                    >
+                      <img
+                        src={photo.url}
+                        alt={photo.caption || 'Farm Photo'}
+                        className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent opacity-85 group-hover:opacity-95 transition-opacity"></div>
+                      
+                      {photo.caption && (
+                        <p className="absolute bottom-2.5 left-2.5 right-2.5 text-[11px] font-bold text-white font-body truncate drop-shadow-sm">
+                          {photo.caption}
+                        </p>
                       )}
-                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
+        )}
 
-          {/* Section 1: Accommodation & Stay Options 🛖 */}
+        {/* Section 1: Accommodation & Stay Options 🛖 */}
           {(activeAccommodations.length > 0 || isEditing) && (
             <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -1297,13 +1295,24 @@ export default function FarmDetails() {
                   {activeFarmProducts.map((product) => (
                     <div key={product.id} className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs flex flex-col justify-between group hover:shadow-md transition-all relative">
                       {isEditing && (
-                        <button
-                          onClick={() => handleRemoveProductItem(product.id)}
-                          className="absolute top-2 right-2 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg z-20"
-                          title="Delete Product"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="absolute top-2 right-2 flex items-center gap-1 z-20">
+                          <button
+                            type="button"
+                            onClick={() => handleEditProductClick(product)}
+                            className="p-1.5 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg bg-white/90 shadow-xs border border-slate-200/80 transition-colors cursor-pointer"
+                            title="Edit Product"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveProductItem(product.id)}
+                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg bg-white/90 shadow-xs border border-slate-200/80 transition-colors cursor-pointer"
+                            title="Delete Product"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       )}
                       <div className="relative h-32 bg-slate-50 rounded-xl overflow-hidden mb-3 flex items-center justify-center p-2">
                         <img src={product.image} alt={product.name} className="max-h-full object-contain group-hover:scale-105 transition-transform" />
@@ -1543,7 +1552,7 @@ export default function FarmDetails() {
       {showAddProductModal && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm transition-opacity"
-          onClick={() => setShowAddProductModal(false)}
+          onClick={() => { setShowAddProductModal(false); setEditingProductId(null); }}
         >
           <div 
             className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden text-left p-6 space-y-4"
@@ -1551,9 +1560,9 @@ export default function FarmDetails() {
           >
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-800 text-base font-headings flex items-center gap-2">
-                <ShoppingCart size={18} className="text-emerald-600" /> Add Farm Direct Product
+                <ShoppingCart size={18} className="text-emerald-600" /> {editingProductId ? 'Edit Farm Product' : 'Add Farm Direct Product'}
               </h3>
-              <button onClick={() => setShowAddProductModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => { setShowAddProductModal(false); setEditingProductId(null); }} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                 <X size={18} />
               </button>
             </div>
@@ -1567,7 +1576,7 @@ export default function FarmDetails() {
                   value={newProduct.name}
                   onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
                   placeholder="E.g. Fresh Organic Strawberries"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
                 />
               </div>
 
@@ -1580,7 +1589,7 @@ export default function FarmDetails() {
                     value={newProduct.price}
                     onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
                     placeholder="180"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
                   />
                 </div>
                 <div>
@@ -1590,7 +1599,7 @@ export default function FarmDetails() {
                     value={newProduct.unit}
                     onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
                     placeholder="500g box / kg"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
                   />
                 </div>
               </div>
@@ -1602,23 +1611,23 @@ export default function FarmDetails() {
                   value={newProduct.image}
                   onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
                   placeholder="https://images.unsplash.com/photo-..."
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
                 />
               </div>
 
               <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddProductModal(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold"
+                  onClick={() => { setShowAddProductModal(false); setEditingProductId(null); }}
+                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-700"
+                  className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-700 cursor-pointer"
                 >
-                  Add Product
+                  {editingProductId ? 'Update Product' : 'Add Product'}
                 </button>
               </div>
             </form>
@@ -1915,6 +1924,36 @@ export default function FarmDetails() {
                 </div>
               )}
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Save Success Popup Modal */}
+      {showSaveSuccessModal && (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-emerald-100 space-y-6 text-center animate-scale-up">
+            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner border border-emerald-200/60">
+              <CheckCircle size={34} />
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="text-xl font-extrabold text-slate-900 font-headings">
+                Farm Page Saved Live! 🎉
+              </h3>
+              <p className="text-xs text-slate-600 font-medium leading-relaxed font-body">
+                Your live farm edits, crops, stay options, photo gallery, and products have been saved successfully!
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setShowSaveSuccessModal(false)}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-6 rounded-2xl text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-600/20 active:scale-95 cursor-pointer font-headings"
+              >
+                Awesome, Got It!
+              </button>
+            </div>
           </div>
         </div>
       )}

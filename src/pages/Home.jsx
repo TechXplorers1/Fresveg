@@ -92,10 +92,12 @@ export default function Home() {
                         {homeContent.heroDescription}
                      </p>
                      <div className="flex flex-wrap gap-4 pt-2">
-                        <Link to="/marketplace" className="bg-brand hover:bg-brand-dark text-white px-8 py-4 rounded-full font-bold text-sm tracking-wide shadow-lg shadow-brand/20 transition-all hover:-translate-y-0.5 active:translate-y-0">
-                           Explore Marketplace
-                        </Link>
-                        {userProfile?.role !== 'vendor' && (
+                        {userProfile?.role !== 'vendor' && userProfile?.role !== 'delivery_person' && (
+                           <Link to="/marketplace" className="bg-brand hover:bg-brand-dark text-white px-8 py-4 rounded-full font-bold text-sm tracking-wide shadow-lg shadow-brand/20 transition-all hover:-translate-y-0.5 active:translate-y-0">
+                              Explore Marketplace
+                           </Link>
+                        )}
+                        {userProfile?.role !== 'vendor' && userProfile?.role !== 'delivery_person' && (
                            <Link to="/auth?redirect=profile" className="bg-white/70 hover:bg-white text-gray-800 border border-gray-200 px-8 py-4 rounded-full font-bold text-sm tracking-wide shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 active:translate-y-0 backdrop-blur-md">
                               Become a Vendor
                            </Link>
@@ -120,66 +122,68 @@ export default function Home() {
          </section>
 
          {/* Premium Special Offers & Deals */}
-         <section className="py-12 relative">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-               <div className="text-left mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
-                  <div>
-                     <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                        Special Offers & Banners <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
-                     </h2>
-                     <p className="text-gray-500 text-xs mt-1">Unlock discount coupons and deals direct from organic farms.</p>
-                  </div>
-               </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                  {/* Offer 1 */}
-                  <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-6 sm:p-8 text-left shadow-lg group hover:shadow-xl transition-all duration-300">
-                     <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
-                     <div className="relative z-10 space-y-4">
-                        <span className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider">
-                           Weekend Special
-                        </span>
-                        <h3 className="text-2xl font-black font-headings leading-tight">{homeContent.promo1Title}</h3>
-                        <p className="text-emerald-100 text-xs max-w-sm font-medium">{homeContent.promo1Desc}</p>
-
-                        <div className="flex flex-wrap items-center gap-4 pt-2">
-                           <div className="bg-white/15 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-2xl flex items-center gap-2">
-                              <Tag size={13} className="text-emerald-300" />
-                              <span className="text-xs font-black tracking-wide">Code: <span className="text-amber-300">{homeContent.promo1Code}</span></span>
-                           </div>
-                           <Link to="/marketplace" className="bg-white text-emerald-900 hover:bg-emerald-50 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1">
-                              Claim Offer <ArrowRight size={12} />
-                           </Link>
-                        </div>
+         {userProfile?.role !== 'vendor' && userProfile?.role !== 'delivery_person' && (
+            <section className="py-12 relative">
+               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="text-left mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
+                     <div>
+                        <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+                           Special Offers & Banners <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
+                        </h2>
+                        <p className="text-gray-500 text-xs mt-1">Unlock discount coupons and deals direct from organic farms.</p>
                      </div>
                   </div>
 
-                  {/* Offer 2 */}
-                  <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-amber-500 to-orange-600 text-white p-6 sm:p-8 text-left shadow-lg group hover:shadow-xl transition-all duration-300">
-                     <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
-                     <div className="relative z-10 space-y-4">
-                        <span className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider">
-                           Flat 15% Off
-                        </span>
-                        <h3 className="text-2xl font-black font-headings leading-tight">{homeContent.promo2Title}</h3>
-                        <p className="text-amber-100 text-xs max-w-sm font-medium">{homeContent.promo2Desc}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                        <div className="flex flex-wrap items-center gap-4 pt-2">
-                           <div className="bg-white/15 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-2xl flex items-center gap-2">
-                              <Percent size={13} className="text-amber-200" />
-                              <span className="text-xs font-black tracking-wide">Code: <span className="text-amber-200">{homeContent.promo2Code}</span></span>
+                     {/* Offer 1 */}
+                     <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-6 sm:p-8 text-left shadow-lg group hover:shadow-xl transition-all duration-300">
+                        <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
+                        <div className="relative z-10 space-y-4">
+                           <span className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider">
+                              Weekend Special
+                           </span>
+                           <h3 className="text-2xl font-black font-headings leading-tight">{homeContent.promo1Title}</h3>
+                           <p className="text-emerald-100 text-xs max-w-sm font-medium">{homeContent.promo1Desc}</p>
+
+                           <div className="flex flex-wrap items-center gap-4 pt-2">
+                              <div className="bg-white/15 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-2xl flex items-center gap-2">
+                                 <Tag size={13} className="text-emerald-300" />
+                                 <span className="text-xs font-black tracking-wide">Code: <span className="text-amber-300">{homeContent.promo1Code}</span></span>
+                              </div>
+                              <Link to="/marketplace" className="bg-white text-emerald-900 hover:bg-emerald-50 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1">
+                                 Claim Offer <ArrowRight size={12} />
+                              </Link>
                            </div>
-                           <Link to="/marketplace" className="bg-white text-amber-950 hover:bg-amber-50 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1">
-                              Shop Now <ArrowRight size={12} />
-                           </Link>
                         </div>
                      </div>
-                  </div>
 
+                     {/* Offer 2 */}
+                     <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-amber-500 to-orange-600 text-white p-6 sm:p-8 text-left shadow-lg group hover:shadow-xl transition-all duration-300">
+                        <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
+                        <div className="relative z-10 space-y-4">
+                           <span className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider">
+                              Flat 15% Off
+                           </span>
+                           <h3 className="text-2xl font-black font-headings leading-tight">{homeContent.promo2Title}</h3>
+                           <p className="text-amber-100 text-xs max-w-sm font-medium">{homeContent.promo2Desc}</p>
+
+                           <div className="flex flex-wrap items-center gap-4 pt-2">
+                              <div className="bg-white/15 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-2xl flex items-center gap-2">
+                                 <Percent size={13} className="text-amber-200" />
+                                 <span className="text-xs font-black tracking-wide">Code: <span className="text-amber-200">{homeContent.promo2Code}</span></span>
+                              </div>
+                              <Link to="/marketplace" className="bg-white text-amber-950 hover:bg-amber-50 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1">
+                                 Shop Now <ArrowRight size={12} />
+                              </Link>
+                           </div>
+                        </div>
+                     </div>
+
+                  </div>
                </div>
-            </div>
-         </section>
+            </section>
+         )}
 
          {/* About Section */}
          <section className="py-24">
@@ -197,9 +201,11 @@ export default function Home() {
                            {homeContent.aboutText2}
                         </p>
                      </div>
-                     <Link to="/marketplace" className="inline-flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-8 py-3.5 rounded-full font-bold text-sm tracking-wide transition-all shadow-lg shadow-brand/10 hover:-translate-y-0.5 active:translate-y-0">
-                        Shop Now <ArrowRight size={18} />
-                     </Link>
+                     {userProfile?.role !== 'vendor' && userProfile?.role !== 'delivery_person' && (
+                        <Link to="/marketplace" className="inline-flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-8 py-3.5 rounded-full font-bold text-sm tracking-wide transition-all shadow-lg shadow-brand/10 hover:-translate-y-0.5 active:translate-y-0">
+                           Shop Now <ArrowRight size={18} />
+                        </Link>
+                     )}
                   </div>
                   <div className="relative flex justify-center">
                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-brand-light rounded-full blur-3xl opacity-60"></div>

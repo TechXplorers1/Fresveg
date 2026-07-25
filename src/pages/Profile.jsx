@@ -398,6 +398,7 @@ export default function Profile() {
   const [accInputText, setAccInputText] = useState('');
 
   const [showAddFarmProductModal, setShowAddFarmProductModal] = useState(false);
+  const [editingModalProductIndex, setEditingModalProductIndex] = useState(null);
   const [newFarmProductForm, setNewFarmProductForm] = useState({
     name: '',
     price: '',
@@ -406,6 +407,20 @@ export default function Profile() {
     image: ''
   });
   const [farmProductList, setFarmProductList] = useState([]);
+
+  const handleEditModalProduct = (idx) => {
+    const product = farmProductList[idx];
+    if (!product) return;
+    setEditingModalProductIndex(idx);
+    setNewFarmProductForm({
+      name: product.name || '',
+      price: product.price || '',
+      unit: product.unit || 'kg',
+      customUnit: '',
+      image: product.image || ''
+    });
+    setShowAddFarmProductModal(true);
+  };
 
   const handleSaveModalProduct = (e) => {
     if (e) e.preventDefault();
@@ -417,16 +432,32 @@ export default function Profile() {
       ? (newFarmProductForm.customUnit.trim() || 'unit')
       : newFarmProductForm.unit;
 
-    const productObj = {
-      id: `fp-${Date.now()}`,
-      name: newFarmProductForm.name.trim(),
-      price: Number(newFarmProductForm.price) || 0,
-      unit: finalUnit,
-      image: newFarmProductForm.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80',
-      vendor: newFarmForm.farmName || 'Farm Direct'
-    };
+    let updatedList = [];
+    if (editingModalProductIndex !== null && editingModalProductIndex >= 0) {
+      updatedList = farmProductList.map((p, idx) =>
+        idx === editingModalProductIndex
+          ? {
+              ...p,
+              name: newFarmProductForm.name.trim(),
+              price: Number(newFarmProductForm.price) || 0,
+              unit: finalUnit,
+              image: newFarmProductForm.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80'
+            }
+          : p
+      );
+      setEditingModalProductIndex(null);
+    } else {
+      const productObj = {
+        id: `fp-${Date.now()}`,
+        name: newFarmProductForm.name.trim(),
+        price: Number(newFarmProductForm.price) || 0,
+        unit: finalUnit,
+        image: newFarmProductForm.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80',
+        vendor: newFarmForm.farmName || 'Farm Direct'
+      };
+      updatedList = [...farmProductList, productObj];
+    }
 
-    const updatedList = [...farmProductList, productObj];
     setFarmProductList(updatedList);
     setNewFarmForm(prev => ({ ...prev, farmProducts: updatedList }));
     setShowAddFarmProductModal(false);
@@ -814,17 +845,18 @@ export default function Profile() {
 
       const parseAccommodations = (str) => {
         const list = parseList(str);
-        if (list.length === 0) return [
-          { id: 'acc-1', title: 'Farmhouse Guest Suite', desc: 'Clean room with garden view', price: 'Included', icon: 'house' },
-          { id: 'acc-2', title: 'Rustic Clay Hut', desc: 'Traditional village stay', price: 'Included', icon: 'hut' }
-        ];
-        return list.map((title, idx) => ({
-          id: `acc-${idx + 1}`,
-          title,
-          desc: `Comfortable ${title.toLowerCase()} experience at the farm`,
-          price: 'Included',
-          icon: title.toLowerCase().includes('tent') ? 'tent' : title.toLowerCase().includes('hut') ? 'hut' : 'house'
-        }));
+        if (list.length === 0) return [];
+        return list.map((item, idx) => {
+          if (typeof item === 'object') return item;
+          const titleStr = String(item);
+          return {
+            id: `acc-${idx + 1}`,
+            title: titleStr,
+            desc: `Comfortable ${titleStr.toLowerCase()} experience at the farm`,
+            price: 'Included',
+            icon: titleStr.toLowerCase().includes('tent') ? 'tent' : titleStr.toLowerCase().includes('hut') ? 'hut' : 'house'
+          };
+        });
       };
 
       const parseProducts = (str) => {
@@ -867,12 +899,18 @@ export default function Profile() {
       if (editingFarmId) {
         const farmRef = ref(realtimeDb, `farms/${editingFarmId}`);
         await update(farmRef, farmData);
-        alert('Farm updated successfully!');
+        setSuccessModalData({
+          title: 'Farm Updated Successfully! 🎉',
+          message: `Your farm listing "${farmData.farmName}" has been updated live on FresVeg!`
+        });
       } else {
         const farmsRef = ref(realtimeDb, 'farms');
         const newFarmRef = push(farmsRef);
         await set(newFarmRef, farmData);
-        alert('Farm successfully listed!');
+        setSuccessModalData({
+          title: 'Farm Successfully Listed! 🎉',
+          message: `Congratulations! Your farm listing "${farmData.farmName}" is now active and published on FresVeg!`
+        });
       }
 
       setEditingFarmId(null);
@@ -3169,14 +3207,24 @@ export default function Profile() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                             {farmProductList.map((product, idx) => (
                               <div key={product.id || idx} className="bg-white border border-slate-200/90 p-3.5 rounded-2xl shadow-xs flex flex-col justify-between group hover:shadow-md transition-all relative">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveModalProduct(idx)}
-                                  className="absolute top-2 right-2 p-1 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors z-20 cursor-pointer"
-                                  title="Remove Product"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                                <div className="absolute top-2 right-2 flex items-center gap-1 z-20">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditModalProduct(idx)}
+                                    className="p-1 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Edit Product"
+                                  >
+                                    <Pencil size={13} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveModalProduct(idx)}
+                                    className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Remove Product"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
                                 <div className="relative h-24 bg-slate-50 rounded-xl overflow-hidden mb-2.5 flex items-center justify-center p-1.5 border border-slate-100">
                                   <img
                                     src={product.image || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80'}
@@ -4897,13 +4945,15 @@ export default function Profile() {
                   🧺
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-slate-900 font-headings">Add Farm Product</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Add product for direct purchase</p>
+                  <h3 className="text-base font-extrabold text-slate-900 font-headings">
+                    {editingModalProductIndex !== null ? 'Edit Farm Product' : 'Add Farm Product'}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Add or customize product for direct purchase</p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setShowAddFarmProductModal(false)}
+                onClick={() => { setShowAddFarmProductModal(false); setEditingModalProductIndex(null); }}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors cursor-pointer"
               >
                 <X size={18} />
@@ -5011,7 +5061,7 @@ export default function Profile() {
               <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setShowAddFarmProductModal(false)}
+                  onClick={() => { setShowAddFarmProductModal(false); setEditingModalProductIndex(null); }}
                   className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer"
                 >
                   Cancel
@@ -5020,7 +5070,7 @@ export default function Profile() {
                   type="submit"
                   className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer"
                 >
-                  + Save Product
+                  {editingModalProductIndex !== null ? 'Update Product' : '+ Save Product'}
                 </button>
               </div>
             </form>

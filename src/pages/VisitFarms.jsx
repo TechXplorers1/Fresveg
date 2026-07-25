@@ -6,54 +6,11 @@ import { useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, Users, Compass, Search, Sparkles, CheckCircle, Clock, Trash2, ShieldAlert, ArrowRight, BookOpen, X, Minus, Plus } from 'lucide-react';
 import ModernDatePicker from '../components/common/ModernDatePicker';
 
-const INITIAL_MOCK_FARMS = [
-  {
-    id: 'mock-farm-1',
-    farmName: 'Strawberry Fields & Orchards',
-    location: 'Mahabaleshwar, Maharashtra',
-    description: 'Pick fresh organic strawberries, stroll through our beautiful fruit orchards, and enjoy fresh strawberry milkshakes made on-site!',
-    image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=600&q=80',
-    costPerPerson: 350,
-    vendorId: 'mock-vendor-1',
-    vendorName: 'Orchard Farms'
-  },
-  {
-    id: 'mock-farm-2',
-    farmName: 'Green Valley Organic Haven',
-    location: 'Karjat, Maharashtra',
-    description: 'Learn about sustainable agriculture, witness our bio-gas plant, pick fresh organic leafy greens, and enjoy open field walks.',
-    image: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80',
-    costPerPerson: 0, // Free of cost
-    vendorId: 'mock-vendor-2',
-    vendorName: 'Green Valley Farm'
-  },
-  {
-    id: 'mock-farm-3',
-    farmName: 'Sunshine Dairy & Carrot Patch',
-    location: 'Anand, Gujarat',
-    description: 'Experience organic dairy farming up close. Feed our happy cows, learn the milking process, explore carrot fields, and drink pure fresh buttermilk.',
-    image: 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=600&q=80',
-    costPerPerson: 300,
-    vendorId: 'mock-vendor-3',
-    vendorName: 'Sunshine Produce'
-  },
-  {
-    id: 'mock-farm-4',
-    farmName: 'Eco Botanical & Butterfly Grove',
-    location: 'Pune, Maharashtra',
-    description: 'Free community walkthrough! Explore native wildflower trails, herbal gardens, organic composting demos, and butterfly habitats.',
-    image: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600&q=80',
-    costPerPerson: 0, // Free of cost
-    vendorId: 'mock-vendor-4',
-    vendorName: 'Eco Butterfly Foundation'
-  }
-];
-
 export default function VisitFarms() {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
 
-  const [farms, setFarms] = useState(INITIAL_MOCK_FARMS);
+  const [farms, setFarms] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loadingFarms, setLoadingFarms] = useState(true);
   const [loadingBookings, setLoadingBookings] = useState(true);
@@ -74,7 +31,7 @@ export default function VisitFarms() {
   const freeFarmsCount = farms.filter(f => !f.costPerPerson || Number(f.costPerPerson) === 0).length;
   const payableFarmsCount = farms.filter(f => Number(f.costPerPerson) > 0).length;
 
-  // 1. Fetch Farms from Firebase RTDB + Merge with Mock
+  // 1. Fetch Farms from Firebase RTDB
   useEffect(() => {
     const farmsRef = ref(realtimeDb, 'farms');
     const unsubscribe = onValue(farmsRef, (snapshot) => {
@@ -84,10 +41,9 @@ export default function VisitFarms() {
           ...data[key],
           id: key
         }));
-        // Merge mock list and actual DB farms
-        setFarms([...INITIAL_MOCK_FARMS, ...dbFarms]);
+        setFarms(dbFarms);
       } else {
-        setFarms(INITIAL_MOCK_FARMS);
+        setFarms([]);
       }
       setLoadingFarms(false);
     }, (err) => {
