@@ -6,7 +6,7 @@ import { useProducts } from '../context/ProductContext';
 
 export default function Marketplace() {
    const { cartItems, addToCart, updateQuantity } = useCart();
-   const { products, searchQuery, setSearchQuery } = useProducts();
+   const { products, searchQuery, setSearchQuery, categoriesWithDetails = [] } = useProducts();
    const navigate = useNavigate();
    const [activeCategory, setActiveCategory] = useState('All');
    const [sortBy, setSortBy] = useState('none');
@@ -205,114 +205,29 @@ export default function Marketplace() {
                   onMouseLeave={handleMouseUpTiles}
                   className="flex gap-5 overflow-x-auto pb-6 scrollbar-hide snap-x items-center select-none cursor-grab active:cursor-grabbing"
                >
-                  <button onClick={() => handleCategoryClick('Tomatoes')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="/cherry_tomatoes.png" alt="Tomatoes" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Tomatoes</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Potatoes')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="/sweet_potatoes.png" alt="Potatoes" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Potatoes</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Onions')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="/red_onions.png" alt="Onions" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Onions</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Brinjal')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="/fresh_brinjal.png" alt="Brinjal" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Brinjal</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Carrots')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&w=200&q=80" alt="Carrots" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Carrots</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Spinach')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=200&q=80" alt="Spinach" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Spinach</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Capsicum')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?auto=format&fit=crop&w=200&q=80" alt="Capsicum" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Capsicum</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Broccoli')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1583663848850-46af132dc08e?auto=format&fit=crop&w=200&q=80" alt="Broccoli" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Broccoli</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Garlic')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=200&q=80" alt="Garlic" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Garlic</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Apples')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1560806887-1e4cd0b6faa6?auto=format&fit=crop&w=200&q=80" alt="Apples" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Apples</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Bananas')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=200&q=80" alt="Bananas" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Bananas</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Strawberries')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=200&q=80" alt="Strawberries" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Strawberries</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Oranges')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1582979512210-99b6a53386f9?auto=format&fit=crop&w=200&q=80" alt="Oranges" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Oranges</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Milk')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=200&q=80" alt="Milk" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Milk</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Butter')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="/salted_butter.png" alt="Butter" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Butter</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Cheese')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=200&q=80" alt="Cheese" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-700 font-bold">Cheese</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Yogurt')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1571115177098-24eb42eb3dfc?auto=format&fit=crop&w=200&q=80" alt="Yogurt" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Yogurt</span>
-                  </button>
-                  <button onClick={() => handleCategoryClick('Paneer')} className="flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1631452180519-c014fe946bc0?auto=format&fit=crop&w=200&q=80" alt="Paneer" className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300" />
-                     </div>
-                     <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Paneer</span>
-                  </button>
+                  {categoriesWithDetails.map((cat, idx) => (
+                     <button
+                        key={cat.name || idx}
+                        onClick={() => handleCategoryClick(cat.name)}
+                        className={`flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start ${
+                           activeCategory === cat.name ? 'ring-2 ring-brand bg-brand-light/30 border-brand' : ''
+                        }`}
+                     >
+                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm flex items-center justify-center bg-slate-100">
+                           <img
+                              src={cat.image || '/cherry_tomatoes.png'}
+                              alt={cat.name}
+                              className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300"
+                              onError={(e) => {
+                                 e.target.src = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&q=80';
+                              }}
+                           />
+                        </div>
+                        <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold truncate max-w-[90px] text-center">
+                           {cat.name}
+                        </span>
+                     </button>
+                  ))}
                </div>
             </div>
          </section>

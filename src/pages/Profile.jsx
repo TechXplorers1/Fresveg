@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { realtimeDb } from '../firebase';
 import OrderTrackingMap from '../components/OrderTrackingMap';
-import { ref, onValue, update, set, push } from 'firebase/database';
+import { ref, onValue, update, set, push, remove } from 'firebase/database';
 import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power, Compass, CheckCircle, Users } from 'lucide-react';
 
 const CATEGORIES = ['Tomatoes', 'Potatoes', 'Onions', 'Brinjal', 'Carrots', 'Spinach', 'Capsicum', 'Broccoli', 'Garlic', 'Apples', 'Bananas', 'Strawberries', 'Oranges', 'Milk', 'Butter', 'Cheese', 'Yogurt', 'Paneer'];
@@ -359,6 +360,7 @@ export default function Profile() {
   const [vendorFarms, setVendorFarms] = useState([]);
   const [incomingFarmBookings, setIncomingFarmBookings] = useState([]);
   const [showAddFarmForm, setShowAddFarmForm] = useState(false);
+  const [farmFormStep, setFarmFormStep] = useState(1);
   const [newFarmForm, setNewFarmForm] = useState({
     farmName: '',
     location: '',
@@ -386,6 +388,161 @@ export default function Profile() {
     costType: 'free',
     image: ''
   });
+  const [showMoreCrops, setShowMoreCrops] = useState(false);
+  const [showMoreFruits, setShowMoreFruits] = useState(false);
+  const [showMoreLivestock, setShowMoreLivestock] = useState(false);
+  const [showMoreAccommodations, setShowMoreAccommodations] = useState(false);
+  const [cropInputText, setCropInputText] = useState('');
+  const [fruitInputText, setFruitInputText] = useState('');
+  const [livestockInputText, setLivestockInputText] = useState('');
+  const [accInputText, setAccInputText] = useState('');
+
+  const [showAddFarmProductModal, setShowAddFarmProductModal] = useState(false);
+  const [newFarmProductForm, setNewFarmProductForm] = useState({
+    name: '',
+    price: '',
+    unit: 'kg',
+    customUnit: '',
+    image: ''
+  });
+  const [farmProductList, setFarmProductList] = useState([]);
+
+  const handleSaveModalProduct = (e) => {
+    if (e) e.preventDefault();
+    if (!newFarmProductForm.name.trim() || !newFarmProductForm.price) {
+      alert("Please enter product name and price.");
+      return;
+    }
+    const finalUnit = newFarmProductForm.unit === 'Other...'
+      ? (newFarmProductForm.customUnit.trim() || 'unit')
+      : newFarmProductForm.unit;
+
+    const productObj = {
+      id: `fp-${Date.now()}`,
+      name: newFarmProductForm.name.trim(),
+      price: Number(newFarmProductForm.price) || 0,
+      unit: finalUnit,
+      image: newFarmProductForm.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80',
+      vendor: newFarmForm.farmName || 'Farm Direct'
+    };
+
+    const updatedList = [...farmProductList, productObj];
+    setFarmProductList(updatedList);
+    setNewFarmForm(prev => ({ ...prev, farmProducts: updatedList }));
+    setShowAddFarmProductModal(false);
+    setNewFarmProductForm({ name: '', price: '', unit: 'kg', customUnit: '', image: '' });
+  };
+
+  const handleRemoveModalProduct = (indexToRemove) => {
+    const updatedList = farmProductList.filter((_, idx) => idx !== indexToRemove);
+    setFarmProductList(updatedList);
+    setNewFarmForm(prev => ({ ...prev, farmProducts: updatedList }));
+  };
+
+  const [showAddGalleryModal, setShowAddGalleryModal] = useState(false);
+  const [newGalleryForm, setNewGalleryForm] = useState({ url: '', caption: '' });
+  const [farmGalleryList, setFarmGalleryList] = useState([]);
+
+  const handleAddGalleryPhoto = (e) => {
+    if (e) e.preventDefault();
+    if (!newGalleryForm.url.trim()) {
+      alert("Please enter a valid Image URL.");
+      return;
+    }
+    const photoObj = {
+      id: `g-${Date.now()}`,
+      url: newGalleryForm.url.trim(),
+      caption: newGalleryForm.caption.trim() || 'Farm Tour Photo'
+    };
+    setFarmGalleryList(prev => [...prev, photoObj]);
+    setNewGalleryForm({ url: '', caption: '' });
+    setShowAddGalleryModal(false);
+  };
+
+  const handleRemoveGalleryPhoto = (indexToRemove) => {
+    setFarmGalleryList(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const INITIAL_CROPS = ['Strawberries', 'Cherry Tomatoes', 'Sweet Corn', 'Spinach', 'Carrots'];
+  const EXTRA_CROPS = ['Capsicum', 'Broccoli', 'Organic Wheat', 'Red Onions', 'Potatoes', 'Herbs', 'Lettuce', 'Cabbage', 'Radish'];
+
+  const INITIAL_FRUITS = ['Mango Orchards', 'Guava Groves', 'Papaya', 'Apple Trees', 'Banana Plantation'];
+  const EXTRA_FRUITS = ['Pomegranate', 'Orange Groves', 'Coconut Palms', 'Dragonfruit', 'Custard Apple', 'Pineapple', 'Lemon Trees', 'Jackfruit'];
+
+  const INITIAL_LIVESTOCK = ['Pure Gir Cows', 'Goats & Sheep', 'Free-Range Poultry', 'Rabbits & Ducks', 'Honey Bees'];
+  const EXTRA_LIVESTOCK = ['Buffaloes', 'Horses & Ponies', 'Fish Ponds', 'Turkeys', 'Geese', 'Quails', 'Dairy Cattle'];
+
+  const INITIAL_ACCOMMODATIONS = ['Farmhouse Rooms', 'Rustic Mud Huts', 'Camping Tents', 'Treehouse Stays', 'Shaded Hammocks'];
+  const EXTRA_ACCOMMODATIONS = ['Luxury Villas', 'Wooden Cottages', 'Dormitory Stays', 'Glamping Pods', 'Caravan Parking'];
+
+  const handleAddCropChip = (cropName) => {
+    const trimmed = cropName.trim();
+    if (!trimmed) return;
+    const current = newFarmForm.crops ? newFarmForm.crops.split(',').map(c => c.trim()).filter(Boolean) : [];
+    if (!current.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+      const updated = [...current, trimmed].join(', ');
+      setNewFarmForm(prev => ({ ...prev, crops: updated }));
+    }
+    setCropInputText('');
+  };
+
+  const handleRemoveCropChip = (cropName) => {
+    const current = newFarmForm.crops ? newFarmForm.crops.split(',').map(c => c.trim()).filter(Boolean) : [];
+    const updated = current.filter(c => c.toLowerCase() !== cropName.toLowerCase()).join(', ');
+    setNewFarmForm(prev => ({ ...prev, crops: updated }));
+  };
+
+  const handleAddFruitChip = (fruitName) => {
+    const trimmed = fruitName.trim();
+    if (!trimmed) return;
+    const current = newFarmForm.fruits ? newFarmForm.fruits.split(',').map(f => f.trim()).filter(Boolean) : [];
+    if (!current.some(f => f.toLowerCase() === trimmed.toLowerCase())) {
+      const updated = [...current, trimmed].join(', ');
+      setNewFarmForm(prev => ({ ...prev, fruits: updated }));
+    }
+    setFruitInputText('');
+  };
+
+  const handleRemoveFruitChip = (fruitName) => {
+    const current = newFarmForm.fruits ? newFarmForm.fruits.split(',').map(f => f.trim()).filter(Boolean) : [];
+    const updated = current.filter(f => f.toLowerCase() !== fruitName.toLowerCase()).join(', ');
+    setNewFarmForm(prev => ({ ...prev, fruits: updated }));
+  };
+
+  const handleAddLivestockChip = (animalName) => {
+    const trimmed = animalName.trim();
+    if (!trimmed) return;
+    const current = newFarmForm.livestock ? newFarmForm.livestock.split(',').map(a => a.trim()).filter(Boolean) : [];
+    if (!current.some(a => a.toLowerCase() === trimmed.toLowerCase())) {
+      const updated = [...current, trimmed].join(', ');
+      setNewFarmForm(prev => ({ ...prev, livestock: updated }));
+    }
+    setLivestockInputText('');
+  };
+
+  const handleRemoveLivestockChip = (animalName) => {
+    const current = newFarmForm.livestock ? newFarmForm.livestock.split(',').map(a => a.trim()).filter(Boolean) : [];
+    const updated = current.filter(a => a.toLowerCase() !== animalName.toLowerCase()).join(', ');
+    setNewFarmForm(prev => ({ ...prev, livestock: updated }));
+  };
+
+  const handleAddAccChip = (accName) => {
+    const trimmed = accName.trim();
+    if (!trimmed) return;
+    const current = newFarmForm.accommodations ? newFarmForm.accommodations.split(',').map(a => a.trim()).filter(Boolean) : [];
+    if (!current.some(a => a.toLowerCase() === trimmed.toLowerCase())) {
+      const updated = [...current, trimmed].join(', ');
+      setNewFarmForm(prev => ({ ...prev, accommodations: updated }));
+    }
+    setAccInputText('');
+  };
+
+  const handleRemoveAccChip = (accName) => {
+    const current = newFarmForm.accommodations ? newFarmForm.accommodations.split(',').map(a => a.trim()).filter(Boolean) : [];
+    const updated = current.filter(a => a.toLowerCase() !== accName.toLowerCase()).join(', ');
+    setNewFarmForm(prev => ({ ...prev, accommodations: updated }));
+  };
+
   const farmMapContainerRef = useRef(null);
   const farmMapRef = useRef(null);
   const farmMarkerRef = useRef(null);
@@ -615,6 +772,18 @@ export default function Profile() {
     }
   };
 
+  const handleDeleteFarm = async (farmId) => {
+    try {
+      const farmRef = ref(realtimeDb, `farms/${farmId}`);
+      await remove(farmRef);
+      setDeletingFarmId(null);
+      alert('Farm deleted successfully.');
+    } catch (err) {
+      console.error('Failed to delete farm:', err);
+      alert('Failed to delete farm: ' + err.message);
+    }
+  };
+
   const handleEditFarmClick = (farm) => {
     const slug = farm.farmName
       ? farm.farmName.toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -623,7 +792,10 @@ export default function Profile() {
   };
 
   const handleSaveFarmForm = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    if (farmFormStep < 6) {
+      return;
+    }
     if (!newFarmForm.farmName.trim() || !newFarmForm.location.trim()) {
       alert('Please fill out Farm Name and Location.');
       return;
@@ -686,6 +858,7 @@ export default function Profile() {
         accommodations: parseAccommodations(newFarmForm.accommodations),
         amenities: parseList(newFarmForm.amenities),
         farmProducts: parseProducts(newFarmForm.farmProducts),
+        gallery: farmGalleryList,
         vendorId: user.uid,
         vendorName: userProfile?.displayName || user?.displayName || 'Vendor',
         createdAt: new Date().toISOString()
@@ -2193,7 +2366,7 @@ export default function Profile() {
             <div className="space-y-8 animate-fade-in text-left">
               {/* Header */}
               <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100/50 flex items-center justify-center text-emerald-600">
                     <Compass size={20} />
                   </div>
@@ -2208,7 +2381,13 @@ export default function Profile() {
                       handleCancelFarmForm();
                     } else {
                       setEditingFarmId(null);
-                      setNewFarmForm({ farmName: '', location: '', description: '', costPerPerson: '', image: '', costType: 'free' });
+                      setFarmFormStep(1);
+                      setFarmGalleryList([]);
+                      setFarmProductList([]);
+                      setNewFarmForm({
+                        farmName: '', location: '', description: '', costPerPerson: '', image: '', costType: 'free',
+                        crops: '', fruits: '', livestock: '', accommodations: '', amenities: '', farmProducts: ''
+                      });
                       setShowAddFarmForm(true);
                     }
                   }}
@@ -2219,282 +2398,960 @@ export default function Profile() {
                 </button>
               </div>
 
-              {/* Add / Edit Farm Form */}
+              {/* Add / Edit Farm Step-by-Step Wizard Form */}
               {showAddFarmForm && (
-                <form onSubmit={handleSaveFarmForm} className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6 max-w-5xl animate-fade-in">
-                  <h3 className="text-base font-bold text-slate-855 font-headings text-left">
-                    {editingFarmId ? 'Edit Farm Details' : 'Farm Details'}
-                  </h3>
+                <form onSubmit={(e) => e.preventDefault()} className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6 max-w-5xl animate-fade-in">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4 text-left">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-800 font-headings">
+                        {editingFarmId ? 'Edit Farm Details' : 'Add New Farm'}
+                      </h3>
+                      <p className="text-xs text-slate-400 font-medium font-body">Step-by-step farm listing setup</p>
+                    </div>
+                    <div className="bg-emerald-50 border border-emerald-200/80 px-3.5 py-1 rounded-xl text-emerald-800 text-xs font-extrabold font-mono">
+                      Step {farmFormStep} of 6
+                    </div>
+                  </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Wizard Step Progress Indicator */}
+                  <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-extrabold font-headings text-slate-800">
+                      <span>
+                        {farmFormStep === 1 && '📍 Step 1: Basic Details (Up to Description)'}
+                        {farmFormStep === 2 && '🌾 Step 2: Crops & Fruit Orchards'}
+                        {farmFormStep === 3 && '🐄 Step 3: Livestock & Poultry'}
+                        {farmFormStep === 4 && '🛖 Step 4: Accommodations Provided'}
+                        {farmFormStep === 5 && '🧺 Step 5: Direct Farm Products For Sale'}
+                        {farmFormStep === 6 && '📋 Step 6: Full Farm Listing Summary & Confirmation'}
+                      </span>
+                      <span className="text-[11px] font-bold text-emerald-600 font-mono">{Math.round((farmFormStep / 6) * 100)}% Completed</span>
+                    </div>
 
-                    {/* Left Column: Form Fields */}
-                    <div className="lg:col-span-7 space-y-4">
+                    <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full transition-all duration-300 rounded-full"
+                        style={{ width: `${Math.round((farmFormStep / 6) * 100)}%` }}
+                      />
+                    </div>
 
-                      {/* Farm Name */}
-                      <div className="text-left">
-                        <label className={labelCls}>Farm Name</label>
-                        <input
-                          required
-                          type="text"
-                          value={newFarmForm.farmName}
-                          onChange={(e) => setNewFarmForm({ ...newFarmForm, farmName: e.target.value })}
-                          className={inputCls.replace('pl-10', 'px-4')}
-                          placeholder="E.g. Strawberry Paradise"
-                        />
-                      </div>
+                    <div className="grid grid-cols-6 gap-1 text-center">
+                      {[
+                        { step: 1, label: '1. Basic Info' },
+                        { step: 2, label: '2. Produce & Fruits' },
+                        { step: 3, label: '3. Animals' },
+                        { step: 4, label: '4. Stays' },
+                        { step: 5, label: '5. Direct Products' },
+                        { step: 6, label: '6. Review & Submit' }
+                      ].map((s) => (
+                        <button
+                          type="button"
+                          key={s.step}
+                          onClick={() => {
+                            if (s.step < farmFormStep || (newFarmForm.farmName && newFarmForm.location && newFarmForm.description)) {
+                              setFarmFormStep(s.step);
+                            }
+                          }}
+                          className={`py-1.5 px-0.5 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer truncate ${
+                            farmFormStep === s.step
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : s.step < farmFormStep
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-white text-slate-400 border border-slate-200'
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-                      {/* Location Field with Buttons */}
-                      <div className="text-left">
-                        <div className="flex justify-between items-center mb-1.5">
-                          <label className={labelCls}>Location Address <span className="text-emerald-600 font-bold">*</span></label>
-                          <div className="flex gap-1.5">
-                            <button
-                              type="button"
-                              disabled={detectingFarmLocation}
-                              onClick={handleDetectFarmLocation}
-                              className="bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-lg border border-emerald-100 transition-all flex items-center gap-1 active:scale-95"
-                              title="Get current location"
-                            >
-                              <Navigation size={10} className={detectingFarmLocation ? 'animate-spin' : ''} />
-                              {detectingFarmLocation ? 'Detecting...' : 'Use GPS'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleLocateFarmAddress}
-                              className="bg-slate-700 hover:bg-slate-850 text-white text-[10px] font-bold px-2 py-1 rounded-lg transition-all flex items-center gap-1 active:scale-95"
-                              title="Pin typed address on map"
-                            >
-                              <MapPin size={10} />
-                              Locate
-                            </button>
-                          </div>
-                        </div>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  {/* STEP 1: Basic Farm Details (Up to Description & Map) */}
+                  {farmFormStep === 1 && (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
+                      <div className="lg:col-span-7 space-y-4">
+                        {/* Farm Name */}
+                        <div className="text-left">
+                          <label className={labelCls}>Farm Name <span className="text-emerald-600 font-bold">*</span></label>
                           <input
                             required
                             type="text"
-                            value={newFarmForm.location}
-                            onChange={(e) => setNewFarmForm({ ...newFarmForm, location: e.target.value })}
-                            className={inputCls}
-                            placeholder="E.g. Mahabaleshwar, Maharashtra"
+                            value={newFarmForm.farmName}
+                            onChange={(e) => setNewFarmForm({ ...newFarmForm, farmName: e.target.value })}
+                            className={inputCls.replace('pl-10', 'px-4')}
+                            placeholder="E.g. Strawberry Paradise"
                           />
                         </div>
-                      </div>
 
-                      {/* Admission Entry Type (Free vs Payable) */}
-                      <div className="text-left space-y-2">
-                        <label className={labelCls}>Admission Entry Type <span className="text-emerald-600 font-bold">*</span></label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setNewFarmForm(prev => ({ ...prev, costType: 'free', costPerPerson: '0' }))}
-                            className={`p-3 rounded-2xl border-2 flex items-center justify-between transition-all text-left ${(newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0')
-                              ? 'border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-500/10'
-                              : 'border-slate-200 bg-white hover:border-slate-300'
-                              }`}
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold text-sm shadow-xs">
-                                🆓
-                              </div>
-                              <div>
-                                <p className="text-xs font-black text-slate-800">Free of Cost</p>
-                                <p className="text-[10px] text-slate-400 font-medium">Free open tour (₹0)</p>
-                              </div>
-                            </div>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setNewFarmForm(prev => ({ ...prev, costType: 'payable', costPerPerson: (newFarmForm.costPerPerson === '0' || !newFarmForm.costPerPerson) ? '250' : newFarmForm.costPerPerson }))}
-                            className={`p-3 rounded-2xl border-2 flex items-center justify-between transition-all text-left ${(newFarmForm.costType === 'payable' || (Number(newFarmForm.costPerPerson) > 0 && newFarmForm.costType !== 'free'))
-                              ? 'border-teal-600 bg-teal-50/60 ring-2 ring-teal-500/10'
-                              : 'border-slate-200 bg-white hover:border-slate-300'
-                              }`}
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
-                                💳
-                              </div>
-                              <div>
-                                <p className="text-xs font-black text-slate-800">Payable Visit</p>
-                                <p className="text-[10px] text-slate-400 font-medium">Ticket fee per guest</p>
-                              </div>
-                            </div>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {/* Cost Input (Shown if Payable selected) */}
+                        {/* Location Field with Buttons */}
                         <div className="text-left">
-                          <label className={labelCls}>Admission Fee per Visitor (₹)</label>
-                          {newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0' ? (
-                            <div className="px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 text-emerald-700 text-xs font-bold flex items-center gap-1.5">
-                              <span>✨ Free Admission (₹0 Entry Fee)</span>
+                          <div className="flex justify-between items-center mb-1.5">
+                            <label className={labelCls}>Location Address <span className="text-emerald-600 font-bold">*</span></label>
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                disabled={detectingFarmLocation}
+                                onClick={handleDetectFarmLocation}
+                                className="bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-lg border border-emerald-100 transition-all flex items-center gap-1 active:scale-95"
+                                title="Get current location"
+                              >
+                                <Navigation size={10} className={detectingFarmLocation ? 'animate-spin' : ''} />
+                                {detectingFarmLocation ? 'Detecting...' : 'Use GPS'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleLocateFarmAddress}
+                                className="bg-slate-700 hover:bg-slate-850 text-white text-[10px] font-bold px-2 py-1 rounded-lg transition-all flex items-center gap-1 active:scale-95"
+                                title="Pin typed address on map"
+                              >
+                                <MapPin size={10} />
+                                Locate
+                              </button>
+                            </div>
+                          </div>
+                          <div className="relative">
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input
+                              required
+                              type="text"
+                              value={newFarmForm.location}
+                              onChange={(e) => setNewFarmForm({ ...newFarmForm, location: e.target.value })}
+                              className={inputCls}
+                              placeholder="E.g. Mahabaleshwar, Maharashtra"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Admission Entry Type */}
+                        <div className="text-left space-y-2">
+                          <label className={labelCls}>Admission Entry Type <span className="text-emerald-600 font-bold">*</span></label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setNewFarmForm(prev => ({ ...prev, costType: 'free', costPerPerson: '0' }))}
+                              className={`p-3 rounded-2xl border-2 flex items-center justify-between transition-all text-left ${(newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0')
+                                ? 'border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-500/10'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                                }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                                  🆓
+                                </div>
+                                <div>
+                                  <p className="text-xs font-black text-slate-800">Free of Cost</p>
+                                  <p className="text-[10px] text-slate-400 font-medium">Free open tour (₹0)</p>
+                                </div>
+                              </div>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setNewFarmForm(prev => ({ ...prev, costType: 'payable', costPerPerson: (newFarmForm.costPerPerson === '0' || !newFarmForm.costPerPerson) ? '250' : newFarmForm.costPerPerson }))}
+                              className={`p-3 rounded-2xl border-2 flex items-center justify-between transition-all text-left ${(newFarmForm.costType === 'payable' || (Number(newFarmForm.costPerPerson) > 0 && newFarmForm.costType !== 'free'))
+                                ? 'border-teal-600 bg-teal-50/60 ring-2 ring-teal-500/10'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                                }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                                  💳
+                                </div>
+                                <div>
+                                  <p className="text-xs font-black text-slate-800">Payable Visit</p>
+                                  <p className="text-[10px] text-slate-400 font-medium">Ticket fee per guest</p>
+                                </div>
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Cost Input */}
+                          <div className="text-left">
+                            <label className={labelCls}>Admission Fee per Visitor (₹)</label>
+                            {newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0' ? (
+                              <div className="px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 text-emerald-700 text-xs font-bold flex items-center gap-1.5">
+                                <span>✨ Free Admission (₹0 Entry Fee)</span>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                                <input
+                                  required
+                                  type="number"
+                                  min="1"
+                                  value={newFarmForm.costPerPerson}
+                                  onChange={(e) => setNewFarmForm({ ...newFarmForm, costPerPerson: e.target.value })}
+                                  className={inputCls.replace('pl-10', 'pl-7 pr-4')}
+                                  placeholder="E.g. 250"
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Photo URL */}
+                          <div className="text-left">
+                            <label className={labelCls}>Farm Photo URL</label>
+                            <input
+                              type="text"
+                              value={newFarmForm.image}
+                              onChange={(e) => setNewFarmForm({ ...newFarmForm, image: e.target.value })}
+                              className={inputCls.replace('pl-10', 'px-4')}
+                              placeholder="https://images.unsplash.com/photo-..."
+                            />
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <div className="text-left">
+                          <label className={labelCls}>Description <span className="text-emerald-600 font-bold">*</span></label>
+                          <textarea
+                            required
+                            rows="3"
+                            value={newFarmForm.description}
+                            onChange={(e) => setNewFarmForm({ ...newFarmForm, description: e.target.value })}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none text-xs transition-all duration-200 bg-white/50 backdrop-blur-sm resize-none font-body"
+                            placeholder="Describe the experience visitors can expect (activities, snacks, views)..."
+                          ></textarea>
+                        </div>
+
+                        {/* 📸 Farm Gallery & Visual Tour Photos Section */}
+                        <div className="text-left space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <label className={labelCls}>📸 Farm Gallery & Visual Tour Photos ({farmGalleryList.length})</label>
+                              <p className="text-[11px] text-slate-400 font-medium">Add photos of your fields, crops, stays, and farm views for visitors to explore.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNewGalleryForm({ url: '', caption: '' });
+                                setShowAddGalleryModal(true);
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-xs shrink-0 cursor-pointer active:scale-95"
+                            >
+                              <Plus size={13} /> Add Photo
+                            </button>
+                          </div>
+
+                          {/* Added Gallery Photos Grid */}
+                          {farmGalleryList.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                              {farmGalleryList.map((item, idx) => (
+                                <div key={item.id || idx} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs relative group">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveGalleryPhoto(idx)}
+                                    className="absolute top-1.5 right-1.5 bg-rose-600/90 hover:bg-rose-700 text-white p-1 rounded-lg z-20 transition-transform active:scale-95 cursor-pointer"
+                                    title="Remove photo"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                  <div className="h-20 bg-slate-100 overflow-hidden relative">
+                                    <img
+                                      src={item.url || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80'}
+                                      alt={item.caption || 'Farm Photo'}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80'; }}
+                                    />
+                                  </div>
+                                  <div className="p-1.5 text-center bg-white">
+                                    <p className="text-[10px] font-bold text-slate-700 truncate">{item.caption || 'Farm View'}</p>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           ) : (
-                            <div className="relative">
-                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
-                              <input
-                                required
-                                type="number"
-                                min="1"
-                                value={newFarmForm.costPerPerson}
-                                onChange={(e) => setNewFarmForm({ ...newFarmForm, costPerPerson: e.target.value })}
-                                className={inputCls.replace('pl-10', 'pl-7 pr-4')}
-                                placeholder="E.g. 250"
-                              />
+                            <div className="py-4 text-center bg-white border border-dashed border-slate-200 rounded-xl p-3">
+                              <p className="text-xs text-slate-400 font-medium">No gallery photos added yet. Click <span className="font-bold text-emerald-600">+ Add Photo</span> to add real photos of your farm.</p>
                             </div>
                           )}
                         </div>
+                      </div>
 
-                        {/* Photo URL */}
-                        <div className="text-left">
-                          <label className={labelCls}>Farm Photo URL</label>
-                          <input
-                            type="text"
-                            value={newFarmForm.image}
-                            onChange={(e) => setNewFarmForm({ ...newFarmForm, image: e.target.value })}
-                            className={inputCls.replace('pl-10', 'px-4')}
-                            placeholder="https://images.unsplash.com/photo-..."
+                      {/* Right Column: Map Pinning */}
+                      <div className="lg:col-span-5 flex flex-col min-h-[250px] text-left">
+                        <label className={labelCls}>Pin Farm Location on Map</label>
+                        <div className="flex-grow bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 relative shadow-inner min-h-[250px] lg:min-h-0">
+                          <div
+                            ref={farmMapContainerRef}
+                            className="absolute inset-0 z-10 w-full h-full"
+                            style={{ minHeight: '250px' }}
                           />
                         </div>
+                        <p className="text-[10px] text-slate-400 mt-2 pl-1 font-body">Drag the pin or click on the map to select your farm location address automatically.</p>
                       </div>
+                    </div>
+                  )}
 
-                      {/* Description */}
-                      <div className="text-left">
-                        <label className={labelCls}>Description</label>
-                        <textarea
-                          required
-                          rows="3"
-                          value={newFarmForm.description}
-                          onChange={(e) => setNewFarmForm({ ...newFarmForm, description: e.target.value })}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none text-xs transition-all duration-200 bg-white/50 backdrop-blur-sm resize-none font-body"
-                          placeholder="Describe the experience visitors can expect (activities, snacks, views)..."
-                        ></textarea>
-                      </div>
-
-                      {/* Additional Farm Offerings & Availabilities Section */}
-                      <div className="border-t border-slate-100 pt-4 space-y-3">
-                        <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider font-headings">
-                          🌿 Farm Page Features & Availabilities
-                        </h4>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {/* Crops Grown */}
-                          <div>
-                            <label className={labelCls}>🌾 Crops & Produce Grown</label>
-                            <input
-                              type="text"
-                              value={newFarmForm.crops || ''}
-                              onChange={(e) => setNewFarmForm({ ...newFarmForm, crops: e.target.value })}
-                              className={inputCls.replace('pl-10', 'px-3.5')}
-                              placeholder="E.g. Strawberries, Cherry Tomatoes, Sweet Corn"
-                            />
-                          </div>
-
-                          {/* Fruit Orchards */}
-                          <div>
-                            <label className={labelCls}>🍎 Fruit Orchards & Trees</label>
-                            <input
-                              type="text"
-                              value={newFarmForm.fruits || ''}
-                              onChange={(e) => setNewFarmForm({ ...newFarmForm, fruits: e.target.value })}
-                              className={inputCls.replace('pl-10', 'px-3.5')}
-                              placeholder="E.g. Mango Orchards, Guava Groves, Papaya"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {/* Livestock */}
-                          <div>
-                            <label className={labelCls}>🐄 Livestock & Poultry</label>
-                            <input
-                              type="text"
-                              value={newFarmForm.livestock || ''}
-                              onChange={(e) => setNewFarmForm({ ...newFarmForm, livestock: e.target.value })}
-                              className={inputCls.replace('pl-10', 'px-3.5')}
-                              placeholder="E.g. Pure Gir Cows, Goats & Sheep, Poultry"
-                            />
-                          </div>
-
-                          {/* Accommodations */}
-                          <div>
-                            <label className={labelCls}>🛖 Accommodations Provided</label>
-                            <input
-                              type="text"
-                              value={newFarmForm.accommodations || ''}
-                              onChange={(e) => setNewFarmForm({ ...newFarmForm, accommodations: e.target.value })}
-                              className={inputCls.replace('pl-10', 'px-3.5')}
-                              placeholder="E.g. Farmhouse Rooms, Mud Huts, Camping Tents"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Amenities & Activities */}
+                  {/* STEP 2: Crops & Fruit Orchards */}
+                  {farmFormStep === 2 && (
+                    <div className="space-y-6 animate-fade-in text-left max-w-3xl mx-auto py-2">
+                      <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-100 flex items-start gap-3">
+                        <div className="text-2xl">🌾</div>
                         <div>
-                          <label className={labelCls}>🚜 Activities & Amenities</label>
-                          <input
-                            type="text"
-                            value={newFarmForm.amenities || ''}
-                            onChange={(e) => setNewFarmForm({ ...newFarmForm, amenities: e.target.value })}
-                            className={inputCls.replace('pl-10', 'px-3.5')}
-                            placeholder="E.g. Berry Picking, Guided Walk, Organic Breakfast, Tractor Ride"
-                          />
-                        </div>
-
-                        {/* Farm Products For Sale */}
-                        <div>
-                          <label className={labelCls}>🧺 Direct Farm Products For Sale (1 per line)</label>
-                          <textarea
-                            rows="2"
-                            value={newFarmForm.farmProducts || ''}
-                            onChange={(e) => setNewFarmForm({ ...newFarmForm, farmProducts: e.target.value })}
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none text-xs transition-all duration-200 bg-white/50 backdrop-blur-sm resize-none font-body"
-                            placeholder={'Fresh Organic Strawberries (₹180)\nRaw Organic Honey Jar (₹290)\nPure Cow Ghee (₹650)'}
-                          ></textarea>
+                          <h4 className="font-bold text-emerald-900 text-sm font-headings">Step 2: Crops & Produce Grown, Fruit Orchards</h4>
+                          <p className="text-xs text-emerald-700 font-medium font-body mt-0.5">Select suggested item chips below or type custom text and press <span className="font-extrabold text-emerald-900">Enter</span> to add. Click <span className="font-extrabold">Skip Step</span> if none.</p>
                         </div>
                       </div>
 
+                      {/* Field 1: Crops & Produce Grown */}
+                      <div className="space-y-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                        <label className={labelCls}>🌾 Crops & Produce Grown</label>
+
+                        {/* Selected Crop Chips */}
+                        {(() => {
+                          const selectedCrops = newFarmForm.crops ? newFarmForm.crops.split(',').map(c => c.trim()).filter(Boolean) : [];
+                          return (
+                            <>
+                              {selectedCrops.length > 0 && (
+                                <div className="flex flex-wrap gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                                  {selectedCrops.map((crop, idx) => (
+                                    <span key={idx} className="bg-emerald-600 text-white border border-emerald-700 px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-xs">
+                                      🌾 {crop}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveCropChip(crop)}
+                                        className="text-white hover:text-rose-200 font-black ml-0.5 text-xs cursor-pointer"
+                                        title="Remove chip"
+                                      >
+                                        ×
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Input Box */}
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={cropInputText}
+                                  onChange={(e) => setCropInputText(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ',') {
+                                      e.preventDefault();
+                                      handleAddCropChip(cropInputText);
+                                    }
+                                  }}
+                                  className={inputCls.replace('pl-10', 'px-4')}
+                                  placeholder="Type crop name and press Enter (e.g. Sweet Corn, Spinach)..."
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddCropChip(cropInputText)}
+                                  disabled={!cropInputText.trim()}
+                                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 cursor-pointer transition-all active:scale-95"
+                                >
+                                  + Add
+                                </button>
+                              </div>
+
+                              {/* Suggested Crop Chips */}
+                              <div className="space-y-2 pt-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-headings">
+                                    Suggested Crops (Click to Select):
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowMoreCrops(!showMoreCrops)}
+                                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+                                  >
+                                    {showMoreCrops ? 'Show Less' : `+ Others (${EXTRA_CROPS.length} more)`}
+                                  </button>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                  {(showMoreCrops ? [...INITIAL_CROPS, ...EXTRA_CROPS] : INITIAL_CROPS).map((chip, idx) => {
+                                    const isSelected = selectedCrops.some(c => c.toLowerCase() === chip.toLowerCase());
+                                    return (
+                                      <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => {
+                                          if (isSelected) handleRemoveCropChip(chip);
+                                          else handleAddCropChip(chip);
+                                        }}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition-all border cursor-pointer active:scale-95 flex items-center gap-1.5 ${
+                                          isSelected
+                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm ring-2 ring-emerald-500/20'
+                                            : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400 hover:text-emerald-700 shadow-xs'
+                                        }`}
+                                      >
+                                        <span>{chip}</span>
+                                        {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Field 2: Fruit Orchards & Trees */}
+                      <div className="space-y-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                        <label className={labelCls}>🍎 Fruit Orchards & Trees</label>
+
+                        {/* Selected Fruit Chips */}
+                        {(() => {
+                          const selectedFruits = newFarmForm.fruits ? newFarmForm.fruits.split(',').map(f => f.trim()).filter(Boolean) : [];
+                          return (
+                            <>
+                              {selectedFruits.length > 0 && (
+                                <div className="flex flex-wrap gap-2 p-2.5 bg-amber-50/60 rounded-xl border border-amber-200">
+                                  {selectedFruits.map((fruit, idx) => (
+                                    <span key={idx} className="bg-amber-600 text-white border border-amber-700 px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-xs">
+                                      🍎 {fruit}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveFruitChip(fruit)}
+                                        className="text-white hover:text-rose-200 font-black ml-0.5 text-xs cursor-pointer"
+                                        title="Remove chip"
+                                      >
+                                        ×
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Input Box */}
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={fruitInputText}
+                                  onChange={(e) => setFruitInputText(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ',') {
+                                      e.preventDefault();
+                                      handleAddFruitChip(fruitInputText);
+                                    }
+                                  }}
+                                  className={inputCls.replace('pl-10', 'px-4')}
+                                  placeholder="Type fruit/orchard name and press Enter (e.g. Mango Orchards)..."
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddFruitChip(fruitInputText)}
+                                  disabled={!fruitInputText.trim()}
+                                  className="bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 cursor-pointer transition-all active:scale-95"
+                                >
+                                  + Add
+                                </button>
+                              </div>
+
+                              {/* Suggested Fruit Chips */}
+                              <div className="space-y-2 pt-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-headings">
+                                    Suggested Fruits & Orchards (Click to Select):
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowMoreFruits(!showMoreFruits)}
+                                    className="text-xs font-bold text-amber-600 hover:text-amber-700 hover:underline flex items-center gap-1 cursor-pointer"
+                                  >
+                                    {showMoreFruits ? 'Show Less' : `+ Others (${EXTRA_FRUITS.length} more)`}
+                                  </button>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                  {(showMoreFruits ? [...INITIAL_FRUITS, ...EXTRA_FRUITS] : INITIAL_FRUITS).map((chip, idx) => {
+                                    const isSelected = selectedFruits.some(f => f.toLowerCase() === chip.toLowerCase());
+                                    return (
+                                      <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => {
+                                          if (isSelected) handleRemoveFruitChip(chip);
+                                          else handleAddFruitChip(chip);
+                                        }}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition-all border cursor-pointer active:scale-95 flex items-center gap-1.5 ${
+                                          isSelected
+                                            ? 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-500/20'
+                                            : 'bg-white text-slate-700 border-slate-200 hover:border-amber-400 hover:text-amber-700 shadow-xs'
+                                        }`}
+                                      >
+                                        <span>{chip}</span>
+                                        {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 3: Livestock & Poultry */}
+                  {farmFormStep === 3 && (
+                    <div className="space-y-6 animate-fade-in text-left max-w-3xl mx-auto py-2">
+                      <div className="bg-teal-50/70 p-4 rounded-2xl border border-teal-100 flex items-start gap-3">
+                        <div className="text-2xl">🐄</div>
+                        <div>
+                          <h4 className="font-bold text-teal-900 text-sm font-headings">Step 3: Livestock & Poultry</h4>
+                          <p className="text-xs text-teal-700 font-medium font-body mt-0.5">Select suggested animal chips below or type custom text and press <span className="font-extrabold text-teal-900">Enter</span> to add. Click <span className="font-extrabold">Skip Step</span> if none.</p>
+                        </div>
+                      </div>
+
+                      {/* Field: Livestock & Poultry */}
+                      <div className="space-y-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                        <label className={labelCls}>🐄 Livestock & Poultry</label>
+
+                        {/* Selected Livestock Chips */}
+                        {(() => {
+                          const selectedLivestock = newFarmForm.livestock ? newFarmForm.livestock.split(',').map(a => a.trim()).filter(Boolean) : [];
+                          return (
+                            <>
+                              {selectedLivestock.length > 0 && (
+                                <div className="flex flex-wrap gap-2 p-2.5 bg-teal-50/60 rounded-xl border border-teal-200">
+                                  {selectedLivestock.map((animal, idx) => (
+                                    <span key={idx} className="bg-teal-600 text-white border border-teal-700 px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-xs">
+                                      🐄 {animal}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveLivestockChip(animal)}
+                                        className="text-white hover:text-rose-200 font-black ml-0.5 text-xs cursor-pointer"
+                                        title="Remove chip"
+                                      >
+                                        ×
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Input Box */}
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={livestockInputText}
+                                  onChange={(e) => setLivestockInputText(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ',') {
+                                      e.preventDefault();
+                                      handleAddLivestockChip(livestockInputText);
+                                    }
+                                  }}
+                                  className={inputCls.replace('pl-10', 'px-4')}
+                                  placeholder="Type animal name and press Enter (e.g. Free-Range Poultry, Gir Cows)..."
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddLivestockChip(livestockInputText)}
+                                  disabled={!livestockInputText.trim()}
+                                  className="bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 cursor-pointer transition-all active:scale-95"
+                                >
+                                  + Add
+                                </button>
+                              </div>
+
+                              {/* Suggested Livestock Chips */}
+                              <div className="space-y-2 pt-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-headings">
+                                    Suggested Livestock & Poultry (Click to Select):
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowMoreLivestock(!showMoreLivestock)}
+                                    className="text-xs font-bold text-teal-600 hover:text-teal-700 hover:underline flex items-center gap-1 cursor-pointer"
+                                  >
+                                    {showMoreLivestock ? 'Show Less' : `+ Others (${EXTRA_LIVESTOCK.length} more)`}
+                                  </button>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                  {(showMoreLivestock ? [...INITIAL_LIVESTOCK, ...EXTRA_LIVESTOCK] : INITIAL_LIVESTOCK).map((chip, idx) => {
+                                    const isSelected = selectedLivestock.some(a => a.toLowerCase() === chip.toLowerCase());
+                                    return (
+                                      <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => {
+                                          if (isSelected) handleRemoveLivestockChip(chip);
+                                          else handleAddLivestockChip(chip);
+                                        }}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition-all border cursor-pointer active:scale-95 flex items-center gap-1.5 ${
+                                          isSelected
+                                            ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-500/20'
+                                            : 'bg-white text-slate-700 border-slate-200 hover:border-teal-400 hover:text-teal-700 shadow-xs'
+                                        }`}
+                                      >
+                                        <span>{chip}</span>
+                                        {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 4: Accommodations Provided */}
+                  {farmFormStep === 4 && (
+                    <div className="space-y-6 animate-fade-in text-left max-w-3xl mx-auto py-2">
+                      <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-100 flex items-start gap-3">
+                        <div className="text-2xl">🛖</div>
+                        <div>
+                          <h4 className="font-bold text-amber-900 text-sm font-headings">Step 4: Accommodations Provided</h4>
+                          <p className="text-xs text-amber-700 font-medium font-body mt-0.5">Select suggested accommodation chips below or type custom text and press <span className="font-extrabold text-amber-900">Enter</span> to add. Click <span className="font-extrabold">Skip Step</span> if day-visit only.</p>
+                        </div>
+                      </div>
+
+                      {/* Field: Accommodations Provided */}
+                      <div className="space-y-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                        <label className={labelCls}>🛖 Accommodations Provided</label>
+
+                        {/* Selected Accommodation Chips */}
+                        {(() => {
+                          const selectedAcc = newFarmForm.accommodations ? newFarmForm.accommodations.split(',').map(a => a.trim()).filter(Boolean) : [];
+                          return (
+                            <>
+                              {selectedAcc.length > 0 && (
+                                <div className="flex flex-wrap gap-2 p-2.5 bg-amber-50/60 rounded-xl border border-amber-200">
+                                  {selectedAcc.map((acc, idx) => (
+                                    <span key={idx} className="bg-amber-600 text-white border border-amber-700 px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-xs">
+                                      🛖 {acc}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveAccChip(acc)}
+                                        className="text-white hover:text-rose-200 font-black ml-0.5 text-xs cursor-pointer"
+                                        title="Remove chip"
+                                      >
+                                        ×
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Input Box */}
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={accInputText}
+                                  onChange={(e) => setAccInputText(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ',') {
+                                      e.preventDefault();
+                                      handleAddAccChip(accInputText);
+                                    }
+                                  }}
+                                  className={inputCls.replace('pl-10', 'px-4')}
+                                  placeholder="Type stay option name and press Enter (e.g. Mud Huts, Treehouse)..."
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddAccChip(accInputText)}
+                                  disabled={!accInputText.trim()}
+                                  className="bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 cursor-pointer transition-all active:scale-95"
+                                >
+                                  + Add
+                                </button>
+                              </div>
+
+                              {/* Suggested Accommodation Chips */}
+                              <div className="space-y-2 pt-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-headings">
+                                    Suggested Accommodations & Stays (Click to Select):
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowMoreAccommodations(!showMoreAccommodations)}
+                                    className="text-xs font-bold text-amber-600 hover:text-amber-700 hover:underline flex items-center gap-1 cursor-pointer"
+                                  >
+                                    {showMoreAccommodations ? 'Show Less' : `+ Others (${EXTRA_ACCOMMODATIONS.length} more)`}
+                                  </button>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                  {(showMoreAccommodations ? [...INITIAL_ACCOMMODATIONS, ...EXTRA_ACCOMMODATIONS] : INITIAL_ACCOMMODATIONS).map((chip, idx) => {
+                                    const isSelected = selectedAcc.some(a => a.toLowerCase() === chip.toLowerCase());
+                                    return (
+                                      <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => {
+                                          if (isSelected) handleRemoveAccChip(chip);
+                                          else handleAddAccChip(chip);
+                                        }}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition-all border cursor-pointer active:scale-95 flex items-center gap-1.5 ${
+                                          isSelected
+                                            ? 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-500/20'
+                                            : 'bg-white text-slate-700 border-slate-200 hover:border-amber-400 hover:text-amber-700 shadow-xs'
+                                        }`}
+                                      >
+                                        <span>{chip}</span>
+                                        {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 5: Direct Farm Products For Sale */}
+                  {farmFormStep === 5 && (
+                    <div className="space-y-6 animate-fade-in text-left max-w-3xl mx-auto py-2">
+                      {/* Step 5 Banner */}
+                      <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <div className="text-2xl">🧺</div>
+                          <div>
+                            <h4 className="font-bold text-purple-900 text-sm font-headings">Step 5: Direct Farm Products For Sale</h4>
+                            <p className="text-xs text-purple-700 font-medium font-body mt-0.5">Click <span className="font-extrabold">+ Add Product</span> to list products for sale, or click <span className="font-extrabold">Next Step →</span> to review your listing.</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewFarmProductForm({ name: '', price: '', unit: 'kg', customUnit: '', image: '' });
+                            setShowAddFarmProductModal(true);
+                          }}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold font-headings flex items-center justify-center gap-1.5 shadow-md active:scale-95 shrink-0 cursor-pointer"
+                        >
+                          <Plus size={14} /> Add Product
+                        </button>
+                      </div>
+
+                      {/* Added Products Section */}
+                      <div className="space-y-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                        <div className="flex items-center justify-between">
+                          <label className={labelCls}>🧺 Direct Farm Products Added ({farmProductList.length})</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewFarmProductForm({ name: '', price: '', unit: 'kg', customUnit: '', image: '' });
+                              setShowAddFarmProductModal(true);
+                            }}
+                            className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            + Add Another Product
+                          </button>
+                        </div>
+
+                        {farmProductList.length === 0 ? (
+                          <div className="py-8 text-center bg-slate-50/60 border-2 border-dashed border-purple-200/80 rounded-2xl p-6">
+                            <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center mx-auto mb-2.5 font-bold text-xl">
+                              🧺
+                            </div>
+                            <h5 className="font-bold text-slate-800 text-xs font-headings">No Farm Products Added Yet</h5>
+                            <p className="text-xs text-slate-400 font-medium max-w-sm mx-auto mt-1 mb-4 font-body">Add your freshly harvested organic farm products so visitors can purchase direct from your farm, or click Next Step to skip.</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNewFarmProductForm({ name: '', price: '', unit: 'kg', customUnit: '', image: '' });
+                                setShowAddFarmProductModal(true);
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings inline-flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                            >
+                              <Plus size={14} /> Add Product Now
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                            {farmProductList.map((product, idx) => (
+                              <div key={product.id || idx} className="bg-white border border-slate-200/90 p-3.5 rounded-2xl shadow-xs flex flex-col justify-between group hover:shadow-md transition-all relative">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveModalProduct(idx)}
+                                  className="absolute top-2 right-2 p-1 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors z-20 cursor-pointer"
+                                  title="Remove Product"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                                <div className="relative h-24 bg-slate-50 rounded-xl overflow-hidden mb-2.5 flex items-center justify-center p-1.5 border border-slate-100">
+                                  <img
+                                    src={product.image || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80'}
+                                    alt={product.name}
+                                    className="max-h-full object-contain group-hover:scale-105 transition-transform"
+                                  />
+                                </div>
+                                <div className="space-y-1 text-left">
+                                  <h4 className="font-bold text-slate-800 text-xs font-headings line-clamp-1">{product.name}</h4>
+                                  <div>
+                                    <span className="font-extrabold text-emerald-700 text-xs font-sans">
+                                      ₹{product.price} <span className="text-[10px] text-slate-400 font-normal">/{product.unit}</span>
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 6: Full Farm Listing Summary & Final Confirmation */}
+                  {farmFormStep === 6 && (
+                    <div className="space-y-6 animate-fade-in text-left max-w-3xl mx-auto py-2">
+                      <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-100 flex items-start gap-3">
+                        <div className="text-2xl">📋</div>
+                        <div>
+                          <h4 className="font-bold text-emerald-900 text-sm font-headings">Step 6: Review Farm Listing Summary</h4>
+                          <p className="text-xs text-emerald-700 font-medium font-body mt-0.5">Please review all your farm information below. Click <span className="font-extrabold">{editingFarmId ? 'Update Farm' : 'List Farm'}</span> to publish.</p>
+                        </div>
+                      </div>
+
+                      {/* 📋 Complete All Steps Summary Preview Card */}
+                      <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 sm:p-7 rounded-3xl shadow-xl space-y-5">
+                        <div className="flex items-center justify-between border-b border-slate-700/80 pb-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-2xl">📋</span>
+                            <div>
+                              <h4 className="font-extrabold text-base font-headings text-emerald-400">Complete Listing Summary</h4>
+                              <p className="text-xs text-slate-400 font-body">Final verification before publishing</p>
+                            </div>
+                          </div>
+                          <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-black px-3.5 py-1 rounded-full uppercase tracking-wider">
+                            Ready to Submit
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                          {/* Step 1 Preview */}
+                          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-1.5">
+                            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">📍 Step 1: Basic Info</span>
+                            <p className="font-extrabold text-sm text-white truncate">{newFarmForm.farmName || 'Unnamed Farm'}</p>
+                            <p className="text-slate-400">Ticket Fee: <span className="text-emerald-400 font-bold">{newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0' ? 'Free Admission (₹0)' : `₹${newFarmForm.costPerPerson} per visitor`}</span></p>
+                            <p className="text-slate-400">Gallery: <span className="text-emerald-400 font-bold">{farmGalleryList.length} Photos Added</span></p>
+                            {newFarmForm.description && (
+                              <p className="text-slate-400 italic line-clamp-2 text-[11px] pt-1">"{newFarmForm.description}"</p>
+                            )}
+                          </div>
+
+                          {/* Step 2 Preview */}
+                          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-1.5">
+                            <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider">🌾 Step 2: Crops & Orchards</span>
+                            <p className="text-slate-300 line-clamp-2"><strong className="text-slate-400">Crops:</strong> {newFarmForm.crops || 'None added'}</p>
+                            <p className="text-slate-300 line-clamp-2"><strong className="text-slate-400">Fruits:</strong> {newFarmForm.fruits || 'None added'}</p>
+                          </div>
+
+                          {/* Step 3 Preview */}
+                          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-1.5">
+                            <span className="text-[10px] font-black text-teal-400 uppercase tracking-wider">🐄 Step 3: Livestock & Poultry</span>
+                            <p className="text-slate-300 line-clamp-3">{newFarmForm.livestock || 'None added'}</p>
+                          </div>
+
+                          {/* Step 4 Preview */}
+                          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-1.5">
+                            <span className="text-[10px] font-black text-purple-400 uppercase tracking-wider">🛖 Step 4: Accommodations</span>
+                            <p className="text-slate-300 line-clamp-3">{newFarmForm.accommodations || 'None added'}</p>
+                          </div>
+                        </div>
+
+                        {/* Step 5 Direct Products Summary */}
+                        <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-rose-400 uppercase tracking-wider">🧺 Step 5: Direct Farm Products</span>
+                            <span className="font-extrabold text-white text-xs">{farmProductList.length} Products Added</span>
+                          </div>
+                          {farmProductList.length > 0 && (
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              {farmProductList.map((prod, i) => (
+                                <span key={i} className="bg-slate-700/80 border border-slate-600 text-slate-200 px-3 py-1 rounded-full text-[11px] font-bold">
+                                  {prod.name} (₹{prod.price}/{prod.unit})
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Wizard Control Buttons */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                    <div>
+                      <button
+                        type="button"
+                        onClick={handleCancelFarmForm}
+                        className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold transition-all text-xs cursor-pointer"
+                      >
+                        Cancel
+                      </button>
                     </div>
 
-                    {/* Right Column: Farm Interactive Map */}
-                    <div className="lg:col-span-5 flex flex-col min-h-[250px] text-left">
-                      <label className={labelCls}>Pin Farm Location on Map</label>
-                      <div className="flex-grow bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 relative shadow-inner min-h-[250px] lg:min-h-0">
-                        <div
-                          ref={farmMapContainerRef}
-                          className="absolute inset-0 z-10 w-full h-full"
-                          style={{ minHeight: '250px' }}
-                        />
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-2 pl-1 font-body">Drag the pin or click on the map to select your farm location address automatically.</p>
+                    <div className="flex items-center gap-2">
+                      {farmFormStep > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setFarmFormStep(prev => prev - 1)}
+                          className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold transition-all text-xs flex items-center gap-1 cursor-pointer"
+                        >
+                          ← Previous
+                        </button>
+                      )}
+
+                      {farmFormStep > 1 && farmFormStep < 6 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (farmFormStep === 2) setNewFarmForm(prev => ({ ...prev, crops: '', fruits: '' }));
+                            if (farmFormStep === 3) setNewFarmForm(prev => ({ ...prev, livestock: '' }));
+                            if (farmFormStep === 4) setNewFarmForm(prev => ({ ...prev, accommodations: '' }));
+                            if (farmFormStep === 5) {
+                              setFarmProductList([]);
+                              setNewFarmForm(prev => ({ ...prev, farmProducts: [] }));
+                            }
+                            setFarmFormStep(prev => prev + 1);
+                          }}
+                          className="px-4 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-extrabold transition-all text-xs cursor-pointer"
+                        >
+                          Skip Step
+                        </button>
+                      )}
+
+                      {farmFormStep < 6 ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (farmFormStep === 1) {
+                              if (!newFarmForm.farmName.trim() || !newFarmForm.location.trim() || !newFarmForm.description.trim()) {
+                                alert('Please fill in Farm Name, Location Address, and Description to proceed.');
+                                return;
+                              }
+                            }
+                            setFarmFormStep(prev => prev + 1);
+                          }}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md active:scale-95 text-xs flex items-center gap-1 cursor-pointer font-headings"
+                        >
+                          Next Step →
+                        </button>
+                      ) : (
+                        <button
+                          id="save-farm-submit-btn"
+                          type="button"
+                          onClick={handleSaveFarmForm}
+                          disabled={isSubmittingFarm}
+                          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md active:scale-95 text-xs flex items-center gap-1.5 cursor-pointer font-headings"
+                        >
+                          {isSubmittingFarm
+                            ? (editingFarmId ? 'Updating...' : 'Listing...')
+                            : (editingFarmId ? 'Update Farm' : 'List Farm')}
+                        </button>
+                      )}
                     </div>
-
-                  </div>
-
-                  {/* Form Buttons */}
-                  <div className="flex justify-end gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={handleCancelFarmForm}
-                      className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold transition-all text-xs"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmittingFarm}
-                      className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md active:scale-95 text-xs flex items-center gap-1.5 font-headings"
-                    >
-                      {isSubmittingFarm
-                        ? (editingFarmId ? 'Updating...' : 'Listing...')
-                        : (editingFarmId ? 'Update Farm' : 'List Farm')}
-                    </button>
                   </div>
 
                 </form>
@@ -3919,9 +4776,262 @@ export default function Profile() {
         </div>
       )}
 
+      {/* Add Gallery Photo Popup Modal */}
+      {showAddGalleryModal && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 text-left animate-scale-up">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold text-base">
+                  📸
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 font-headings">Add Farm Gallery Photo</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Add photo to Farm Gallery & Visual Tour</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddGalleryModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddGalleryPhoto} className="space-y-4">
+              {/* Photo URL */}
+              <div>
+                <label className={labelCls}>Photo Image URL <span className="text-emerald-600 font-bold">*</span></label>
+                <input
+                  required
+                  type="text"
+                  value={newGalleryForm.url}
+                  onChange={(e) => setNewGalleryForm({ ...newGalleryForm, url: e.target.value })}
+                  className={inputCls.replace('pl-10', 'px-4')}
+                  placeholder="https://images.unsplash.com/photo-..."
+                />
+              </div>
+
+              {/* Photo Caption */}
+              <div>
+                <label className={labelCls}>Photo Caption / Label</label>
+                <input
+                  type="text"
+                  value={newGalleryForm.caption}
+                  onChange={(e) => setNewGalleryForm({ ...newGalleryForm, caption: e.target.value })}
+                  className={inputCls.replace('pl-10', 'px-4')}
+                  placeholder="E.g. Organic Harvest Patch, Sunset View"
+                />
+              </div>
+
+              {/* Preset Sample Photos */}
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-headings">Or select sample photo:</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: '🌾 Green Fields & Orchard', url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1000&q=80' },
+                    { label: '🍓 Harvest Patch', url: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=1000&q=80' },
+                    { label: '🌅 Farm Sunset View', url: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1000&q=80' },
+                    { label: '🛖 Rustic Stays & Huts', url: 'https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=1000&q=80' }
+                  ].map((sample, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setNewGalleryForm({ url: sample.url, caption: sample.label.replace(/^[^\s]+\s*/, '') })}
+                      className="text-[11px] font-extrabold text-slate-700 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 p-2 rounded-xl border border-slate-200 text-left transition-all truncate cursor-pointer"
+                    >
+                      {sample.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Live Preview if provided */}
+              {newGalleryForm.url.trim() && (
+                <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-200 flex items-center gap-3">
+                  <div className="w-14 h-14 bg-white rounded-xl overflow-hidden border border-slate-200 shrink-0 flex items-center justify-center">
+                    <img
+                      src={newGalleryForm.url}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Live Photo Preview</p>
+                    <p className="text-[10px] text-emerald-600 font-bold">Loaded successfully</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddGalleryModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer"
+                >
+                  + Add to Gallery
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Add Farm Product Popup Modal */}
+      {showAddFarmProductModal && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 text-left animate-scale-up">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center font-bold text-base">
+                  🧺
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 font-headings">Add Farm Product</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Add product for direct purchase</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddFarmProductModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveModalProduct} className="space-y-4">
+              {/* Product Name */}
+              <div>
+                <label className={labelCls}>Product Name <span className="text-emerald-600 font-bold">*</span></label>
+                <input
+                  required
+                  type="text"
+                  value={newFarmProductForm.name}
+                  onChange={(e) => setNewFarmProductForm({ ...newFarmProductForm, name: e.target.value })}
+                  className={inputCls.replace('pl-10', 'px-4')}
+                  placeholder="E.g. Fresh Organic Strawberries"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Cost / Price */}
+                <div>
+                  <label className={labelCls}>Price (₹) <span className="text-emerald-600 font-bold">*</span></label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      value={newFarmProductForm.price}
+                      onChange={(e) => setNewFarmProductForm({ ...newFarmProductForm, price: e.target.value })}
+                      className={inputCls.replace('pl-10', 'pl-7 pr-3')}
+                      placeholder="180"
+                    />
+                  </div>
+                </div>
+
+                {/* Unit Dropdown */}
+                <div>
+                  <label className={labelCls}>Unit (e.g. kg, box)</label>
+                  <select
+                    value={newFarmProductForm.unit}
+                    onChange={(e) => setNewFarmProductForm({ ...newFarmProductForm, unit: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none text-xs transition-all bg-white font-body"
+                  >
+                    <option value="kg">kg (Kilogram)</option>
+                    <option value="gm">gm (Gram)</option>
+                    <option value="ml">ml (Milliliter)</option>
+                    <option value="liter">liter (Liter)</option>
+                    <option value="box">box</option>
+                    <option value="jar">jar</option>
+                    <option value="pack">pack</option>
+                    <option value="piece">piece</option>
+                    <option value="Other...">Other...</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Custom Unit input if 'Other...' selected */}
+              {newFarmProductForm.unit === 'Other...' && (
+                <div>
+                  <label className={labelCls}>Custom Unit Name</label>
+                  <input
+                    type="text"
+                    value={newFarmProductForm.customUnit}
+                    onChange={(e) => setNewFarmProductForm({ ...newFarmProductForm, customUnit: e.target.value })}
+                    className={inputCls.replace('pl-10', 'px-4')}
+                    placeholder="E.g. crate, basket, bunch"
+                  />
+                </div>
+              )}
+
+              {/* Product Image URL */}
+              <div>
+                <label className={labelCls}>Product Image URL</label>
+                <input
+                  type="text"
+                  value={newFarmProductForm.image}
+                  onChange={(e) => setNewFarmProductForm({ ...newFarmProductForm, image: e.target.value })}
+                  className={inputCls.replace('pl-10', 'px-4')}
+                  placeholder="https://images.unsplash.com/photo-..."
+                />
+              </div>
+
+              {/* Live Image Preview if provided */}
+              {newFarmProductForm.image.trim() && (
+                <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-200 flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white rounded-xl overflow-hidden border border-slate-200 shrink-0 flex items-center justify-center">
+                    <img
+                      src={newFarmProductForm.image}
+                      alt="Preview"
+                      className="max-h-full object-contain"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Live Image Preview</p>
+                    <p className="text-[10px] text-emerald-600 font-bold">Loaded successfully</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddFarmProductModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer"
+                >
+                  + Save Product
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Signout Confirmation Popup Modal */}
-      {showSignoutConfirm && (
-        <div className="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      {showSignoutConfirm && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-slate-100 space-y-6 text-center animate-scale-up">
             <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto shadow-inner border border-rose-100">
               <LogOutIcon size={30} className="ml-1" />
@@ -3953,7 +5063,8 @@ export default function Profile() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

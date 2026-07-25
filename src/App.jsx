@@ -2,7 +2,8 @@ import React, { useEffect } from 'react';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import Home from './pages/Home';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 
 import Auth from './pages/Auth';
 import Cart from './pages/Cart';
@@ -28,6 +29,39 @@ function ScrollToTop() {
   return null;
 }
 
+function TopLeftBackButton() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const mainPages = ['/', '/marketplace', '/visit-farms', '/profile', '/admin'];
+
+  if (mainPages.includes(location.pathname)) {
+    return null;
+  }
+
+  const handleGoBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-1 w-full flex items-center justify-start">
+      <button
+        type="button"
+        onClick={handleGoBack}
+        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/90 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200/80 hover:border-emerald-200 shadow-xs hover:shadow-md transition-all duration-200 active:scale-95 cursor-pointer font-bold text-xs group"
+        title="Go Back"
+      >
+        <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform duration-200 text-emerald-600" />
+        <span>Back</span>
+      </button>
+    </div>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -37,6 +71,7 @@ function App() {
             <ScrollToTop />
             <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-50 via-green-100/50 to-emerald-100 font-sans text-gray-900 selection:bg-brand selection:text-white">
               <Navbar />
+              <TopLeftBackButton />
               <main className="flex-grow">
                 <Routes>
                   <Route path="/" element={<Home />} />

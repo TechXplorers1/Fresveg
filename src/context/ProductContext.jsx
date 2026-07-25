@@ -1,10 +1,46 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, realtimeDb } from '../firebase';
-import { ref, onValue, push, set, update, remove } from 'firebase/database';
+import { ref, onValue, push, set, update, remove, get } from 'firebase/database';
 
 const ProductContext = createContext();
 
 export const useProducts = () => useContext(ProductContext);
+
+export const DEFAULT_CATEGORY_OBJECTS = [
+  { name: 'Tomatoes', image: '/cherry_tomatoes.png' },
+  { name: 'Potatoes', image: '/sweet_potatoes.png' },
+  { name: 'Onions', image: '/red_onions.png' },
+  { name: 'Brinjal', image: '/fresh_brinjal.png' },
+  { name: 'Carrots', image: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&w=200&q=80' },
+  { name: 'Spinach', image: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=200&q=80' },
+  { name: 'Capsicum', image: 'https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?auto=format&fit=crop&w=200&q=80' },
+  { name: 'Broccoli', image: 'https://images.unsplash.com/photo-1583663848850-46af132dc08e?auto=format&fit=crop&w=200&q=80' },
+  { name: 'Garlic', image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=200&q=80' },
+  { name: 'Apples', image: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6faa6?auto=format&fit=crop&w=200&q=80' },
+  { name: 'Bananas', image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=200&q=80' },
+  { name: 'Strawberries', image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=200&q=80' },
+  { name: 'Oranges', image: 'https://images.unsplash.com/photo-1582979512210-99b6a53386f9?auto=format&fit=crop&w=200&q=80' },
+  { name: 'Milk', image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=200&q=80' },
+  { name: 'Butter', image: '/salted_butter.png' },
+  { name: 'Cheese', image: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=200&q=80' },
+  { name: 'Yogurt', image: 'https://images.unsplash.com/photo-1571115177098-24eb42eb3dfc?auto=format&fit=crop&w=200&q=80' },
+  { name: 'Paneer', image: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc0?auto=format&fit=crop&w=200&q=80' }
+];
+
+export const DEFAULT_CATEGORIES = DEFAULT_CATEGORY_OBJECTS.map(c => c.name);
+
+const getCategoryObject = (item) => {
+  if (!item) return null;
+  if (typeof item === 'string') {
+    const found = DEFAULT_CATEGORY_OBJECTS.find(d => d.name.toLowerCase() === item.toLowerCase());
+    return { name: item, image: found ? found.image : 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&q=80' };
+  }
+  if (typeof item === 'object' && item.name) {
+    const found = DEFAULT_CATEGORY_OBJECTS.find(d => d.name.toLowerCase() === item.name.toLowerCase());
+    return { name: item.name, image: item.image || (found ? found.image : 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&q=80') };
+  }
+  return null;
+};
 
 const INITIAL_MOCK_PRODUCTS = [
   // Tomatoes
@@ -81,51 +117,114 @@ const INITIAL_MOCK_PRODUCTS = [
   { id: 37, name: 'Malai Paneer', price: 6.00, mrp: 8.50, unit: '250g', category: 'Paneer', image: 'https://images.unsplash.com/photo-1589115715509-bba91b264e16?w=500&q=80', vendor: 'Meadow Farms', rating: 4.9 }
 ];
 
-export const DEFAULT_CATEGORIES = [
-  'Tomatoes', 'Potatoes', 'Onions', 'Brinjal', 'Carrots', 'Spinach', 
-  'Capsicum', 'Broccoli', 'Garlic', 'Apples', 'Bananas', 'Strawberries', 
-  'Oranges', 'Milk', 'Butter', 'Cheese', 'Yogurt', 'Paneer'
-];
-
 export const ProductProvider = ({ children }) => {
   const [products, setProducts] = useState(INITIAL_MOCK_PRODUCTS);
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [categoriesWithDetails, setCategoriesWithDetails] = useState(DEFAULT_CATEGORY_OBJECTS);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [deletedMockIds, setDeletedMockIds] = useState([]);
 
-  // Listen for categories in Realtime DB
+  // Derive simple string categories array for dropdowns
+  const categories = categoriesWithDetails.map(c => c.name);
+
+  // Listen for categories in Realtime DB (both details and string array)
   useEffect(() => {
-    const categoriesRef = ref(realtimeDb, 'productCategories');
-    const unsubscribe = onValue(categoriesRef, (snapshot) => {
+    const categoriesDetailsRef = ref(realtimeDb, 'productCategoriesDetails');
+    const unsubscribe = onValue(categoriesDetailsRef, (snapshot) => {
       const data = snapshot.val();
       if (data && Array.isArray(data) && data.length > 0) {
-        setCategories(data);
+        const parsed = data.map(getCategoryObject).filter(Boolean);
+        setCategoriesWithDetails(parsed);
       } else if (data && typeof data === 'object') {
-        const catList = Object.values(data).filter(Boolean);
-        if (catList.length > 0) setCategories(catList);
+        const parsed = Object.values(data).map(getCategoryObject).filter(Boolean);
+        if (parsed.length > 0) setCategoriesWithDetails(parsed);
+      } else {
+        // Fallback to productCategories if productCategoriesDetails doesn't exist yet
+        const oldRef = ref(realtimeDb, 'productCategories');
+        onValue(oldRef, (oldSnap) => {
+          const oldData = oldSnap.val();
+          if (oldData && Array.isArray(oldData) && oldData.length > 0) {
+            const parsed = oldData.map(getCategoryObject).filter(Boolean);
+            setCategoriesWithDetails(parsed);
+          }
+        }, { onlyOnce: true });
       }
     });
     return () => unsubscribe();
   }, []);
 
-  const addCategory = async (categoryName) => {
-    const trimmed = categoryName.trim();
-    if (!trimmed) throw new Error('Category name cannot be empty.');
-    if (categories.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+  const addCategory = async (categoryName, categoryImage) => {
+    const name = categoryName.trim();
+    if (!name) throw new Error('Category name cannot be empty.');
+    if (categoriesWithDetails.some(c => c.name.toLowerCase() === name.toLowerCase())) {
       throw new Error('Category already exists.');
     }
-    const updated = [...categories, trimmed];
-    setCategories(updated);
-    await set(ref(realtimeDb, 'productCategories'), updated);
-    return updated;
+    const newObj = {
+      name,
+      image: categoryImage && categoryImage.trim() ? categoryImage.trim() : 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&q=80'
+    };
+    const updatedDetails = [...categoriesWithDetails, newObj];
+    setCategoriesWithDetails(updatedDetails);
+    await set(ref(realtimeDb, 'productCategoriesDetails'), updatedDetails);
+    await set(ref(realtimeDb, 'productCategories'), updatedDetails.map(c => c.name));
+    return updatedDetails;
+  };
+
+  const updateCategory = async (oldName, newName, newImage) => {
+    const trimmedNewName = newName.trim();
+    if (!trimmedNewName) throw new Error('Category name cannot be empty.');
+
+    if (oldName.toLowerCase() !== trimmedNewName.toLowerCase() &&
+        categoriesWithDetails.some(c => c.name.toLowerCase() === trimmedNewName.toLowerCase())) {
+      throw new Error('A category with this name already exists.');
+    }
+
+    const updatedDetails = categoriesWithDetails.map(c => {
+      if (c.name.toLowerCase() === oldName.toLowerCase()) {
+        return {
+          name: trimmedNewName,
+          image: newImage && newImage.trim() ? newImage.trim() : (c.image || 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&q=80')
+        };
+      }
+      return c;
+    });
+
+    setCategoriesWithDetails(updatedDetails);
+    await set(ref(realtimeDb, 'productCategoriesDetails'), updatedDetails);
+    await set(ref(realtimeDb, 'productCategories'), updatedDetails.map(c => c.name));
+
+    // Update products using oldName if category name changed
+    if (oldName !== trimmedNewName) {
+      setProducts(prev => prev.map(p => p.category === oldName ? { ...p, category: trimmedNewName } : p));
+      
+      try {
+        const productsSnapshot = await get(ref(realtimeDb, 'products'));
+        if (productsSnapshot.exists()) {
+          const dbData = productsSnapshot.val();
+          const updates = {};
+          Object.keys(dbData).forEach(key => {
+            if (dbData[key].category === oldName) {
+              updates[`products/${key}/category`] = trimmedNewName;
+            }
+          });
+          if (Object.keys(updates).length > 0) {
+            await update(ref(realtimeDb), updates);
+          }
+        }
+      } catch (e) {
+        console.error("Error updating category name in Firebase products", e);
+      }
+    }
+
+    return updatedDetails;
   };
 
   const deleteCategory = async (categoryName) => {
-    const updated = categories.filter(c => c !== categoryName);
-    setCategories(updated);
-    await set(ref(realtimeDb, 'productCategories'), updated);
-    return updated;
+    const updatedDetails = categoriesWithDetails.filter(c => c.name.toLowerCase() !== categoryName.toLowerCase());
+    setCategoriesWithDetails(updatedDetails);
+    await set(ref(realtimeDb, 'productCategoriesDetails'), updatedDetails);
+    await set(ref(realtimeDb, 'productCategories'), updatedDetails.map(c => c.name));
+    return updatedDetails;
   };
 
   useEffect(() => {
@@ -336,7 +435,9 @@ const cleanFirebaseData = (data) => {
       updateProduct,
       deleteProduct,
       categories,
+      categoriesWithDetails,
       addCategory,
+      updateCategory,
       deleteCategory,
       searchQuery, 
       setSearchQuery 

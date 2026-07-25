@@ -471,6 +471,56 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, fruits: prev.fruits.filter((_, i) => i !== idx) }));
   };
 
+  const INITIAL_CROPS = ['Strawberries', 'Cherry Tomatoes', 'Sweet Corn', 'Spinach', 'Carrots'];
+  const EXTRA_CROPS = ['Capsicum', 'Broccoli', 'Organic Wheat', 'Red Onions', 'Potatoes', 'Herbs', 'Lettuce', 'Cabbage', 'Radish'];
+
+  const INITIAL_FRUITS = ['Mango Orchards', 'Guava Groves', 'Papaya', 'Apple Trees', 'Banana Plantation'];
+  const EXTRA_FRUITS = ['Pomegranate', 'Orange Groves', 'Coconut Palms', 'Dragonfruit', 'Custard Apple', 'Pineapple', 'Lemon Trees', 'Jackfruit'];
+
+  const INITIAL_LIVESTOCK = ['Pure Gir Cows', 'Goats & Sheep', 'Free-Range Poultry', 'Rabbits & Ducks', 'Honey Bees'];
+  const EXTRA_LIVESTOCK = ['Buffaloes', 'Horses & Ponies', 'Fish Ponds', 'Turkeys', 'Geese', 'Quails', 'Dairy Cattle'];
+
+  const INITIAL_ACCOMMODATIONS = ['Farmhouse Rooms', 'Rustic Mud Huts', 'Camping Tents', 'Treehouse Stays', 'Shaded Hammocks'];
+  const EXTRA_ACCOMMODATIONS = ['Luxury Villas', 'Wooden Cottages', 'Dormitory Stays', 'Glamping Pods', 'Caravan Parking'];
+
+  const [showMoreCrops, setShowMoreCrops] = useState(false);
+  const [showMoreFruits, setShowMoreFruits] = useState(false);
+  const [showMoreLivestock, setShowMoreLivestock] = useState(false);
+  const [showMoreAccommodations, setShowMoreAccommodations] = useState(false);
+
+  const handleToggleCropChip = (cropName) => {
+    if (!editForm) return;
+    const current = editForm.crops || [];
+    const exists = current.some(c => c.toLowerCase() === cropName.toLowerCase());
+    if (exists) {
+      setEditForm(prev => ({ ...prev, crops: prev.crops.filter(c => c.toLowerCase() !== cropName.toLowerCase()) }));
+    } else {
+      setEditForm(prev => ({ ...prev, crops: [...prev.crops, cropName] }));
+    }
+  };
+
+  const handleToggleFruitChip = (fruitName) => {
+    if (!editForm) return;
+    const current = editForm.fruits || [];
+    const exists = current.some(f => f.toLowerCase() === fruitName.toLowerCase());
+    if (exists) {
+      setEditForm(prev => ({ ...prev, fruits: prev.fruits.filter(f => f.toLowerCase() !== fruitName.toLowerCase()) }));
+    } else {
+      setEditForm(prev => ({ ...prev, fruits: [...prev.fruits, fruitName] }));
+    }
+  };
+
+  const handleToggleAnimalChip = (animalName) => {
+    if (!editForm) return;
+    const current = editForm.livestock || [];
+    const exists = current.some(a => a.toLowerCase() === animalName.toLowerCase());
+    if (exists) {
+      setEditForm(prev => ({ ...prev, livestock: prev.livestock.filter(a => a.toLowerCase() !== animalName.toLowerCase()) }));
+    } else {
+      setEditForm(prev => ({ ...prev, livestock: [...prev.livestock, animalName] }));
+    }
+  };
+
   const handleAddAnimalItem = () => {
     if (!newAnimal.trim()) return;
     setEditForm(prev => ({ ...prev, livestock: [...prev.livestock, newAnimal.trim()] }));
@@ -903,237 +953,373 @@ export default function FarmDetails() {
           </div>
 
           {/* Section 1: Accommodation & Stay Options 🛖 */}
-          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold text-lg">
-                  🛖
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold font-headings text-slate-800">Accommodations & Stay Experience</h2>
-                  <p className="text-xs text-slate-400 font-medium font-body">Choose from farmhouse rooms, rustic mud huts, camping tents, or shaded hammocks</p>
-                </div>
-              </div>
-              {isEditing && (
-                <button
-                  onClick={() => setShowAddAccModal(true)}
-                  className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold font-headings flex items-center gap-1 shadow-md hover:bg-emerald-700"
-                >
-                  <Plus size={14} /> Add Stay Option
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {activeAccommodations.map((acc, index) => (
-                <div key={acc.id || index} className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-xs hover:shadow-md transition-all space-y-2 relative group">
-                  {isEditing && (
-                    <button
-                      onClick={() => handleRemoveAccItem(acc.id)}
-                      className="absolute top-2 right-2 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                      title="Delete Stay Choice"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                  <div className="flex items-center justify-between pr-6">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-100/60 text-emerald-700 flex items-center justify-center font-bold text-sm">
-                        {acc.title.includes('Tent') ? '⛺' : acc.title.includes('Hut') ? '🛖' : acc.title.includes('Tree') ? '🌳' : '🏠'}
-                      </div>
-                      <h4 className="font-bold text-slate-800 text-sm font-headings">{acc.title}</h4>
-                    </div>
-                    <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-200/60 font-mono">
-                      {acc.price}
-                    </span>
+          {(activeAccommodations.length > 0 || isEditing) && (
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold text-lg">
+                    🛖
                   </div>
-                  <p className="text-xs text-slate-500 font-medium leading-relaxed italic">{acc.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Section 2: Crops & Fruit Orchards Growing 🌾🍎 */}
-          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
-            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold text-lg">
-                🌾
-              </div>
-              <div>
-                <h2 className="text-xl font-bold font-headings text-slate-800">Crops & Fruit Orchards Grown Here</h2>
-                <p className="text-xs text-slate-400 font-medium font-body">Organically cultivated crops and fresh fruit trees on this soil</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">Organic Crops & Produce</h4>
-              <div className="flex flex-wrap gap-2.5">
-                {activeCrops.map((crop, index) => (
-                  <span key={index} className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3.5 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
-                    <Sprout size={14} className="text-emerald-600" /> {crop}
-                    {isEditing && (
-                      <button onClick={() => handleRemoveCropItem(index)} className="text-rose-500 hover:text-rose-700 ml-1 font-black">
-                        ×
-                      </button>
-                    )}
-                  </span>
-                ))}
-              </div>
-              {isEditing && (
-                <div className="flex items-center gap-2 max-w-sm pt-1">
-                  <input
-                    type="text"
-                    value={newCrop}
-                    onChange={(e) => setNewCrop(e.target.value)}
-                    placeholder="Add crop e.g. Sweet Corn"
-                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium flex-1 outline-none focus:border-emerald-500"
-                  />
-                  <button onClick={handleAddCropItem} className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold">
-                    + Add
-                  </button>
-                </div>
-              )}
-
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings pt-2">Fruit Orchards & Trees</h4>
-              <div className="flex flex-wrap gap-2.5">
-                {activeFruits.map((fruit, index) => (
-                  <span key={index} className="bg-amber-50 text-amber-900 border border-amber-200/80 px-3.5 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
-                    🍎 {fruit}
-                    {isEditing && (
-                      <button onClick={() => handleRemoveFruitItem(index)} className="text-rose-500 hover:text-rose-700 ml-1 font-black">
-                        ×
-                      </button>
-                    )}
-                  </span>
-                ))}
-              </div>
-              {isEditing && (
-                <div className="flex items-center gap-2 max-w-sm pt-1">
-                  <input
-                    type="text"
-                    value={newFruit}
-                    onChange={(e) => setNewFruit(e.target.value)}
-                    placeholder="Add fruit e.g. Mango Orchards"
-                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium flex-1 outline-none focus:border-emerald-500"
-                  />
-                  <button onClick={handleAddFruitItem} className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold">
-                    + Add
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Section 3: Poultry, Sheep & Cattle 🐄🐓 */}
-          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center font-bold text-lg">
-                  🐄
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold font-headings text-slate-800">Livestock, Poultry & Cattle</h2>
-                  <p className="text-xs text-slate-400 font-medium font-body">Interact, feed, and observe farm animals up close</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {activeLivestock.map((animal, index) => (
-                <div key={index} className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs text-center space-y-1.5 relative group">
-                  {isEditing && (
-                    <button
-                      onClick={() => handleRemoveAnimalItem(index)}
-                      className="absolute top-2 right-2 p-1 text-rose-500 hover:bg-rose-50 rounded-lg"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                  <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto text-xl">
-                    {animal.includes('Cow') || animal.includes('Cattle') ? '🐄' : animal.includes('Sheep') || animal.includes('Goat') ? '🐐' : animal.includes('Honey') || animal.includes('Bee') ? '🐝' : '🐓'}
+                  <div>
+                    <h2 className="text-xl font-bold font-headings text-slate-800">Accommodations & Stay Experience</h2>
+                    <p className="text-xs text-slate-400 font-medium font-body">Choose from farmhouse rooms, rustic mud huts, camping tents, or shaded hammocks</p>
                   </div>
-                  <p className="font-bold text-slate-800 text-xs font-headings truncate">{animal}</p>
-                  <p className="text-[10px] text-emerald-600 font-bold">100% Organic Raised</p>
                 </div>
-              ))}
-            </div>
-            {isEditing && (
-              <div className="flex items-center gap-2 max-w-sm pt-1">
-                <input
-                  type="text"
-                  value={newAnimal}
-                  onChange={(e) => setNewAnimal(e.target.value)}
-                  placeholder="Add animal e.g. Free-Range Poultry"
-                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium flex-1 outline-none focus:border-emerald-500"
-                />
-                <button onClick={handleAddAnimalItem} className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold">
-                  + Add
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Section 4: On-Farm Products For Direct Purchase 🧺 */}
-          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center font-bold text-lg">
-                  🧺
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold font-headings text-slate-800">Buy Direct Farm Harvest</h2>
-                  <p className="text-xs text-slate-400 font-medium font-body">Products harvested right here available for purchase</p>
-                </div>
-              </div>
-              {isEditing && (
-                <button
-                  onClick={() => setShowAddProductModal(true)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95"
-                >
-                  <Plus size={14} /> Add Farm Product
-                </button>
-              )}
-            </div>
-
-            {activeFarmProducts.length === 0 ? (
-              <div className="py-8 text-center bg-white/50 border border-dashed border-slate-200 rounded-2xl">
-                <p className="text-xs text-slate-400 font-medium">No farm harvest products added yet.</p>
                 {isEditing && (
                   <button
-                    onClick={() => setShowAddProductModal(true)}
-                    className="mt-3 bg-emerald-600 text-white px-4 py-1.5 rounded-xl text-xs font-bold"
+                    onClick={() => setShowAddAccModal(true)}
+                    className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold font-headings flex items-center gap-1 shadow-md hover:bg-emerald-700"
                   >
-                    + Add Product Now
+                    <Plus size={14} /> Add Stay Option
                   </button>
                 )}
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {activeFarmProducts.map((product) => (
-                  <div key={product.id} className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs flex flex-col justify-between group hover:shadow-md transition-all relative">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {activeAccommodations.map((acc, index) => (
+                  <div key={acc.id || index} className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-xs hover:shadow-md transition-all space-y-2 relative group">
                     {isEditing && (
                       <button
-                        onClick={() => handleRemoveProductItem(product.id)}
-                        className="absolute top-2 right-2 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg z-20"
-                        title="Delete Product"
+                        onClick={() => handleRemoveAccItem(acc.id)}
+                        className="absolute top-2 right-2 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="Delete Stay Choice"
                       >
                         <Trash2 size={14} />
                       </button>
                     )}
-                    <div className="relative h-32 bg-slate-50 rounded-xl overflow-hidden mb-3 flex items-center justify-center p-2">
-                      <img src={product.image} alt={product.name} className="max-h-full object-contain group-hover:scale-105 transition-transform" />
-                    </div>
-                    <div className="space-y-2 text-left">
-                      <h4 className="font-bold text-slate-800 text-xs font-headings line-clamp-1">{product.name}</h4>
-                      <div className="pt-1">
-                        <span className="font-extrabold text-slate-900 text-sm font-sans">₹{product.price} <span className="text-[10px] text-slate-400">/{product.unit}</span></span>
+                    <div className="flex items-center justify-between pr-6">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-100/60 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                          {acc.title.includes('Tent') ? '⛺' : acc.title.includes('Hut') ? '🛖' : acc.title.includes('Tree') ? '🌳' : '🏠'}
+                        </div>
+                        <h4 className="font-bold text-slate-800 text-sm font-headings">{acc.title}</h4>
                       </div>
+                      <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-200/60 font-mono">
+                        {acc.price}
+                      </span>
                     </div>
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed italic">{acc.desc}</p>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Section 2: Crops & Fruit Orchards Growing 🌾🍎 */}
+          {((activeCrops.length > 0 || activeFruits.length > 0) || isEditing) && (
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold text-lg">
+                  🌾
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold font-headings text-slate-800">Crops & Fruit Orchards Grown Here</h2>
+                  <p className="text-xs text-slate-400 font-medium font-body">Organically cultivated crops and fresh fruit trees on this soil</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {(activeCrops.length > 0 || isEditing) && (
+                  <>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">Organic Crops & Produce</h4>
+                    <div className="flex flex-wrap gap-2.5">
+                      {activeCrops.map((crop, index) => (
+                        <span key={index} className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3.5 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                          <Sprout size={14} className="text-emerald-600" /> {crop}
+                          {isEditing && (
+                            <button onClick={() => handleRemoveCropItem(index)} className="text-rose-500 hover:text-rose-700 ml-1 font-black">
+                              ×
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    {isEditing && (
+                      <div className="space-y-2 pt-2 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider font-headings">
+                            Select Suggested Crops or Type Custom Crop:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowMoreCrops(!showMoreCrops)}
+                            className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer"
+                          >
+                            {showMoreCrops ? 'Show Less' : `+ Others (${EXTRA_CROPS.length} more)`}
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pb-2">
+                          {(showMoreCrops ? [...INITIAL_CROPS, ...EXTRA_CROPS] : INITIAL_CROPS).map((chip, idx) => {
+                            const isSelected = (editForm?.crops || []).some(c => c.toLowerCase() === chip.toLowerCase());
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleToggleCropChip(chip)}
+                                className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${
+                                  isSelected
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                    : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400 hover:text-emerald-700'
+                                }`}
+                              >
+                                <span>{chip}</span>
+                                {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center gap-2 max-w-md pt-1">
+                          <input
+                            type="text"
+                            value={newCrop}
+                            onChange={(e) => setNewCrop(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ',') {
+                                e.preventDefault();
+                                handleAddCropItem();
+                              }
+                            }}
+                            placeholder="Type custom crop and press Enter (e.g. Sweet Corn)..."
+                            className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium flex-1 outline-none focus:border-emerald-500 font-body"
+                          />
+                          <button onClick={handleAddCropItem} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer">
+                            + Add
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {(activeFruits.length > 0 || isEditing) && (
+                  <>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings pt-2">Fruit Orchards & Trees</h4>
+                    <div className="flex flex-wrap gap-2.5">
+                      {activeFruits.map((fruit, index) => (
+                        <span key={index} className="bg-amber-50 text-amber-900 border border-amber-200/80 px-3.5 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                          🍎 {fruit}
+                          {isEditing && (
+                            <button onClick={() => handleRemoveFruitItem(index)} className="text-rose-500 hover:text-rose-700 ml-1 font-black">
+                              ×
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    {isEditing && (
+                      <div className="space-y-2 pt-2 bg-amber-50/50 p-4 rounded-2xl border border-amber-200/80 text-left">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider font-headings">
+                            Select Suggested Fruit Orchards or Type Custom Fruit:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowMoreFruits(!showMoreFruits)}
+                            className="text-xs font-bold text-amber-600 hover:text-amber-700 hover:underline cursor-pointer"
+                          >
+                            {showMoreFruits ? 'Show Less' : `+ Others (${EXTRA_FRUITS.length} more)`}
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pb-2">
+                          {(showMoreFruits ? [...INITIAL_FRUITS, ...EXTRA_FRUITS] : INITIAL_FRUITS).map((chip, idx) => {
+                            const isSelected = (editForm?.fruits || []).some(f => f.toLowerCase() === chip.toLowerCase());
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleToggleFruitChip(chip)}
+                                className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${
+                                  isSelected
+                                    ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                                    : 'bg-white text-slate-700 border-slate-200 hover:border-amber-400 hover:text-amber-700'
+                                }`}
+                              >
+                                <span>{chip}</span>
+                                {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center gap-2 max-w-md pt-1">
+                          <input
+                            type="text"
+                            value={newFruit}
+                            onChange={(e) => setNewFruit(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ',') {
+                                e.preventDefault();
+                                handleAddFruitItem();
+                              }
+                            }}
+                            placeholder="Type custom fruit/orchard and press Enter..."
+                            className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium flex-1 outline-none focus:border-amber-500 font-body"
+                          />
+                          <button onClick={handleAddFruitItem} className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer">
+                            + Add
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Section 3: Poultry, Sheep & Cattle 🐄🐓 */}
+          {(activeLivestock.length > 0 || isEditing) && (
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center font-bold text-lg">
+                    🐄
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold font-headings text-slate-800">Livestock, Poultry & Cattle</h2>
+                    <p className="text-xs text-slate-400 font-medium font-body">Interact, feed, and observe farm animals up close</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {activeLivestock.map((animal, index) => (
+                  <div key={index} className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs text-center space-y-1.5 relative group">
+                    {isEditing && (
+                      <button
+                        onClick={() => handleRemoveAnimalItem(index)}
+                        className="absolute top-2 right-2 p-1 text-rose-500 hover:bg-rose-50 rounded-lg"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                    <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto text-xl">
+                      {animal.includes('Cow') || animal.includes('Cattle') ? '🐄' : animal.includes('Sheep') || animal.includes('Goat') ? '🐐' : animal.includes('Honey') || animal.includes('Bee') ? '🐝' : '🐓'}
+                    </div>
+                    <p className="font-bold text-slate-800 text-xs font-headings truncate">{animal}</p>
+                    <p className="text-[10px] text-emerald-600 font-bold">100% Organic Raised</p>
+                  </div>
+                ))}
+              </div>
+              {isEditing && (
+                <div className="space-y-2 pt-2 bg-teal-50/50 p-4 rounded-2xl border border-teal-200/80 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider font-headings">
+                      Select Suggested Livestock/Animals or Type Custom Animal:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowMoreLivestock(!showMoreLivestock)}
+                      className="text-xs font-bold text-teal-600 hover:text-teal-700 hover:underline cursor-pointer"
+                    >
+                      {showMoreLivestock ? 'Show Less' : `+ Others (${EXTRA_LIVESTOCK.length} more)`}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pb-2">
+                    {(showMoreLivestock ? [...INITIAL_LIVESTOCK, ...EXTRA_LIVESTOCK] : INITIAL_LIVESTOCK).map((chip, idx) => {
+                      const isSelected = (editForm?.livestock || []).some(a => a.toLowerCase() === chip.toLowerCase());
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleToggleAnimalChip(chip)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${
+                            isSelected
+                              ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:border-teal-400 hover:text-teal-700'
+                          }`}
+                        >
+                          <span>{chip}</span>
+                          {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center gap-2 max-w-md pt-1">
+                    <input
+                      type="text"
+                      value={newAnimal}
+                      onChange={(e) => setNewAnimal(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ',') {
+                          e.preventDefault();
+                          handleAddAnimalItem();
+                        }
+                      }}
+                      placeholder="Type custom animal and press Enter (e.g. Gir Cows)..."
+                      className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium flex-1 outline-none focus:border-teal-500 font-body"
+                    />
+                    <button onClick={handleAddAnimalItem} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer">
+                      + Add
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Section 4: On-Farm Products For Direct Purchase 🧺 */}
+          {(activeFarmProducts.length > 0 || isEditing) && (
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center font-bold text-lg">
+                    🧺
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold font-headings text-slate-800">Buy Direct Farm Harvest</h2>
+                    <p className="text-xs text-slate-400 font-medium font-body">Products harvested right here available for purchase</p>
+                  </div>
+                </div>
+                {isEditing && (
+                  <button
+                    onClick={() => setShowAddProductModal(true)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95"
+                  >
+                    <Plus size={14} /> Add Farm Product
+                  </button>
+                )}
+              </div>
+
+              {activeFarmProducts.length === 0 ? (
+                <div className="py-8 text-center bg-white/50 border border-dashed border-slate-200 rounded-2xl">
+                  <p className="text-xs text-slate-400 font-medium">No farm harvest products added yet.</p>
+                  {isEditing && (
+                    <button
+                      onClick={() => setShowAddProductModal(true)}
+                      className="mt-3 bg-emerald-600 text-white px-4 py-1.5 rounded-xl text-xs font-bold"
+                    >
+                      + Add Product Now
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {activeFarmProducts.map((product) => (
+                    <div key={product.id} className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs flex flex-col justify-between group hover:shadow-md transition-all relative">
+                      {isEditing && (
+                        <button
+                          onClick={() => handleRemoveProductItem(product.id)}
+                          className="absolute top-2 right-2 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg z-20"
+                          title="Delete Product"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                      <div className="relative h-32 bg-slate-50 rounded-xl overflow-hidden mb-3 flex items-center justify-center p-2">
+                        <img src={product.image} alt={product.name} className="max-h-full object-contain group-hover:scale-105 transition-transform" />
+                      </div>
+                      <div className="space-y-2 text-left">
+                        <h4 className="font-bold text-slate-800 text-xs font-headings line-clamp-1">{product.name}</h4>
+                        <div className="pt-1">
+                          <span className="font-extrabold text-slate-900 text-sm font-sans">₹{product.price} <span className="text-[10px] text-slate-400">/{product.unit}</span></span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
 
@@ -1461,15 +1647,51 @@ export default function FarmDetails() {
 
             <form onSubmit={handleSaveNewAcc} className="space-y-3">
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase">Stay Title *</label>
+                <label className="text-[11px] font-bold text-slate-700 uppercase font-headings">Stay Title *</label>
                 <input
                   required
                   type="text"
                   value={newAcc.title}
                   onChange={(e) => setNewAcc({ ...newAcc, title: e.target.value })}
                   placeholder="E.g. Mud Huts / Camping Tents"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
                 />
+              </div>
+
+              {/* 🛖 Suggested Accommodation Chips */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider font-headings">
+                    Select Stay Option Chip:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowMoreAccommodations(!showMoreAccommodations)}
+                    className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer"
+                  >
+                    {showMoreAccommodations ? 'Show Less' : `+ Others (${EXTRA_ACCOMMODATIONS.length} more)`}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {(showMoreAccommodations ? [...INITIAL_ACCOMMODATIONS, ...EXTRA_ACCOMMODATIONS] : INITIAL_ACCOMMODATIONS).map((chip, idx) => {
+                    const isSelected = newAcc.title.toLowerCase() === chip.toLowerCase();
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setNewAcc(prev => ({ ...prev, title: chip }))}
+                        className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-emerald-400 hover:text-emerald-700'
+                        }`}
+                      >
+                        <span>{chip}</span>
+                        {isSelected && <span>✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div>

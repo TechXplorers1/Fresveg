@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, Store, User, Menu, X, Leaf, LogOut, Bike, ShieldCheck } from 'lucide-react';
+import { ShoppingCart, Store, User, Menu, X, Leaf, LogOut, Bike, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -13,6 +14,14 @@ export default function Navbar() {
   const location = useLocation();
   
   const cartItemCount = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+
+  const handleGoBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
 
   const handleConfirmLogout = () => {
     setShowSignoutConfirm(false);
@@ -174,8 +183,8 @@ export default function Navbar() {
       )}
 
       {/* Signout Confirmation Popup Modal */}
-      {showSignoutConfirm && (
-        <div className="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      {showSignoutConfirm && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-slate-100 space-y-6 text-center animate-scale-up">
             <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto shadow-inner border border-rose-100">
               <LogOut size={30} className="ml-1" />
@@ -207,7 +216,8 @@ export default function Navbar() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </nav>
   );
