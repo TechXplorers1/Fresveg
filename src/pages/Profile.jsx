@@ -6,7 +6,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { realtimeDb } from '../firebase';
 import OrderTrackingMap from '../components/OrderTrackingMap';
 import { ref, onValue, update, set, push, remove } from 'firebase/database';
-import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power, Compass, CheckCircle, Users, BarChart2, TrendingUp, PieChart } from 'lucide-react';
+import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power, Compass, CheckCircle, Users, BarChart2, TrendingUp, PieChart, ChevronDown } from 'lucide-react';
 
 const CATEGORIES = ['Vegetables', 'Fruits', 'Dairy', 'Honey & Bee Products', 'Preserves & Jams', 'Spices', 'Grains & Pulses', 'Direct Harvest', 'Tomatoes', 'Potatoes', 'Onions', 'Brinjal', 'Carrots', 'Spinach', 'Capsicum', 'Broccoli', 'Garlic', 'Apples', 'Bananas', 'Strawberries', 'Oranges', 'Milk', 'Butter', 'Cheese', 'Yogurt', 'Paneer'];
 
@@ -94,12 +94,12 @@ export default function Profile() {
 
   const isVendor = userProfile?.role === 'vendor';
 
-  // Vendor sees ONLY products belonging strictly to their registered shops or user UID
+  // Vendor sees ONLY products belonging strictly to their registered shops or user UID / Email
   const vendorProducts = allProducts.filter(p => {
-    const matchesVendorId = Boolean(p.vendorId && user?.uid && String(p.vendorId) === String(user.uid));
+    const matchesVendorId = Boolean((p.vendorId && user?.uid && String(p.vendorId) === String(user.uid)) || (p.vendorEmail && user?.email && p.vendorEmail === user.email));
     const matchesShopName = Boolean(vendorShops.some(shop => shop.shopName && p.vendor && shop.shopName.trim().toLowerCase() === p.vendor.trim().toLowerCase()));
     
-    // Strict ownership: must match vendor's shop name OR vendor UID
+    // Strict ownership: must match vendor's shop name OR vendor UID / Email
     const belongsToVendor = matchesVendorId || matchesShopName;
 
     if (!belongsToVendor) return false;
@@ -271,9 +271,10 @@ export default function Profile() {
   };
 
   const handleOpenAddProductForShop = (shopName) => {
+    const defaultShop = shopName || (vendorShops[0]?.shopName) || userProfile?.displayName || user?.displayName || 'My Vendor Shop';
     setNewProduct({
-      name: '', price: '', mrp: '', stockQuantity: '', category: '', image: '', shop: shopName, unit: 'kg',
-      description: '', origin: '', preference: 'Vegetarian', shelfLife: '',
+      name: '', price: '', mrp: '', stockQuantity: '100', category: '', subCategory: '', image: '', shop: defaultShop, unit: 'kg',
+      description: '', origin: 'India', preference: 'Vegetarian', shelfLife: '7 days',
       netWeight: '', returnPolicy: '', offers: '', features: '', harvestDate: '', organicCert: '', storageInfo: ''
     });
     setShowAddForm(true);
@@ -284,27 +285,42 @@ export default function Profile() {
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
+    if (!user) {
+      alert('You must be signed in to add a product.');
+      return;
+    }
+
     try {
       const selectedShop = vendorShops.find(shop => shop.shopName === newProduct.shop) || vendorShops[0];
-      const targetShopName = selectedShop?.shopName || newProduct.shop || 'Local Vendor';
+      const fallbackShopName = userProfile?.displayName || user?.displayName || 'My Vendor Shop';
+      const targetShopName = selectedShop?.shopName || (newProduct.shop && newProduct.shop.trim()) || fallbackShopName;
+
+      const priceVal = parseFloat(newProduct.price) || 0;
+      const mrpVal = newProduct.mrp ? parseFloat(newProduct.mrp) : priceVal;
+      const finalMrp = mrpVal < priceVal ? priceVal : mrpVal;
 
       const productData = {
         name: newProduct.name.trim(),
-        price: parseFloat(newProduct.price) || 0,
-        mrp: newProduct.mrp ? parseFloat(newProduct.mrp) : (parseFloat(newProduct.price) || 0),
-        unit: newProduct.unit.trim() || 'kg',
+        price: priceVal,
+        mrp: finalMrp,
+        unit: newProduct.unit ? newProduct.unit.trim() : 'kg',
         category: newProduct.category || 'General',
-        image: newProduct.image.trim() || 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500&q=80',
+        subCategory: newProduct.subCategory || '',
+        image: newProduct.image && newProduct.image.trim() ? newProduct.image.trim() : 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500&q=80',
         shop: targetShopName,
         vendor: targetShopName,
-        vendorId: user?.uid || 'vendor-default',
+        vendorId: user.uid,
+        vendorEmail: user.email || '',
         stockQuantity: newProduct.stockQuantity ? parseInt(newProduct.stockQuantity) : 100,
         shopLocation: selectedShop?.location || '',
         description: newProduct.description || '',
-        origin: newProduct.origin || '',
+        origin: newProduct.origin || 'India',
         preference: newProduct.preference || 'Vegetarian',
         shelfLife: newProduct.shelfLife || '',
         netWeight: newProduct.netWeight || '',
+        harvestDate: newProduct.harvestDate || '',
+        organicCert: newProduct.organicCert || '',
+        storageInfo: newProduct.storageInfo || '',
         returnPolicy: newProduct.returnPolicy || '',
         offers: typeof newProduct.offers === 'string' ? newProduct.offers.split('\n').filter(line => line.trim() !== '') : newProduct.offers || [],
         features: typeof newProduct.features === 'string' ? newProduct.features.split('\n').filter(line => line.trim() !== '') : newProduct.features || [],
@@ -316,12 +332,12 @@ export default function Profile() {
       await addProduct(productData);
 
       setSuccessModalData({
-        title: 'Product Added Successfully',
-        message: `Product ${productData.name} added to the shop ${targetShopName} successfully.`
+        title: 'Product Added Successfully! 🎉',
+        message: `Product "${productData.name}" added to shop "${targetShopName}" successfully!`
       });
 
       setNewProduct({
-        name: '', price: '', mrp: '', stockQuantity: '', category: '', image: '', shop: '', unit: 'kg',
+        name: '', price: '', mrp: '', stockQuantity: '', category: '', subCategory: '', image: '', shop: '', unit: 'kg',
         description: '', origin: '', preference: 'Vegetarian', shelfLife: '',
         netWeight: '', returnPolicy: '', offers: '', features: '', harvestDate: '', organicCert: '', storageInfo: ''
       });
@@ -329,7 +345,7 @@ export default function Profile() {
     } catch (err) {
       console.error('Failed to add product to Firebase:', err);
       if (err.message && err.message.includes('PERMISSION_DENIED')) {
-        alert('⚠️ Firebase Security Rules Notice:\n\nYour Firebase Realtime Database is blocking writes to the "products" node (PERMISSION_DENIED).\n\nTo fix this in 30 seconds:\n1. Open Firebase Console -> Realtime Database -> Rules tab.\n2. Set ".read": true and ".write": true\n3. Click Publish!');
+        alert('⚠️ Firebase Security Rules Notice:\n\nYour Firebase Realtime Database is blocking writes to the "products" node (PERMISSION_DENIED).\n\nTo fix this:\n1. Open Firebase Console -> Realtime Database -> Rules tab.\n2. Set ".read": true and ".write": true\n3. Click Publish!');
       } else {
         alert('Error adding product to Firebase: ' + err.message);
       }
@@ -423,6 +439,7 @@ export default function Profile() {
     fruits: '',
     livestock: '',
     accommodations: '',
+    accommodationPrice: '',
     amenities: '',
     farmProducts: ''
   });
@@ -949,6 +966,7 @@ export default function Profile() {
         fruits: parseList(newFarmForm.fruits),
         livestock: parseList(newFarmForm.livestock),
         accommodations: parseAccommodations(newFarmForm.accommodations),
+        accommodationPrice: newFarmForm.accommodationPrice ? parseFloat(newFarmForm.accommodationPrice) : 0,
         amenities: parseList(newFarmForm.amenities),
         farmProducts: parseProducts(newFarmForm.farmProducts),
         gallery: farmGalleryList,
@@ -3464,6 +3482,29 @@ export default function Profile() {
                                   })}
                                 </div>
                               </div>
+
+                              {/* Separate Accommodation Stay Price Field (Excluded from visit ticket) */}
+                              <div className="space-y-2 pt-4 border-t border-slate-100">
+                                <label className={labelCls}>
+                                  🛖 Accommodation & Stay Price per Night (₹) <span className="text-amber-700 font-normal text-[11px]">(Excluded from general farm visit admission price)</span>
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₹</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    name="accommodationPrice"
+                                    value={newFarmForm.accommodationPrice || ''}
+                                    onChange={(e) => setNewFarmForm({ ...newFarmForm, accommodationPrice: e.target.value })}
+                                    className={inputCls}
+                                    placeholder="E.g. 1500 (Enter price per night for stay, or leave blank if 0 / day-visit only)"
+                                  />
+                                </div>
+                                <p className="text-[11px] text-amber-800 font-medium italic">
+                                  💡 Note: This accommodation stay price is separate from the farm visit ticket price and will be billed separately when a visitor chooses overnight stay.
+                                </p>
+                              </div>
                             </>
                           );
                         })()}
@@ -3633,8 +3674,13 @@ export default function Profile() {
 
                           {/* Step 4 Preview */}
                           <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-1.5">
-                            <span className="text-[10px] font-black text-purple-400 uppercase tracking-wider">🛖 Step 4: Accommodations</span>
+                            <span className="text-[10px] font-black text-purple-400 uppercase tracking-wider">🛖 Step 4: Accommodations & Stay Price</span>
                             <p className="text-slate-300 line-clamp-3">{newFarmForm.accommodations || 'None added'}</p>
+                            {newFarmForm.accommodationPrice && Number(newFarmForm.accommodationPrice) > 0 && (
+                              <p className="text-xs font-bold text-amber-400">
+                                Stay Price: ₹{newFarmForm.accommodationPrice} / night <span className="text-[10px] font-normal text-slate-400">(Excluded from visit price)</span>
+                              </p>
+                            )}
                           </div>
                         </div>
 
@@ -4640,7 +4686,13 @@ export default function Profile() {
                                       className={`${inputCls} appearance-none bg-white font-medium`}
                                     >
                                       <option value="">Select a shop...</option>
-                                      {vendorShops.map((shop, i) => <option key={i} value={shop.shopName}>{shop.shopName}</option>)}
+                                      {vendorShops.length === 0 ? (
+                                        <option value={userProfile?.displayName || user?.displayName || 'My Vendor Shop'}>
+                                          {userProfile?.displayName || user?.displayName || 'My Vendor Shop'} (Default Shop)
+                                        </option>
+                                      ) : (
+                                        vendorShops.map((shop, i) => <option key={i} value={shop.shopName}>{shop.shopName}</option>)
+                                      )}
                                     </select>
                                   </div>
                                 </div>
@@ -4698,20 +4750,20 @@ export default function Profile() {
                                 <div>
                                   <label className={labelCls}>M.R.P. / Original Price (₹)</label>
                                   <div className="relative">
-                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
+                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₹</span>
                                     <input type="number" step="0.01" name="mrp" value={newProduct.mrp} onChange={handleInputChange} className={inputCls} placeholder="6.50" />
                                   </div>
                                 </div>
                                 <div>
                                   <label className={labelCls}>Selling Price (₹) <span className="text-emerald-600 font-bold">*</span></label>
                                   <div className="relative">
-                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
+                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₹</span>
                                     <input required type="number" step="0.01" name="price" value={newProduct.price} onChange={handleInputChange} className={inputCls} placeholder="4.99" />
                                   </div>
                                 </div>
                                 <div>
-                                  <label className={labelCls}>Net Weight (e.g. 500g)</label>
-                                  <input type="text" name="netWeight" value={newProduct.netWeight} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="500g" />
+                                  <label className={labelCls}>Quantity (e.g. 500g, 1 pack, 6 pcs)</label>
+                                  <input type="text" name="netWeight" value={newProduct.netWeight} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="E.g. 500g, 1 pack, 6 pcs" />
                                 </div>
                                 <div>
                                   <label className={labelCls}>Unit (e.g. kg, box, gm, ml) <span className="text-emerald-600 font-bold">*</span></label>
@@ -4756,17 +4808,29 @@ export default function Profile() {
                                   )}
                                 </div>
                                 <div>
-                                  <label className={labelCls}>Available Stock / Inventory (Units / kg)</label>
+                                  <label className={labelCls}>
+                                    Available Stock / Inventory <span className="text-emerald-700 font-extrabold font-headings">(in {newProduct.unit ? newProduct.unit : 'units'})</span>
+                                  </label>
                                   <div className="relative">
                                     <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
-                                    <input type="number" name="stockQuantity" value={newProduct.stockQuantity} onChange={handleInputChange} className={inputCls} placeholder="E.g. 1000" />
+                                    <input
+                                      type="number"
+                                      name="stockQuantity"
+                                      value={newProduct.stockQuantity}
+                                      onChange={handleInputChange}
+                                      className={`${inputCls} pr-20`}
+                                      placeholder={`E.g. 100 ${newProduct.unit || 'units'}`}
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200/80 uppercase tracking-wider font-mono pointer-events-none shadow-2xs">
+                                      {newProduct.unit || 'units'}
+                                    </span>
                                   </div>
                                 </div>
                                 <div className="md:col-span-2 lg:col-span-3">
-                                  <label className={labelCls}>Image URL <span className="text-emerald-600 font-bold">*</span></label>
+                                  <label className={labelCls}>Image URL <span className="text-slate-400 font-normal text-[11px]">(Optional - fallback image auto-assigned if empty)</span></label>
                                   <div className="relative">
                                     <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
-                                    <input required type="text" name="image" value={newProduct.image} onChange={handleInputChange} className={inputCls} placeholder="https://example.com/image.jpg" />
+                                    <input type="text" name="image" value={newProduct.image} onChange={handleInputChange} className={inputCls} placeholder="https://images.unsplash.com/photo-..." />
                                   </div>
                                 </div>
                               </div>
@@ -4961,7 +5025,7 @@ export default function Profile() {
                                 <div>
                                   <label className={labelCls}>M.R.P. / Original Price (₹)</label>
                                   <div className="relative">
-                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
+                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₹</span>
                                     <input
                                       type="number"
                                       step="0.01"
@@ -4978,7 +5042,7 @@ export default function Profile() {
                                 <div>
                                   <label className={labelCls}>Selling Price (₹) <span className="text-emerald-600 font-bold">*</span></label>
                                   <div className="relative">
-                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
+                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₹</span>
                                     <input
                                       required
                                       type="number"
@@ -4992,16 +5056,16 @@ export default function Profile() {
                                   </div>
                                 </div>
 
-                                {/* 6. Net Weight (e.g. 500g) */}
+                                {/* 6. Quantity (e.g. 500g, 1 pack) */}
                                 <div>
-                                  <label className={labelCls}>Net Weight (e.g. 500g)</label>
+                                  <label className={labelCls}>Quantity (e.g. 500g, 1 pack, 6 pcs)</label>
                                   <input
                                     type="text"
                                     name="netWeight"
                                     value={editProductForm.netWeight}
                                     onChange={(e) => setEditProductForm({ ...editProductForm, netWeight: e.target.value })}
                                     className={inputCls.replace('pl-10', 'px-4')}
-                                    placeholder="500g"
+                                    placeholder="E.g. 500g, 1 pack, 6 pcs"
                                   />
                                 </div>
 
@@ -5051,7 +5115,7 @@ export default function Profile() {
 
                                 {/* 8. Available Stock / Inventory (Units / kg) */}
                                 <div>
-                                  <label className={labelCls}>Available Stock / Inventory (Units / kg)</label>
+                                  <label className={labelCls}>Available Stock / Inventory (in {editProductForm.unit || 'units'})</label>
                                   <div className="relative">
                                     <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
                                     <input
@@ -5059,9 +5123,12 @@ export default function Profile() {
                                       name="stockQuantity"
                                       value={editProductForm.stockQuantity}
                                       onChange={(e) => setEditProductForm({ ...editProductForm, stockQuantity: e.target.value })}
-                                      className={inputCls}
-                                      placeholder="E.g. 1000"
+                                      className={`${inputCls} pr-20`}
+                                      placeholder={`E.g. 100 ${editProductForm.unit || 'units'}`}
                                     />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200/80 uppercase tracking-wider font-mono pointer-events-none shadow-2xs">
+                                      {editProductForm.unit || 'units'}
+                                    </span>
                                   </div>
                                 </div>
 

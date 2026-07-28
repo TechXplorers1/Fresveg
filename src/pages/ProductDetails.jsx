@@ -238,8 +238,8 @@ export default function ProductDetails() {
                  <p className="font-bold text-slate-800 text-sm font-headings truncate">{product.shelfLife || '3-5 Days'}</p>
               </div>
               <div className="bg-white/40 border border-slate-100/85 p-4 rounded-2xl text-center shadow-sm">
-                 <p className="text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Net Weight</p>
-                 <p className="font-bold text-slate-800 text-sm font-headings truncate">{product.netWeight || product.unit?.toUpperCase() || 'N/A'}</p>
+                 <p className="text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Quantity</p>
+                 <p className="font-bold text-slate-800 text-sm font-headings truncate">{product.netWeight || product.quantity || product.unit?.toUpperCase() || 'N/A'}</p>
               </div>
            </div>
 

@@ -23,6 +23,7 @@ export default function VisitFarms() {
   const [selectedFarm, setSelectedFarm] = useState(null);
   const [bookingDate, setBookingDate] = useState('');
   const [visitorsCount, setVisitorsCount] = useState(1);
+  const [includeStay, setIncludeStay] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [submittingBooking, setSubmittingBooking] = useState(false);
@@ -137,61 +138,53 @@ export default function VisitFarms() {
     setBookingError('');
 
     try {
+      const stayPriceVal = Number(selectedFarm.accommodationPrice) || (
+        selectedFarm.accommodations && selectedFarm.accommodations.length > 0
+          ? (parseFloat(String(selectedFarm.accommodations[0]?.price || '').replace(/[^0-9.]/g, '')) || 0)
+          : 0
+      );
       const isFree = !selectedFarm.costPerPerson || Number(selectedFarm.costPerPerson) === 0;
-      const totalAmount = isFree ? 0 : Number(selectedFarm.costPerPerson) * Number(visitorsCount);
+      const admissionCost = isFree ? 0 : Number(selectedFarm.costPerPerson) * Number(visitorsCount);
+      const stayCost = includeStay ? stayPriceVal : 0;
+      const totalAmount = admissionCost + stayCost;
 
-      if (isFree) {
+      const bookingPayload = {
+        farmId: selectedFarm.id,
+        farmName: selectedFarm.farmName,
+        location: selectedFarm.location || '',
+        farmImage: selectedFarm.image || '',
+        vendorId: selectedFarm.vendorId || 'vendor-default',
+        vendorName: selectedFarm.vendorName || 'Farm Owner',
+        customerId: user.uid,
+        customerName: userProfile?.displayName || user.displayName || 'Customer',
+        customerEmail: user.email,
+        date: bookingDate,
+        visitorsCount: Number(visitorsCount),
+        costPerPerson: isFree ? 0 : Number(selectedFarm.costPerPerson),
+        includeStay,
+        accommodationPrice: stayPriceVal,
+        stayCost,
+        totalAmount,
+        isFree: isFree && stayCost === 0,
+        status: 'confirmed',
+        paymentMethod: isFree && stayCost === 0 ? 'Free Entry' : 'Pending Payment',
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      };
+
+      if (isFree && stayCost === 0) {
         // Free farms: confirm immediately
         const bookingsRef = ref(realtimeDb, 'farmBookings');
         const newBookingRef = push(bookingsRef);
-
-        const newBooking = {
-          farmId: selectedFarm.id,
-          farmName: selectedFarm.farmName,
-          location: selectedFarm.location || '',
-          farmImage: selectedFarm.image || '',
-          vendorId: selectedFarm.vendorId || 'vendor-default',
-          vendorName: selectedFarm.vendorName || 'Farm Owner',
-          customerId: user.uid,
-          customerName: userProfile?.displayName || user.displayName || 'Customer',
-          customerEmail: user.email,
-          date: bookingDate,
-          visitorsCount: Number(visitorsCount),
-          costPerPerson: 0,
-          totalAmount: 0,
-          isFree: true,
-          status: 'confirmed',
-          paymentMethod: 'Free Entry',
-          timestamp: new Date().toISOString(),
-          createdAt: new Date().toISOString()
-        };
-
-        await set(newBookingRef, newBooking);
+        await set(newBookingRef, bookingPayload);
         setBookingSuccess(true);
         setTimeout(() => {
           setSelectedFarm(null);
           setBookingSuccess(false);
         }, 2500);
       } else {
-        // Payable farms: route to farm checkout page
-        const bookingData = {
-          farmId: selectedFarm.id,
-          farmName: selectedFarm.farmName,
-          location: selectedFarm.location || '',
-          farmImage: selectedFarm.image || '',
-          vendorId: selectedFarm.vendorId || 'vendor-default',
-          vendorName: selectedFarm.vendorName || 'Farm Owner',
-          customerId: user.uid,
-          customerName: userProfile?.displayName || user.displayName || 'Customer',
-          customerEmail: user.email,
-          date: bookingDate,
-          visitorsCount: Number(visitorsCount),
-          costPerPerson: Number(selectedFarm.costPerPerson),
-          totalAmount,
-          isFree: false,
-        };
-
-        sessionStorage.setItem('pendingFarmBooking', JSON.stringify(bookingData));
+        // Payable farms or stay included: route to farm checkout page
+        sessionStorage.setItem('pendingFarmBooking', JSON.stringify(bookingPayload));
         setSelectedFarm(null);
         navigate('/farm-checkout');
       }
@@ -526,7 +519,7 @@ export default function VisitFarms() {
                     {/* Cost Summary Box */}
                     <div className="bg-slate-50 border border-slate-150 p-4 rounded-2xl flex items-center justify-between shadow-inner">
                       <div>
-                        <p className="text-[9px] text-slate-455 font-black uppercase tracking-wider font-headings">Admission Cost</p>
+                        <p className="text-[9px] text-slate-455 font-black uppercase tracking-wider font-headings">Admission Ticket</p>
                         {(!selectedFarm.costPerPerson || Number(selectedFarm.costPerPerson) === 0) ? (
                           <p className="text-xs text-emerald-600 font-bold mt-0.5">FREE ADMISSION</p>
                         ) : (
@@ -535,10 +528,12 @@ export default function VisitFarms() {
                       </div>
                       <div className="text-right">
                         <p className="text-[9px] text-slate-455 font-black uppercase tracking-wider font-headings">Estimated Cost</p>
-                        {(!selectedFarm.costPerPerson || Number(selectedFarm.costPerPerson) === 0) ? (
+                        {((!selectedFarm.costPerPerson || Number(selectedFarm.costPerPerson) === 0) && (!includeStay || !selectedFarm.accommodationPrice)) ? (
                           <p className="text-base font-black text-emerald-600 font-sans mt-0.5">FREE (₹0)</p>
                         ) : (
-                          <p className="text-base font-black text-slate-850 font-sans mt-0.5">₹{selectedFarm.costPerPerson * visitorsCount}</p>
+                          <p className="text-base font-black text-slate-850 font-sans mt-0.5">
+                            ₹{((!selectedFarm.costPerPerson || Number(selectedFarm.costPerPerson) === 0) ? 0 : Number(selectedFarm.costPerPerson) * Number(visitorsCount)) + (includeStay && selectedFarm.accommodationPrice ? Number(selectedFarm.accommodationPrice) : 0)}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -575,7 +570,7 @@ export default function VisitFarms() {
                             onChange={(e) => setVisitorsCount(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value) || 1))}
                             className="w-16 text-center font-black text-slate-800 text-sm font-sans bg-transparent outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 rounded-lg py-1 border border-slate-200"
                           />
-                          <span className="text-xs font-bold text-slate-500">Visitor(s)</span>
+                          <span className="text-xs font-bold text-slate-500">Guest(s)</span>
                         </div>
                         <button
                           type="button"
@@ -586,6 +581,48 @@ export default function VisitFarms() {
                         </button>
                       </div>
                     </div>
+
+                    {/* Accommodation Included Toggle Field */}
+                    {(() => {
+                      const stayPriceVal = Number(selectedFarm.accommodationPrice) || (
+                        selectedFarm.accommodations && selectedFarm.accommodations.length > 0
+                          ? (parseFloat(String(selectedFarm.accommodations[0]?.price || '').replace(/[^0-9.]/g, '')) || 0)
+                          : 0
+                      );
+                      const displayStayLabel = selectedFarm.accommodations && selectedFarm.accommodations.length > 0
+                        ? selectedFarm.accommodations[0]?.title || 'Overnight Accommodation Stay'
+                        : 'Overnight Accommodation Stay';
+
+                      return (
+                        <div className="space-y-1">
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider pl-1 font-headings">Accommodation Included</label>
+                          <div
+                            onClick={() => setIncludeStay(!includeStay)}
+                            className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none flex items-center justify-between text-xs ${
+                              includeStay ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500/20' : 'bg-slate-50 border-slate-200 hover:bg-slate-100/70'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              {/* iOS Style Toggle Switch */}
+                              <div className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${includeStay ? 'bg-emerald-600' : 'bg-slate-300'}`}>
+                                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${includeStay ? 'translate-x-5' : 'translate-x-0'}`} />
+                              </div>
+                              <div>
+                                <label className="font-extrabold text-slate-800 block cursor-pointer font-headings">
+                                  {displayStayLabel}
+                                </label>
+                                <span className="text-[10px] text-slate-500 font-medium">
+                                  {stayPriceVal > 0 ? `🛖 Separate from visit ticket (+₹${stayPriceVal} / night)` : '🛖 Separate overnight stay at farm'}
+                                </span>
+                              </div>
+                            </div>
+                            <span className={`font-black font-mono text-xs px-2.5 py-1 rounded-lg ${includeStay ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                              {includeStay ? (stayPriceVal > 0 ? `+₹${stayPriceVal}` : 'ON') : 'OFF'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Form Buttons */}
                     <div className="pt-2 flex items-center justify-end gap-3">

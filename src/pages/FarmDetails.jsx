@@ -7,7 +7,7 @@ import { useCart } from '../context/CartContext';
 import { 
   MapPin, Calendar, Users, Compass, ArrowLeft, Sparkles, CheckCircle, 
   Clock, ShieldCheck, Store, ShoppingCart, Info, Star, Navigation, Home as HomeIcon,
-  Tent, Sun, Sprout, Heart, Check, Plus, Minus, Tag, Zap, Pencil, Trash2, Save, X, Edit3, Image as ImageIcon, Maximize2
+  Tent, Sun, Sprout, Heart, Check, Plus, Minus, Tag, Zap, Pencil, Trash2, Save, X, Edit3, Image as ImageIcon, Maximize2, ChevronDown, DollarSign
 } from 'lucide-react';
 import ModernDatePicker from '../components/common/ModernDatePicker';
 
@@ -151,6 +151,7 @@ export default function FarmDetails() {
 
   // Add Accommodation Modal in Edit Mode
   const [showAddAccModal, setShowAddAccModal] = useState(false);
+  const [editingAccId, setEditingAccId] = useState(null);
   const [newAcc, setNewAcc] = useState({ title: '', price: 'Included', desc: '', icon: 'house' });
 
   // Add Photo Modal in Edit Mode
@@ -164,6 +165,7 @@ export default function FarmDetails() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [bookingDate, setBookingDate] = useState('');
   const [visitorsCount, setVisitorsCount] = useState(1);
+  const [includeStay, setIncludeStay] = useState(false);
   const [selectedAccommodation, setSelectedAccommodation] = useState('');
   const [submittingBooking, setSubmittingBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -742,18 +744,43 @@ export default function FarmDetails() {
     }
   };
 
+  const handleEditAccClick = (acc) => {
+    setEditingAccId(acc.id || `acc-${Date.now()}`);
+    setNewAcc({
+      title: acc.title || '',
+      price: acc.price || 'Included',
+      desc: acc.desc || '',
+      icon: acc.icon || 'house'
+    });
+    setShowAddAccModal(true);
+  };
+
   const handleSaveNewAcc = (e) => {
     e.preventDefault();
     if (!newAcc.title.trim()) return;
-    const accObj = {
-      id: `acc-${Date.now()}`,
-      title: newAcc.title.trim(),
-      price: newAcc.price.trim() || 'Included',
-      desc: newAcc.desc.trim() || 'Comfortable stay experience at the farm.',
-      icon: newAcc.icon
-    };
-    setEditForm(prev => ({ ...prev, accommodations: [...prev.accommodations, accObj] }));
+
+    if (editingAccId) {
+      setEditForm(prev => ({
+        ...prev,
+        accommodations: prev.accommodations.map(a =>
+          (a.id === editingAccId)
+            ? { ...a, title: newAcc.title.trim(), price: newAcc.price.trim() || 'Included', desc: newAcc.desc.trim() }
+            : a
+        )
+      }));
+    } else {
+      const accObj = {
+        id: `acc-${Date.now()}`,
+        title: newAcc.title.trim(),
+        price: newAcc.price.trim() || 'Included',
+        desc: newAcc.desc.trim() || 'Comfortable stay experience at the farm.',
+        icon: newAcc.icon
+      };
+      setEditForm(prev => ({ ...prev, accommodations: [...prev.accommodations, accObj] }));
+    }
+
     setShowAddAccModal(false);
+    setEditingAccId(null);
     setNewAcc({ title: '', price: 'Included', desc: '', icon: 'house' });
   };
 
@@ -776,8 +803,14 @@ export default function FarmDetails() {
 
     setSubmittingBooking(true);
     try {
-      const isFree = !farm.costPerPerson || Number(farm.costPerPerson) === 0;
-      const totalAmount = isFree ? 0 : Number(farm.costPerPerson) * visitorsCount;
+      const stayPriceVal = Number(farm.accommodationPrice) || (
+        farm.accommodations && farm.accommodations.length > 0
+          ? (parseFloat(String(farm.accommodations[0]?.price || '').replace(/[^0-9.]/g, '')) || 0)
+          : 0
+      );
+      const admissionCost = isFree ? 0 : Number(farm.costPerPerson) * visitorsCount;
+      const stayCost = includeStay ? stayPriceVal : 0;
+      const totalAmount = admissionCost + stayCost;
 
       const bookingData = {
         farmId: farm.id,
@@ -792,8 +825,11 @@ export default function FarmDetails() {
         date: bookingDate,
         visitorsCount: Number(visitorsCount),
         costPerPerson: Number(farm.costPerPerson) || 0,
+        includeStay,
+        accommodationPrice: stayPriceVal,
+        stayCost,
         totalAmount,
-        isFree,
+        isFree: isFree && stayCost === 0,
       };
 
       if (isFree) {
@@ -849,47 +885,26 @@ export default function FarmDetails() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen">
       
-      {/* ── Sticky Bottom Floating Vendor Live Editor Control Bar ──────────── */}
-      {isEditing ? (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-5xl bg-slate-900/90 backdrop-blur-xl text-white px-6 py-4 rounded-3xl shadow-2xl shadow-black/40 border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-left animate-fade-in">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
-              <Pencil size={20} />
-            </div>
-            <div>
-              <h3 className="font-bold text-sm sm:text-base font-headings text-white flex items-center gap-2">
-                Vendor Live Page Editor Mode <span className="bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">LIVE</span>
-              </h3>
-              <p className="text-[11px] text-slate-300 font-body">Customize title, location address, crops, stay options, photos & products live in place</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+      {/* ── Owner Action Header Button ── */}
+      {isOwner && (
+        <div className="mb-4 flex justify-end">
+          {isEditing ? (
             <button
               onClick={() => setIsEditing(false)}
-              className="flex-1 sm:flex-none px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold font-headings border border-white/20 transition-all active:scale-95 cursor-pointer"
+              className="bg-slate-700 hover:bg-slate-800 text-white px-5 py-2 rounded-2xl text-xs font-bold font-headings transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
             >
               Exit Editing
             </button>
+          ) : (
             <button
-              onClick={handleSaveAllFarmChanges}
-              disabled={savingChanges}
-              className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold font-headings transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+              onClick={() => setIsEditing(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-2xl text-xs font-bold font-headings transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
             >
-              <CheckCircle size={16} /> {savingChanges ? 'Saving Live...' : 'Save All Changes'}
+              <Pencil size={15} /> Edit Farm Page Live
             </button>
-          </div>
+          )}
         </div>
-      ) : isOwner ? (
-        <div className="mb-4 flex justify-end">
-          <button
-            onClick={() => setIsEditing(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-2xl text-xs font-bold font-headings transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
-          >
-            <Pencil size={15} /> Edit Farm Page Live
-          </button>
-        </div>
-      ) : null}
+      )}
 
       {/* ── Breadcrumb Navigation ────────────────────────────────────────── */}
       <nav className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-4 uppercase tracking-wider text-left">
@@ -1154,7 +1169,11 @@ export default function FarmDetails() {
                 </div>
                 {isEditing && (
                   <button
-                    onClick={() => setShowAddAccModal(true)}
+                    onClick={() => {
+                      setEditingAccId(null);
+                      setNewAcc({ title: '', price: 'Included', desc: '', icon: 'house' });
+                      setShowAddAccModal(true);
+                    }}
                     className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold font-headings flex items-center gap-1 shadow-md hover:bg-emerald-700 cursor-pointer"
                   >
                     <Plus size={14} /> Add Stay Option
@@ -1166,13 +1185,24 @@ export default function FarmDetails() {
                 {activeAccommodations.map((acc, index) => (
                   <div key={acc.id || index} className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs hover:shadow-md transition-all space-y-1.5 relative group">
                     {isEditing && (
-                      <button
-                        onClick={() => handleRemoveAccItem(acc.id)}
-                        className="absolute top-2 right-2 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                        title="Delete Stay Choice"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
+                        <button
+                          type="button"
+                          onClick={() => handleEditAccClick(acc)}
+                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                          title="Edit Stay Choice"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAccItem(acc.id)}
+                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          title="Delete Stay Choice"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     )}
                     <div className="flex items-center justify-between pr-6">
                       <div className="flex items-center gap-2">
@@ -1787,6 +1817,49 @@ export default function FarmDetails() {
         </div>
       </div>
 
+      {/* ── Save All Changes Action Bar at End of Page (Edit Mode) ───────── */}
+      {isEditing && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 mb-10 text-left">
+          <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-5">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-xl shrink-0">
+                <CheckCircle size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white font-headings">Finished Customizing Your Farm Page?</h3>
+                <p className="text-xs text-slate-400 font-medium font-body mt-0.5">Save all your updated titles, address pin, accommodations, crops, photos & products live to FresVeg marketplace.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => navigate(`/farm/${slug}`)}
+                className="w-full sm:w-auto px-5 py-3 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white font-bold transition-all text-xs font-headings cursor-pointer"
+              >
+                Exit Editing
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAllFarmChanges}
+                disabled={savingChanges}
+                className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 text-slate-950 font-extrabold px-7 py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 text-sm font-headings flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {savingChanges ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+                    Saving Changes...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={18} /> Save All Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Add Farm Photo Modal (Edit Mode) ────────────────────────────── */}
       {showAddPhotoModal && (
         <div 
@@ -1952,15 +2025,20 @@ export default function FarmDetails() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Quantity *</label>
-                  <input
-                    required
-                    type="text"
-                    value={newProduct.quantity}
-                    onChange={(e) => setNewProduct({ ...newProduct, quantity: e.target.value })}
-                    placeholder="1"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-semibold"
-                  />
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Quantity (in {newProduct.unit || 'units'}) *</label>
+                  <div className="relative">
+                    <input
+                      required
+                      type="text"
+                      value={newProduct.quantity}
+                      onChange={(e) => setNewProduct({ ...newProduct, quantity: e.target.value })}
+                      placeholder={`E.g. 10 ${newProduct.unit || 'units'}`}
+                      className="w-full pl-3 pr-14 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-semibold"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 uppercase font-mono pointer-events-none">
+                      {newProduct.unit || 'units'}
+                    </span>
+                  </div>
                 </div>
 
                 <div>
@@ -2027,7 +2105,7 @@ export default function FarmDetails() {
           >
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-800 text-base font-headings flex items-center gap-2">
-                🛖 Add Stay / Accommodation Choice
+                {editingAccId ? '✏️ Edit Stay / Accommodation Choice' : '🛖 Add Stay / Accommodation Choice'}
               </h3>
               <button onClick={() => setShowAddAccModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={18} />
@@ -2084,14 +2162,38 @@ export default function FarmDetails() {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase">Price Badge</label>
-                <input
-                  type="text"
-                  value={newAcc.price}
-                  onChange={(e) => setNewAcc({ ...newAcc, price: e.target.value })}
-                  placeholder="E.g. Included / + ₹200"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500"
-                />
+                <label className="text-[11px] font-bold text-slate-700 uppercase font-headings flex items-center justify-between">
+                  <span>Stay / Accommodation Price (₹)</span>
+                  <span className="text-[10px] text-amber-700 font-bold normal-case font-body">(Excluded from visit admission)</span>
+                </label>
+                <div className="relative mt-1">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs pointer-events-none">₹</span>
+                  <input
+                    type="text"
+                    value={newAcc.price}
+                    onChange={(e) => setNewAcc({ ...newAcc, price: e.target.value })}
+                    placeholder="E.g. 1500 / night (or Included / Free)"
+                    className="w-full pl-8 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-semibold"
+                  />
+                </div>
+                {/* Price preset chips */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <span className="text-[10px] font-bold text-slate-400 self-center font-headings">Presets:</span>
+                  {['Included / Free', '₹500 / night', '₹1,000 / night', '₹1,500 / night', '₹2,000 / night'].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setNewAcc({ ...newAcc, price: preset })}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                        newAcc.price === preset
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-amber-400'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
@@ -2115,9 +2217,9 @@ export default function FarmDetails() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-700"
+                  className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-700 cursor-pointer"
                 >
-                  Add Stay Option
+                  {editingAccId ? 'Update Stay Option' : 'Add Stay Option'}
                 </button>
               </div>
             </form>
@@ -2278,14 +2380,60 @@ export default function FarmDetails() {
 
 
 
-                    <div className="bg-emerald-50/70 border border-emerald-200/60 p-4 rounded-2xl flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-700">Total Payable:</span>
-                      {isFree ? (
-                        <span className="font-black text-emerald-600 text-sm">FREE (₹0)</span>
-                      ) : (
-                        <span className="font-black text-slate-900 text-sm">₹{Number(farm.costPerPerson) * visitorsCount}</span>
-                      )}
-                    </div>
+                    {/* Accommodation Included Toggle Field */}
+                    {(() => {
+                      const stayPriceVal = Number(farm.accommodationPrice) || (
+                        farm.accommodations && farm.accommodations.length > 0
+                          ? (parseFloat(String(farm.accommodations[0]?.price || '').replace(/[^0-9.]/g, '')) || 0)
+                          : 0
+                      );
+                      const displayStayLabel = farm.accommodations && farm.accommodations.length > 0
+                        ? farm.accommodations[0]?.title || 'Overnight Accommodation Stay'
+                        : 'Overnight Accommodation Stay';
+
+                      return (
+                        <>
+                          <div className="space-y-1">
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider pl-1 font-headings">Accommodation Included</label>
+                            <div
+                              onClick={() => setIncludeStay(!includeStay)}
+                              className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none flex items-center justify-between text-xs ${
+                                includeStay ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500/20' : 'bg-slate-50 border-slate-200 hover:bg-slate-100/70'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                {/* iOS Style Toggle Switch */}
+                                <div className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${includeStay ? 'bg-emerald-600' : 'bg-slate-300'}`}>
+                                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${includeStay ? 'translate-x-5' : 'translate-x-0'}`} />
+                                </div>
+                                <div>
+                                  <label className="font-extrabold text-slate-800 block cursor-pointer font-headings">
+                                    {displayStayLabel}
+                                  </label>
+                                  <span className="text-[10px] text-slate-500 font-medium">
+                                    {stayPriceVal > 0 ? `🛖 Separate from visit ticket (+₹${stayPriceVal} / night)` : '🛖 Separate overnight stay at farm'}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className={`font-black font-mono text-xs px-2.5 py-1 rounded-lg ${includeStay ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                                {includeStay ? (stayPriceVal > 0 ? `+₹${stayPriceVal}` : 'ON') : 'OFF'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="bg-emerald-50/70 border border-emerald-200/60 p-4 rounded-2xl flex items-center justify-between text-xs">
+                            <span className="font-bold text-slate-700 font-headings">Total Payable:</span>
+                            {isFree && (!includeStay || stayPriceVal === 0) ? (
+                              <span className="font-black text-emerald-600 text-sm font-sans">FREE (₹0)</span>
+                            ) : (
+                              <span className="font-black text-slate-900 text-sm font-sans">
+                                ₹{(isFree ? 0 : Number(farm.costPerPerson) * visitorsCount) + (includeStay ? stayPriceVal : 0)}
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </>
                 )}
               </div>

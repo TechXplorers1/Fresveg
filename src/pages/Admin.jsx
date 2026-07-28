@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Layout, Users, Save, Plus, Trash2, FolderPlus, Pencil, X,
   ShieldAlert, CheckCircle, RefreshCw, Image as ImageIcon,
-  Tag, ShieldCheck, Sparkles, Sprout, MessageSquare, Heart, Truck, AlertTriangle
+  Tag, ShieldCheck, Sparkles, Sprout, MessageSquare, Heart, Truck, AlertTriangle, ChevronDown
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';

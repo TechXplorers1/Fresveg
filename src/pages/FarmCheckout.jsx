@@ -350,9 +350,15 @@ export default function FarmCheckout() {
             </div>
 
             <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-              <span>Cost per person</span>
-              <span className="font-bold text-slate-700">&#x20B9;{booking.costPerPerson} x {booking.visitorsCount}</span>
+              <span>Visit Admission ({booking.visitorsCount || 1} Guests)</span>
+              <span className="font-bold text-slate-700">&#x20B9;{(Number(booking.costPerPerson) || 0) * (Number(booking.visitorsCount) || 1)}</span>
             </div>
+            {booking.includeStay && Number(booking.accommodationPrice) > 0 && (
+              <div className="flex items-center justify-between text-xs text-amber-900 bg-amber-50 p-2.5 rounded-xl border border-amber-200/80 font-medium">
+                <span className="flex items-center gap-1 font-bold">🛖 Overnight Accommodation Stay</span>
+                <span className="font-black">+&#x20B9;{booking.accommodationPrice}</span>
+              </div>
+            )}
           </div>
 
           {/* Subtotal & Total */}

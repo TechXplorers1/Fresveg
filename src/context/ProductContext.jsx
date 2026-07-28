@@ -330,6 +330,7 @@ const cleanFirebaseData = (data) => {
       price: 0,
       unit: 'kg',
       category: 'General',
+      subCategory: '',
       image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500&q=80',
       vendor: 'Local Vendor',
       shopLocation: '',
@@ -340,7 +341,27 @@ const cleanFirebaseData = (data) => {
     };
     const sanitizedProduct = cleanFirebaseData(rawProduct);
 
-    // 1. Immediately update React state & localStorage
+    // 1. Write directly to Firebase Realtime DB at products/newKey FIRST
+    try {
+      const dbProductRef = ref(realtimeDb, `products/${newKey}`);
+      await set(dbProductRef, sanitizedProduct);
+      console.log('Successfully written to Firebase RTDB products/' + newKey, sanitizedProduct);
+    } catch (error) {
+      console.error('Error saving product to Firebase Realtime DB:', error);
+
+      // Save locally to React state & localStorage so vendor's preview is preserved
+      setProducts(prev => {
+        const exists = prev.some(p => String(p.id) === String(newKey));
+        if (exists) return prev;
+        const updated = [...prev, sanitizedProduct];
+        saveProductsToStorage(updated);
+        return updated;
+      });
+
+      throw error; // Re-throw so caller knows database write was blocked by Firebase rules
+    }
+
+    // 2. Immediately update React state & localStorage on successful write
     setProducts(prev => {
       const exists = prev.some(p => String(p.id) === String(newKey));
       if (exists) return prev;
@@ -348,15 +369,6 @@ const cleanFirebaseData = (data) => {
       saveProductsToStorage(updated);
       return updated;
     });
-
-    // 2. Write directly to Firebase Realtime DB at products/newKey
-    try {
-      const dbProductRef = ref(realtimeDb, `products/${newKey}`);
-      await set(dbProductRef, sanitizedProduct);
-      console.log('Successfully written to Firebase RTDB products/' + newKey, sanitizedProduct);
-    } catch (error) {
-      console.error('Error saving product to Firebase Realtime DB:', error);
-    }
 
     // 3. Optional secondary user link
     if (sanitizedProduct.vendorId && sanitizedProduct.vendorId !== 'vendor-default') {
