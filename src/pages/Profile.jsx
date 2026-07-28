@@ -2,13 +2,45 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { realtimeDb } from '../firebase';
 import OrderTrackingMap from '../components/OrderTrackingMap';
 import { ref, onValue, update, set, push, remove } from 'firebase/database';
-import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power, Compass, CheckCircle, Users } from 'lucide-react';
+import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power, Compass, CheckCircle, Users, BarChart2, TrendingUp, PieChart } from 'lucide-react';
 
-const CATEGORIES = ['Tomatoes', 'Potatoes', 'Onions', 'Brinjal', 'Carrots', 'Spinach', 'Capsicum', 'Broccoli', 'Garlic', 'Apples', 'Bananas', 'Strawberries', 'Oranges', 'Milk', 'Butter', 'Cheese', 'Yogurt', 'Paneer'];
+const CATEGORIES = ['Vegetables', 'Fruits', 'Dairy', 'Honey & Bee Products', 'Preserves & Jams', 'Spices', 'Grains & Pulses', 'Direct Harvest', 'Tomatoes', 'Potatoes', 'Onions', 'Brinjal', 'Carrots', 'Spinach', 'Capsicum', 'Broccoli', 'Garlic', 'Apples', 'Bananas', 'Strawberries', 'Oranges', 'Milk', 'Butter', 'Cheese', 'Yogurt', 'Paneer'];
+
+export const SUB_CATEGORIES_MAP = {
+  Vegetables: [
+    'Organic Spinach', 'Cherry Tomatoes', 'Fresh Tomatoes', 'Capsicum / Bell Peppers', 
+    'Broccoli', 'Cauliflower', 'Carrots', 'Potatoes', 'Red Onions', 'Cabbage', 
+    'Cucumber', 'Brinjal (Eggplant)', 'Lady Finger (Okra)', 'Green Peas', 'Bottle Gourd', 'Garlic', 'Other Vegetable'
+  ],
+  Fruits: [
+    'Alphonso Mangoes', 'Mahabaleshwar Strawberries', 'Guava', 'Papaya', 
+    'Chiku (Sapodilla)', 'Oranges / Citrus', 'Apples', 'Bananas', 'Pomegranates', 
+    'Watermelon', 'Grapes', 'Pineapple', 'Dragon Fruit', 'Other Fruit'
+  ],
+  Dairy: [
+    'Pure Cow Milk', 'Buffalo Milk', 'A2 Cow Milk', 'Fresh Paneer', 
+    'Organic Ghee', 'Curd / Yogurt', 'Fresh Butter', 'Cheese', 'Butter Milk (Chaas)'
+  ],
+  'Honey & Bee Products': [
+    'Pure Organic Honey', 'Raw Wildflower Honey', 'Honeycomb Jar', 'Beeswax', 'Royal Jelly'
+  ],
+  'Preserves & Jams': [
+    'Strawberry Jam', 'Mango Jam', 'Mixed Fruit Jam', 'Organic Pickles', 'Chutney'
+  ],
+  Spices: [
+    'Turmeric (Haldi)', 'Red Chilli Powder', 'Coriander (Dhania)', 'Cumin (Jeera)', 'Cardamom', 'Black Pepper'
+  ],
+  'Grains & Pulses': [
+    'Organic Wheat', 'Basmati Rice', 'Desi Chana (Gram)', 'Toor Dal', 'Moong Dal', 'Millets (Jowar/Bajra)'
+  ],
+  'Direct Harvest': [
+    'Fresh Field Harvest', 'Organic Farm Pack', 'Farm Honey & Spices'
+  ]
+};
 const STANDARD_UNITS = ['kg', 'gm', 'litre', 'ml', 'BOX', 'Packet', 'Bunch', 'Piece', 'Dozen'];
 
 export default function Profile() {
@@ -17,8 +49,27 @@ export default function Profile() {
   const categories = dynamicCategories && dynamicCategories.length > 0 ? dynamicCategories : CATEGORIES;
   const navigate = useNavigate();
 
-  // ─── Vendor Custom Dashboard State ──────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState('addresses'); // 'addresses', 'orders', 'setup'
+  // ─── Vendor Custom Dashboard State Sync with URL ──────────────────────────────
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') || 'addresses';
+  const [activeTab, setActiveTab] = useState(tabFromUrl); // 'addresses', 'orders', 'setup', 'my_products', 'farms', 'analytics'
+
+  // Synchronize activeTab state whenever URL search params change (browser back/forward button)
+  useEffect(() => {
+    const currentTab = searchParams.get('tab');
+    if (currentTab) {
+      setActiveTab(currentTab);
+    } else {
+      setActiveTab('addresses');
+      setSearchParams({ tab: 'addresses' }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    setSearchParams({ tab: newTab });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const [showSignoutConfirm, setShowSignoutConfirm] = useState(false);
 
@@ -401,6 +452,8 @@ export default function Profile() {
   const [editingModalProductIndex, setEditingModalProductIndex] = useState(null);
   const [newFarmProductForm, setNewFarmProductForm] = useState({
     name: '',
+    category: 'Vegetables',
+    subCategory: 'Organic Spinach',
     price: '',
     unit: 'kg',
     customUnit: '',
@@ -412,8 +465,12 @@ export default function Profile() {
     const product = farmProductList[idx];
     if (!product) return;
     setEditingModalProductIndex(idx);
+    const cat = product.category || 'Vegetables';
+    const subCatList = SUB_CATEGORIES_MAP[cat] || SUB_CATEGORIES_MAP['Vegetables'];
     setNewFarmProductForm({
       name: product.name || '',
+      category: cat,
+      subCategory: product.subCategory || subCatList[0] || '',
       price: product.price || '',
       unit: product.unit || 'kg',
       customUnit: '',
@@ -439,6 +496,8 @@ export default function Profile() {
           ? {
               ...p,
               name: newFarmProductForm.name.trim(),
+              category: newFarmProductForm.category || 'Vegetables',
+              subCategory: newFarmProductForm.subCategory || '',
               price: Number(newFarmProductForm.price) || 0,
               unit: finalUnit,
               image: newFarmProductForm.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80'
@@ -450,6 +509,8 @@ export default function Profile() {
       const productObj = {
         id: `fp-${Date.now()}`,
         name: newFarmProductForm.name.trim(),
+        category: newFarmProductForm.category || 'Vegetables',
+        subCategory: newFarmProductForm.subCategory || '',
         price: Number(newFarmProductForm.price) || 0,
         unit: finalUnit,
         image: newFarmProductForm.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80',
@@ -461,7 +522,7 @@ export default function Profile() {
     setFarmProductList(updatedList);
     setNewFarmForm(prev => ({ ...prev, farmProducts: updatedList }));
     setShowAddFarmProductModal(false);
-    setNewFarmProductForm({ name: '', price: '', unit: 'kg', customUnit: '', image: '' });
+    setNewFarmProductForm({ name: '', category: 'Vegetables', subCategory: 'Organic Spinach', price: '', unit: 'kg', customUnit: '', image: '' });
   };
 
   const handleRemoveModalProduct = (indexToRemove) => {
@@ -891,6 +952,8 @@ export default function Profile() {
         amenities: parseList(newFarmForm.amenities),
         farmProducts: parseProducts(newFarmForm.farmProducts),
         gallery: farmGalleryList,
+        visitDays: (newFarmForm.visitDays || '').trim(),
+        visitTimings: (newFarmForm.visitTimings || '').trim(),
         vendorId: user.uid,
         vendorName: userProfile?.displayName || user?.displayName || 'Vendor',
         createdAt: new Date().toISOString()
@@ -916,7 +979,8 @@ export default function Profile() {
       setEditingFarmId(null);
       setNewFarmForm({
         farmName: '', location: '', description: '', costPerPerson: '', image: '', costType: 'free',
-        crops: '', fruits: '', livestock: '', accommodations: '', amenities: '', farmProducts: ''
+        crops: '', fruits: '', livestock: '', accommodations: '', amenities: '', farmProducts: '',
+        visitDays: '', visitTimings: ''
       });
       setShowAddFarmForm(false);
     } catch (err) {
@@ -931,7 +995,8 @@ export default function Profile() {
     setEditingFarmId(null);
     setNewFarmForm({
       farmName: '', location: '', description: '', costPerPerson: '', image: '', costType: 'free',
-      crops: '', fruits: '', livestock: '', accommodations: '', amenities: '', farmProducts: ''
+      crops: '', fruits: '', livestock: '', accommodations: '', amenities: '', farmProducts: '',
+      visitDays: '', visitTimings: ''
     });
     setShowAddFarmForm(false);
   };
@@ -1641,7 +1706,7 @@ export default function Profile() {
             {userProfile?.role !== 'delivery_person' && (
               <>
                 <button
-                  onClick={() => setActiveTab('addresses')}
+                  onClick={() => handleTabChange('addresses')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'addresses'
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
                     : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
@@ -1652,7 +1717,7 @@ export default function Profile() {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('orders')}
+                  onClick={() => handleTabChange('orders')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'orders'
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
                     : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
@@ -1665,7 +1730,7 @@ export default function Profile() {
                 {isVendor && (
                   <>
                     <button
-                      onClick={() => setActiveTab('setup')}
+                      onClick={() => handleTabChange('setup')}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'setup' && !showAddForm
                         ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
                         : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
@@ -1676,7 +1741,7 @@ export default function Profile() {
                     </button>
                     <button
                       onClick={() => {
-                        setActiveTab('my_products');
+                        handleTabChange('my_products');
                         setShowAddForm(false);
                       }}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'my_products'
@@ -1688,7 +1753,7 @@ export default function Profile() {
                       My Products
                     </button>
                     <button
-                      onClick={() => setActiveTab('farms')}
+                      onClick={() => handleTabChange('farms')}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'farms'
                         ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
                         : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
@@ -1696,6 +1761,17 @@ export default function Profile() {
                     >
                       <Compass size={18} />
                       My Farms
+                    </button>
+
+                    <button
+                      onClick={() => handleTabChange('analytics')}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'analytics'
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                        : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
+                        }`}
+                    >
+                      <BarChart2 size={18} />
+                      Analytics & Revenue
                     </button>
                   </>
                 )}
@@ -1706,7 +1782,7 @@ export default function Profile() {
               <>
                 {/* Available Orders */}
                 <button
-                  onClick={() => setActiveTab('delivery_jobs')}
+                  onClick={() => handleTabChange('delivery_jobs')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'delivery_jobs'
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
                     : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
@@ -1718,7 +1794,7 @@ export default function Profile() {
 
                 {/* Active Delivery */}
                 <button
-                  onClick={() => setActiveTab('delivery_active')}
+                  onClick={() => handleTabChange('delivery_active')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'delivery_active'
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
                     : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
@@ -1730,7 +1806,7 @@ export default function Profile() {
 
                 {/* Completed Orders */}
                 <button
-                  onClick={() => setActiveTab('delivery_completed')}
+                  onClick={() => handleTabChange('delivery_completed')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'delivery_completed'
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
                     : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
@@ -1755,6 +1831,174 @@ export default function Profile() {
         </div>
 
         <div className="lg:col-span-9 space-y-8">
+          {/* Analytics & Revenue Tab */}
+          {activeTab === 'analytics' && (
+            <div className="space-y-6 animate-fade-in text-left">
+              {/* Header */}
+              <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02]">
+                <div className="flex items-center gap-3 border-b border-slate-100 pb-4 mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600 font-bold text-xl">
+                    <BarChart2 size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black font-headings text-slate-800">Analytics & Revenue Dashboard</h2>
+                    <p className="text-xs text-slate-400 font-medium font-body">Track produce sales revenue vs farm visit bookings, monthly visitor headcount, and shop performance.</p>
+                  </div>
+                </div>
+
+                {/* 4 Summary Stat Cards */}
+                {(() => {
+                  const vendorProduceSalesRevenue = (vendorProducts || []).reduce((sum, p) => sum + ((Number(p.price) || 0) * (Number(p.stockQuantity) || 10)), 0);
+                  const vendorFarmBookingsRevenue = (incomingFarmBookings || []).reduce((sum, b) => {
+                    const matchedFarm = vendorFarms.find(f => f.id === b.farmId || f.farmName === b.farmName);
+                    const cost = matchedFarm ? Number(matchedFarm.costPerPerson) || 0 : 0;
+                    return sum + (cost * (Number(b.visitorsCount) || 1));
+                  }, 0);
+                  const totalRevenue = vendorProduceSalesRevenue + vendorFarmBookingsRevenue;
+                  const vendorFarmBookingsCount = (incomingFarmBookings || []).length;
+                  const vendorTotalVisitorsCount = (incomingFarmBookings || []).reduce((sum, b) => sum + (Number(b.visitorsCount) || 1), 0);
+
+                  const produceRatio = totalRevenue > 0 ? Math.round((vendorProduceSalesRevenue / totalRevenue) * 100) : 50;
+                  const farmRatio = totalRevenue > 0 ? (100 - produceRatio) : 50;
+
+                  return (
+                    <div className="space-y-6">
+                      {/* Metric Cards Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Card 1: Total Combined Revenue */}
+                        <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-5 rounded-3xl shadow-lg shadow-emerald-950/10 space-y-2">
+                          <div className="flex items-center justify-between opacity-90">
+                            <span className="text-[10px] font-black uppercase tracking-wider font-headings">Total Revenue</span>
+                            <DollarSign size={20} />
+                          </div>
+                          <h3 className="text-3xl font-black font-sans">₹{totalRevenue.toLocaleString()}</h3>
+                          <p className="text-[11px] text-emerald-100 font-bold">Produce + Farm Visit Sales</p>
+                        </div>
+
+                        {/* Card 2: Produce Sales Revenue */}
+                        <div className="bg-white border border-slate-200/80 p-5 rounded-3xl shadow-xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-headings">Produce Sales</span>
+                            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+                              <ShoppingBag size={18} />
+                            </div>
+                          </div>
+                          <h3 className="text-2xl font-black text-slate-900 font-sans">₹{vendorProduceSalesRevenue.toLocaleString()}</h3>
+                          <p className="text-[11px] text-emerald-600 font-bold">Direct Harvest & Shop Items</p>
+                        </div>
+
+                        {/* Card 3: Farm Visit Revenue */}
+                        <div className="bg-white border border-slate-200/80 p-5 rounded-3xl shadow-xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-headings">Farm Tour Revenue</span>
+                            <div className="p-2 rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+                              <Compass size={18} />
+                            </div>
+                          </div>
+                          <h3 className="text-2xl font-black text-slate-900 font-sans">₹{vendorFarmBookingsRevenue.toLocaleString()}</h3>
+                          <p className="text-[11px] text-amber-600 font-bold">{vendorFarmBookingsCount} Scheduled Bookings</p>
+                        </div>
+
+                        {/* Card 4: Monthly Visitors */}
+                        <div className="bg-white border border-slate-200/80 p-5 rounded-3xl shadow-xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-headings">Total Visitors</span>
+                            <div className="p-2 rounded-xl bg-teal-50 text-teal-600 border border-teal-100">
+                              <Users size={18} />
+                            </div>
+                          </div>
+                          <h3 className="text-2xl font-black text-slate-900 font-sans">{vendorTotalVisitorsCount}</h3>
+                          <p className="text-[11px] text-teal-600 font-bold">Guests this month</p>
+                        </div>
+                      </div>
+
+                      {/* Revenue Comparison: Produce Sales vs Farm Visit Bookings */}
+                      <div className="bg-slate-50 border border-slate-200/80 p-6 rounded-3xl space-y-4">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                          <div>
+                            <h4 className="font-bold text-slate-800 text-sm font-headings">Revenue Breakdown: Produce Sales vs Farm Visit Bookings</h4>
+                            <p className="text-xs text-slate-500 font-medium">Comparison of income generated from direct produce sales versus farm tour bookings.</p>
+                          </div>
+                          <span className="text-xs font-mono font-bold bg-white px-3 py-1 rounded-full border border-slate-200 text-slate-700">
+                            Total: ₹{totalRevenue.toLocaleString()}
+                          </span>
+                        </div>
+
+                        {/* Progress bar visual */}
+                        <div className="space-y-1.5">
+                          <div className="h-4 bg-slate-200 rounded-full overflow-hidden flex shadow-inner">
+                            <div style={{ width: `${produceRatio}%` }} className="bg-emerald-600 h-full transition-all duration-500" title={`Produce Sales (${produceRatio}%)`} />
+                            <div style={{ width: `${farmRatio}%` }} className="bg-amber-500 h-full transition-all duration-500" title={`Farm Visit Bookings (${farmRatio}%)`} />
+                          </div>
+                          <div className="flex justify-between items-center text-xs font-bold font-headings pt-1">
+                            <span className="text-emerald-700 flex items-center gap-1.5">
+                              <span className="w-3 h-3 rounded-full bg-emerald-600 inline-block" />
+                              Produce Sales: ₹{vendorProduceSalesRevenue.toLocaleString()} ({produceRatio}%)
+                            </span>
+                            <span className="text-amber-700 flex items-center gap-1.5">
+                              <span className="w-3 h-3 rounded-full bg-amber-500 inline-block" />
+                              Farm Bookings: ₹{vendorFarmBookingsRevenue.toLocaleString()} ({farmRatio}%)
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Revenue Produce From Registered Shops Breakdown */}
+                      <div className="space-y-4 pt-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-bold text-slate-800 text-sm font-headings flex items-center gap-2">
+                            <Store size={18} className="text-teal-600" />
+                            Revenue Produce from Registered Shops
+                          </h4>
+                          <span className="text-xs font-extrabold text-slate-500 font-mono">{vendorShops.length} Registered Shops</span>
+                        </div>
+
+                        {vendorShops.length === 0 ? (
+                          <div className="py-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4">
+                            <Store size={32} className="mx-auto text-slate-400 mb-2" />
+                            <p className="text-xs font-bold text-slate-600">No registered shops yet</p>
+                            <p className="text-[11px] text-slate-400 mt-1">Register a shop under "Set Up Your Shop" tab to track produce sales revenue by shop location.</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {vendorShops.map((shop, idx) => {
+                              const shopProducts = (vendorProducts || []).filter(p => p.vendor?.trim().toLowerCase() === shop.shopName?.trim().toLowerCase() || p.shop?.trim().toLowerCase() === shop.shopName?.trim().toLowerCase());
+                              const shopEstimatedRevenue = shopProducts.reduce((sum, p) => sum + ((Number(p.price) || 0) * (Number(p.stockQuantity) || 10)), 0);
+
+                              return (
+                                <div key={idx} className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs space-y-3 flex flex-col justify-between">
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-700 font-bold text-sm shrink-0">
+                                        🏪
+                                      </div>
+                                      <div>
+                                        <h5 className="font-bold text-slate-800 text-xs font-headings line-clamp-1">{shop.shopName}</h5>
+                                        <p className="text-[10px] text-slate-400 font-medium truncate max-w-[150px]"><MapPin size={10} className="inline mr-0.5" />{shop.location}</p>
+                                      </div>
+                                    </div>
+                                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                                      <span className="text-slate-400 font-medium">Products Listed:</span>
+                                      <span className="font-bold text-slate-700 font-mono">{shopProducts.length} Products</span>
+                                    </div>
+                                  </div>
+                                  <div className="bg-emerald-50/70 border border-emerald-200/60 p-2.5 rounded-xl flex items-center justify-between text-xs">
+                                    <span className="font-bold text-slate-700">Shop Produce Revenue:</span>
+                                    <span className="font-black text-emerald-700 font-sans text-sm">₹{shopEstimatedRevenue.toLocaleString()}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'addresses' && (
             <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] animate-fade-in">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
@@ -2424,7 +2668,8 @@ export default function Profile() {
                       setFarmProductList([]);
                       setNewFarmForm({
                         farmName: '', location: '', description: '', costPerPerson: '', image: '', costType: 'free',
-                        crops: '', fruits: '', livestock: '', accommodations: '', amenities: '', farmProducts: ''
+                        crops: '', fruits: '', livestock: '', accommodations: '', amenities: '', farmProducts: '',
+                        visitDays: '', visitTimings: ''
                       });
                       setShowAddFarmForm(true);
                     }
@@ -2651,6 +2896,87 @@ export default function Profile() {
                             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 outline-none text-xs transition-all duration-200 bg-white/50 backdrop-blur-sm resize-none font-body"
                             placeholder="Describe the experience visitors can expect (activities, snacks, views)..."
                           ></textarea>
+                        </div>
+
+                        {/* 📅 Visit Days & 🕐 Farm Timings */}
+                        <div className="space-y-5 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
+                          <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+                            <span className="text-base">📅</span>
+                            <div>
+                              <p className="text-xs font-extrabold text-slate-700 font-headings">Farm Visit Days & Timings</p>
+                              <p className="text-[10px] text-slate-400 font-medium">Let visitors know when they can visit your farm</p>
+                            </div>
+                          </div>
+
+                          {/* Visit Days */}
+                          <div className="text-left space-y-2">
+                            <label className={labelCls}>📅 Visit Days Available</label>
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {['Weekends Only', 'Weekdays Only', 'Mon–Sat', '365 Days / Year', 'By Appointment Only', 'Festive Seasons Only'].map((day) => {
+                                const isSelected = (newFarmForm.visitDays || '').split(',').map(d => d.trim()).filter(Boolean).includes(day);
+                                return (
+                                  <button
+                                    key={day}
+                                    type="button"
+                                    onClick={() => {
+                                      const current = (newFarmForm.visitDays || '').split(',').map(d => d.trim()).filter(Boolean);
+                                      const updated = isSelected ? current.filter(d => d !== day) : [...current, day];
+                                      setNewFarmForm(prev => ({ ...prev, visitDays: updated.join(', ') }));
+                                    }}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 ${
+                                      isSelected
+                                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                        : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400 hover:text-emerald-700'
+                                    }`}
+                                  >
+                                    {isSelected ? '✓ ' : ''}{day}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <input
+                              type="text"
+                              value={newFarmForm.visitDays || ''}
+                              onChange={(e) => setNewFarmForm(prev => ({ ...prev, visitDays: e.target.value }))}
+                              className={inputCls.replace('pl-10', 'px-4')}
+                              placeholder="Or type custom visit days (e.g. Every Sunday, Public Holidays)..."
+                            />
+                          </div>
+
+                          {/* Visit Timings */}
+                          <div className="text-left space-y-2">
+                            <label className={labelCls}>🕐 Farm Visit Timings</label>
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {['Morning 9AM – 6PM', 'Morning 6AM – 12PM', 'Afternoon 12PM – 8PM', '24/7 Open', 'Sunrise to Sunset', '8AM – 5PM (Weekdays)', '9AM – 1PM (Weekends)'].map((timing) => {
+                                const isSelected = (newFarmForm.visitTimings || '').split(',').map(t => t.trim()).filter(Boolean).includes(timing);
+                                return (
+                                  <button
+                                    key={timing}
+                                    type="button"
+                                    onClick={() => {
+                                      const current = (newFarmForm.visitTimings || '').split(',').map(t => t.trim()).filter(Boolean);
+                                      const updated = isSelected ? current.filter(t => t !== timing) : [...current, timing];
+                                      setNewFarmForm(prev => ({ ...prev, visitTimings: updated.join(', ') }));
+                                    }}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 ${
+                                      isSelected
+                                        ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
+                                        : 'bg-white text-slate-700 border-slate-200 hover:border-teal-400 hover:text-teal-700'
+                                    }`}
+                                  >
+                                    {isSelected ? '✓ ' : ''}{timing}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <input
+                              type="text"
+                              value={newFarmForm.visitTimings || ''}
+                              onChange={(e) => setNewFarmForm(prev => ({ ...prev, visitTimings: e.target.value }))}
+                              className={inputCls.replace('pl-10', 'px-4')}
+                              placeholder="Or type custom timings (e.g. 10AM to 4PM on Sundays only)..."
+                            />
+                          </div>
                         </div>
 
                         {/* 📸 Farm Gallery & Visual Tour Photos Section */}
@@ -3281,6 +3607,12 @@ export default function Profile() {
                             <p className="font-extrabold text-sm text-white truncate">{newFarmForm.farmName || 'Unnamed Farm'}</p>
                             <p className="text-slate-400">Ticket Fee: <span className="text-emerald-400 font-bold">{newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0' ? 'Free Admission (₹0)' : `₹${newFarmForm.costPerPerson} per visitor`}</span></p>
                             <p className="text-slate-400">Gallery: <span className="text-emerald-400 font-bold">{farmGalleryList.length} Photos Added</span></p>
+                            {newFarmForm.visitDays && (
+                              <p className="text-slate-400">📅 Days: <span className="text-teal-300 font-bold">{newFarmForm.visitDays}</span></p>
+                            )}
+                            {newFarmForm.visitTimings && (
+                              <p className="text-slate-400">🕐 Timings: <span className="text-teal-300 font-bold">{newFarmForm.visitTimings}</span></p>
+                            )}
                             {newFarmForm.description && (
                               <p className="text-slate-400 italic line-clamp-2 text-[11px] pt-1">"{newFarmForm.description}"</p>
                             )}
@@ -3404,6 +3736,86 @@ export default function Profile() {
 
                 </form>
               )}
+
+              {/* ── Vendor Business & Analytics Summary Cards ── */}
+              {(() => {
+                const vendorProduceSalesRevenue = (vendorProducts || []).reduce((sum, p) => sum + ((Number(p.price) || 0) * (Number(p.stockQuantity) || 10)), 0);
+                const vendorFarmBookingsRevenue = (incomingFarmBookings || []).reduce((sum, b) => {
+                  const matchedFarm = vendorFarms.find(f => f.id === b.farmId || f.farmName === b.farmName);
+                  const cost = matchedFarm ? Number(matchedFarm.costPerPerson) || 0 : 0;
+                  return sum + (cost * (Number(b.visitorsCount) || 1));
+                }, 0);
+                const vendorFarmBookingsCount = (incomingFarmBookings || []).length;
+                const vendorTotalVisitorsCount = (incomingFarmBookings || []).reduce((sum, b) => sum + (Number(b.visitorsCount) || 1), 0);
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 text-left">
+                    {/* Produce Sales Revenue */}
+                    <div className="bg-white/80 backdrop-blur-md border border-white p-5 rounded-3xl shadow-sm space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-headings">Produce Sales</span>
+                        <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+                          <DollarSign size={18} />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-black text-slate-900 font-sans">₹{vendorProduceSalesRevenue}</h3>
+                        <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
+                          <span>↑ Direct Produce Sales</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Farm Visit Bookings Revenue */}
+                    <div className="bg-white/80 backdrop-blur-md border border-white p-5 rounded-3xl shadow-sm space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-headings">Farm Tour Revenue</span>
+                        <div className="p-2.5 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100">
+                          <Compass size={18} />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-black text-slate-900 font-sans">₹{vendorFarmBookingsRevenue}</h3>
+                        <p className="text-[11px] text-amber-600 font-bold flex items-center gap-1 mt-0.5">
+                          <span>{vendorFarmBookingsCount} Total Visit Bookings</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Monthly Visitors */}
+                    <div className="bg-white/80 backdrop-blur-md border border-white p-5 rounded-3xl shadow-sm space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-headings">Monthly Visitors</span>
+                        <div className="p-2.5 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100">
+                          <Users size={18} />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-black text-slate-900 font-sans">{vendorTotalVisitorsCount}</h3>
+                        <p className="text-[11px] text-teal-600 font-bold flex items-center gap-1 mt-0.5">
+                          <span>Guests visiting farms</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Active Farms Listed */}
+                    <div className="bg-white/80 backdrop-blur-md border border-white p-5 rounded-3xl shadow-sm space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-headings">Active Listings</span>
+                        <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+                          <Store size={18} />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-black text-slate-900 font-sans">{vendorFarms.length} Farms</h3>
+                        <p className="text-[11px] text-indigo-600 font-bold flex items-center gap-1 mt-0.5">
+                          <span>{vendorProducts.length} Direct Products</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Farms List & Incoming Bookings */}
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
@@ -4236,12 +4648,53 @@ export default function Profile() {
                                   <label className={labelCls}>Category <span className="text-emerald-600 font-bold">*</span></label>
                                   <div className="relative">
                                     <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
-                                    <select required name="category" value={newProduct.category} onChange={handleInputChange} className={`${inputCls} appearance-none bg-white font-medium`}>
+                                    <select
+                                      required
+                                      name="category"
+                                      value={newProduct.category}
+                                      onChange={(e) => {
+                                        const selectedCat = e.target.value;
+                                        const subCatList = SUB_CATEGORIES_MAP[selectedCat] || [];
+                                        const firstSub = subCatList[0] || '';
+                                        setNewProduct(prev => ({
+                                          ...prev,
+                                          category: selectedCat,
+                                          subCategory: firstSub,
+                                          name: (!prev.name.trim() || Object.values(SUB_CATEGORIES_MAP).flat().includes(prev.name)) ? firstSub : prev.name
+                                        }));
+                                      }}
+                                      className={`${inputCls} appearance-none bg-white font-medium`}
+                                    >
                                       <option value="">Select category...</option>
-                                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                      {Object.keys(SUB_CATEGORIES_MAP).map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                   </div>
                                 </div>
+                                {newProduct.category && SUB_CATEGORIES_MAP[newProduct.category] && (
+                                  <div>
+                                    <label className={labelCls}>Sub-Category <span className="text-emerald-600 font-bold">*</span></label>
+                                    <div className="relative">
+                                      <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={18} />
+                                      <select
+                                        required
+                                        name="subCategory"
+                                        value={newProduct.subCategory}
+                                        onChange={(e) => {
+                                          const selectedSubCat = e.target.value;
+                                          setNewProduct(prev => ({
+                                            ...prev,
+                                            subCategory: selectedSubCat,
+                                            name: (!prev.name.trim() || Object.values(SUB_CATEGORIES_MAP).flat().includes(prev.name)) ? selectedSubCat : prev.name
+                                          }));
+                                        }}
+                                        className={`${inputCls} appearance-none bg-white font-medium`}
+                                      >
+                                        <option value="">Select sub-category...</option>
+                                        {(SUB_CATEGORIES_MAP[newProduct.category] || []).map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                                      </select>
+                                    </div>
+                                  </div>
+                                )}
                                 <div>
                                   <label className={labelCls}>M.R.P. / Original Price (₹)</label>
                                   <div className="relative">
@@ -4972,6 +5425,50 @@ export default function Profile() {
                   className={inputCls.replace('pl-10', 'px-4')}
                   placeholder="E.g. Fresh Organic Strawberries"
                 />
+              </div>
+
+              {/* Category & Sub-Category Linked Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Category */}
+                <div>
+                  <label className={labelCls}>Category <span className="text-emerald-600 font-bold">*</span></label>
+                  <select
+                    value={newFarmProductForm.category}
+                    onChange={(e) => {
+                      const selectedCat = e.target.value;
+                      const subCatList = SUB_CATEGORIES_MAP[selectedCat] || [];
+                      const firstSub = subCatList[0] || '';
+                      setNewFarmProductForm(prev => ({
+                        ...prev,
+                        category: selectedCat,
+                        subCategory: firstSub,
+                        name: (!prev.name.trim() || Object.values(SUB_CATEGORIES_MAP).flat().includes(prev.name)) ? firstSub : prev.name
+                      }));
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 outline-none text-xs transition-all bg-white font-body"
+                  >
+                    {Object.keys(SUB_CATEGORIES_MAP).map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+
+                {/* Sub-Category */}
+                <div>
+                  <label className={labelCls}>Sub-Category <span className="text-emerald-600 font-bold">*</span></label>
+                  <select
+                    value={newFarmProductForm.subCategory}
+                    onChange={(e) => {
+                      const selectedSubCat = e.target.value;
+                      setNewFarmProductForm(prev => ({
+                        ...prev,
+                        subCategory: selectedSubCat,
+                        name: (!prev.name.trim() || Object.values(SUB_CATEGORIES_MAP).flat().includes(prev.name)) ? selectedSubCat : prev.name
+                      }));
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 outline-none text-xs transition-all bg-white font-body"
+                  >
+                    {(SUB_CATEGORIES_MAP[newFarmProductForm.category || 'Vegetables'] || []).map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

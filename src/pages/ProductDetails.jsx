@@ -63,7 +63,7 @@ export default function ProductDetails() {
       <nav className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-8 uppercase tracking-wider">
         <Link to="/" className="hover:text-emerald-600 transition-colors">Home</Link>
         <span className="text-slate-300">/</span>
-        <span onClick={() => navigate('/#marketplace')} className="hover:text-emerald-600 transition-colors cursor-pointer">Marketplace</span>
+        <span onClick={() => { if (window.history.length > 1) navigate(-1); else navigate('/#marketplace'); }} className="hover:text-emerald-600 transition-colors cursor-pointer">Marketplace</span>
         <span className="text-slate-300">/</span>
         <span className="text-slate-600 font-bold">{product.name}</span>
       </nav>

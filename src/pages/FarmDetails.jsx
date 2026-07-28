@@ -11,6 +11,39 @@ import {
 } from 'lucide-react';
 import ModernDatePicker from '../components/common/ModernDatePicker';
 
+// Sub-Category Options Map for Farm Direct Products
+export const SUB_CATEGORIES_MAP = {
+  Vegetables: [
+    'Organic Spinach', 'Cherry Tomatoes', 'Fresh Tomatoes', 'Capsicum / Bell Peppers', 
+    'Broccoli', 'Cauliflower', 'Carrots', 'Potatoes', 'Red Onions', 'Cabbage', 
+    'Cucumber', 'Brinjal (Eggplant)', 'Lady Finger (Okra)', 'Green Peas', 'Bottle Gourd', 'Other Vegetable'
+  ],
+  Fruits: [
+    'Alphonso Mangoes', 'Mahabaleshwar Strawberries', 'Guava', 'Papaya', 
+    'Chiku (Sapodilla)', 'Oranges / Citrus', 'Apples', 'Bananas', 'Pomegranates', 
+    'Watermelon', 'Grapes', 'Pineapple', 'Dragon Fruit', 'Other Fruit'
+  ],
+  Dairy: [
+    'Pure Cow Milk', 'Buffalo Milk', 'A2 Cow Milk', 'Fresh Paneer', 
+    'Organic Ghee', 'Curd / Yogurt', 'Fresh Butter', 'Butter Milk (Chaas)'
+  ],
+  'Honey & Bee Products': [
+    'Pure Organic Honey', 'Raw Wildflower Honey', 'Honeycomb Jar', 'Beeswax', 'Royal Jelly'
+  ],
+  'Preserves & Jams': [
+    'Strawberry Jam', 'Mango Jam', 'Mixed Fruit Jam', 'Organic Pickles', 'Chutney'
+  ],
+  Spices: [
+    'Turmeric (Haldi)', 'Red Chilli Powder', 'Coriander (Dhania)', 'Cumin (Jeera)', 'Cardamom', 'Black Pepper'
+  ],
+  'Grains & Pulses': [
+    'Organic Wheat', 'Basmati Rice', 'Desi Chana (Gram)', 'Toor Dal', 'Moong Dal', 'Millets (Jowar/Bajra)'
+  ],
+  'Direct Harvest': [
+    'Fresh Field Harvest', 'Organic Farm Pack', 'Farm Honey & Spices'
+  ]
+};
+
 // Default enriched mock farm data
 const MOCK_FARM_DATA = {
   'mock-farm-1': {
@@ -114,7 +147,7 @@ export default function FarmDetails() {
   // Add/Edit Product Modal in Edit Mode
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', unit: 'pack', image: '' });
+  const [newProduct, setNewProduct] = useState({ name: '', category: 'Vegetables', subCategory: 'Organic Spinach', price: '', quantity: '1', unit: 'kg', image: '' });
 
   // Add Accommodation Modal in Edit Mode
   const [showAddAccModal, setShowAddAccModal] = useState(false);
@@ -134,6 +167,15 @@ export default function FarmDetails() {
   const [selectedAccommodation, setSelectedAccommodation] = useState('');
   const [submittingBooking, setSubmittingBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+
+  // Live Slot Availability State
+  const [existingFarmBookings, setExistingFarmBookings] = useState([]);
+  const DAILY_MAX_CAPACITY = 30;
+
+  // Verified Customer Reviews State
+  const [reviewsList, setReviewsList] = useState([]);
+  const [showAddReviewModal, setShowAddReviewModal] = useState(false);
+  const [newReviewForm, setNewReviewForm] = useState({ rating: 5, comment: '', photoUrl: '' });
 
   const leafletMapContainerRef = useRef(null);
   const leafletMapInstanceRef = useRef(null);
@@ -241,6 +283,90 @@ export default function FarmDetails() {
 
     return () => unsubscribe();
   }, [id]);
+
+  // Fetch Existing Bookings for Live Slot Availability
+  useEffect(() => {
+    if (!farm?.id) return;
+    const bookingsRef = ref(realtimeDb, 'farmBookings');
+    const unsubscribe = onValue(bookingsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const farmBookings = Object.values(data).filter(b => b.farmId === farm.id || b.farmName === farm.farmName);
+        setExistingFarmBookings(farmBookings);
+      } else {
+        setExistingFarmBookings([]);
+      }
+    });
+    return () => unsubscribe();
+  }, [farm?.id, farm?.farmName]);
+
+  // Fetch Customer Reviews for this Farm
+  useEffect(() => {
+    if (!farm?.id) return;
+    const reviewsRef = ref(realtimeDb, `farms/${farm.id}/reviews`);
+    const unsubscribe = onValue(reviewsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
+        setReviewsList(list);
+      } else {
+        setReviewsList([]);
+      }
+    });
+    return () => unsubscribe();
+  }, [farm?.id]);
+
+  // Live Slot Availability Calculation
+  const getBookedSlotsForDate = (dateStr) => {
+    if (!dateStr) return 0;
+    return existingFarmBookings
+      .filter(b => b.date === dateStr && b.status !== 'cancelled')
+      .reduce((sum, b) => sum + (Number(b.visitorsCount) || 1), 0);
+  };
+
+  const bookedCountForDate = bookingDate ? getBookedSlotsForDate(bookingDate) : 0;
+  const availableSlotsForDate = DAILY_MAX_CAPACITY - bookedCountForDate;
+  const isFullyBooked = bookingDate ? availableSlotsForDate <= 0 : false;
+
+  // Aggregate Customer Star Rating Calculation
+  const getAverageStarRating = () => {
+    if (reviewsList.length === 0) return farm?.rating || 4.9;
+    const total = reviewsList.reduce((sum, r) => sum + (Number(r.rating) || 5), 0);
+    return (total / reviewsList.length).toFixed(1);
+  };
+
+  const displayRating = getAverageStarRating();
+
+  // Submit Verified Customer Review
+  const handleSaveCustomerReview = async (e) => {
+    if (e) e.preventDefault();
+    if (!user) {
+      navigate('/auth?redirect=visit-farms');
+      return;
+    }
+    if (!newReviewForm.comment.trim()) {
+      alert("Please write a review comment.");
+      return;
+    }
+    try {
+      const reviewsRef = ref(realtimeDb, `farms/${farm.id}/reviews`);
+      const newReviewRef = push(reviewsRef);
+      const reviewData = {
+        rating: Number(newReviewForm.rating) || 5,
+        comment: newReviewForm.comment.trim(),
+        photoUrl: newReviewForm.photoUrl.trim(),
+        reviewerName: userProfile?.displayName || user.displayName || 'Verified Visitor',
+        reviewerPhoto: user.photoURL || '',
+        date: new Date().toISOString().split('T')[0]
+      };
+      await set(newReviewRef, reviewData);
+      setShowAddReviewModal(false);
+      setNewReviewForm({ rating: 5, comment: '', photoUrl: '' });
+    } catch (err) {
+      console.error('Failed to submit customer review:', err);
+      alert('Failed to submit review: ' + err.message);
+    }
+  };
 
   // Leaflet Interactive Pin Map Initialization
   useEffect(() => {
@@ -523,55 +649,97 @@ export default function FarmDetails() {
 
   const handleEditProductClick = (product) => {
     setEditingProductId(product.id);
+    const cat = product.category || 'Vegetables';
+    const subCatList = SUB_CATEGORIES_MAP[cat] || SUB_CATEGORIES_MAP['Vegetables'];
     setNewProduct({
       name: product.name || '',
+      category: cat,
+      subCategory: product.subCategory || subCatList[0] || '',
       price: product.price || '',
-      unit: product.unit || 'pack',
+      quantity: product.quantity || '1',
+      unit: product.rawUnit || product.unit || 'kg',
       image: product.image || ''
     });
     setShowAddProductModal(true);
   };
 
-  const handleSaveNewProduct = (e) => {
+  const handleSaveNewProduct = async (e) => {
     if (e) e.preventDefault();
     if (!newProduct.name.trim() || !newProduct.price) {
       alert('Please enter product name and price.');
       return;
     }
+
+    let updatedProducts = [];
+    const currentProducts = editForm?.farmProducts || farm?.farmProducts || [];
+    const qtyStr = newProduct.quantity?.trim();
+    const unitStr = newProduct.unit?.trim() || 'kg';
+    const displayUnit = qtyStr ? `${qtyStr} ${unitStr}` : unitStr;
+
     if (editingProductId) {
-      setEditForm(prev => ({
-        ...prev,
-        farmProducts: (prev.farmProducts || []).map(p => 
-          p.id === editingProductId 
-            ? {
-                ...p,
-                name: newProduct.name.trim(),
-                price: Number(newProduct.price) || 0,
-                unit: newProduct.unit.trim() || 'pack',
-                image: newProduct.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80'
-              }
-            : p
-        )
-      }));
+      updatedProducts = currentProducts.map(p => 
+        p.id === editingProductId 
+          ? {
+              ...p,
+              name: newProduct.name.trim(),
+              category: newProduct.category.trim() || 'Vegetables',
+              subCategory: newProduct.subCategory?.trim() || '',
+              price: Number(newProduct.price) || 0,
+              quantity: qtyStr || '1',
+              unit: displayUnit,
+              rawUnit: unitStr,
+              image: newProduct.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80'
+            }
+          : p
+      );
       setEditingProductId(null);
     } else {
       const prodObj = {
         id: `fp-${Date.now()}`,
         name: newProduct.name.trim(),
+        category: newProduct.category.trim() || 'Vegetables',
+        subCategory: newProduct.subCategory?.trim() || '',
         price: Number(newProduct.price) || 100,
-        unit: newProduct.unit.trim() || 'pack',
+        quantity: qtyStr || '1',
+        unit: displayUnit,
+        rawUnit: unitStr,
         image: newProduct.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80',
-        vendor: farm?.farmName || 'Farm Direct',
-        category: 'Farm Direct Harvest'
+        vendor: farm?.farmName || 'Farm Direct'
       };
-      setEditForm(prev => ({ ...prev, farmProducts: [...(prev.farmProducts || []), prodObj] }));
+      updatedProducts = [...currentProducts, prodObj];
     }
+
+    setEditForm(prev => ({ ...prev, farmProducts: updatedProducts }));
+    setFarm(prev => prev ? ({ ...prev, farmProducts: updatedProducts }) : prev);
+
+    if (farm?.id) {
+      try {
+        const farmProductsRef = ref(realtimeDb, `farms/${farm.id}/farmProducts`);
+        await set(farmProductsRef, updatedProducts);
+      } catch (err) {
+        console.error('Failed to save farm product to Firebase Realtime DB:', err);
+      }
+    }
+
     setShowAddProductModal(false);
-    setNewProduct({ name: '', price: '', unit: 'pack', image: '' });
+    setNewProduct({ name: '', category: 'Vegetables', subCategory: 'Organic Spinach', price: '', quantity: '1', unit: 'kg', image: '' });
   };
 
-  const handleRemoveProductItem = (prodId) => {
-    setEditForm(prev => ({ ...prev, farmProducts: (prev.farmProducts || []).filter(p => p.id !== prodId) }));
+  const handleRemoveProductItem = async (prodId) => {
+    const currentProducts = editForm?.farmProducts || farm?.farmProducts || [];
+    const updatedProducts = currentProducts.filter(p => p.id !== prodId);
+    
+    setEditForm(prev => ({ ...prev, farmProducts: updatedProducts }));
+    setFarm(prev => prev ? ({ ...prev, farmProducts: updatedProducts }) : prev);
+
+    if (farm?.id) {
+      try {
+        const farmProductsRef = ref(realtimeDb, `farms/${farm.id}/farmProducts`);
+        await set(farmProductsRef, updatedProducts);
+      } catch (err) {
+        console.error('Failed to remove farm product from Firebase DB:', err);
+      }
+    }
   };
 
   const handleSaveNewAcc = (e) => {
@@ -615,6 +783,7 @@ export default function FarmDetails() {
         farmId: farm.id,
         farmName: farm.farmName,
         location: farm.location,
+        farmImage: farm.image || '',
         vendorId: farm.vendorId || 'vendor-default',
         vendorName: farm.vendorName || 'Farm Owner',
         customerId: user.uid,
@@ -622,24 +791,35 @@ export default function FarmDetails() {
         customerEmail: user.email || '',
         date: bookingDate,
         visitorsCount: Number(visitorsCount),
-        accommodation: selectedAccommodation || 'Standard Farm Access',
+        costPerPerson: Number(farm.costPerPerson) || 0,
         totalAmount,
         isFree,
-        status: 'confirmed',
-        createdAt: new Date().toISOString()
       };
 
-      const bookingsRef = ref(realtimeDb, 'farmBookings');
-      const newBookingRef = push(bookingsRef);
-      await set(newBookingRef, bookingData);
+      if (isFree) {
+        // Free farms: confirm immediately without checkout
+        const bookingsRef = ref(realtimeDb, 'farmBookings');
+        const newBookingRef = push(bookingsRef);
+        await set(newBookingRef, {
+          ...bookingData,
+          status: 'confirmed',
+          paymentMethod: 'Free Entry',
+          createdAt: new Date().toISOString()
+        });
 
-      setBookingSuccess(true);
-      setTimeout(() => {
-        setBookingSuccess(false);
+        setBookingSuccess(true);
+        setTimeout(() => {
+          setBookingSuccess(false);
+          setShowBookingModal(false);
+          setBookingDate('');
+          setVisitorsCount(1);
+        }, 2500);
+      } else {
+        // Payable farms: go to checkout page
+        sessionStorage.setItem('pendingFarmBooking', JSON.stringify(bookingData));
         setShowBookingModal(false);
-        setBookingDate('');
-        setVisitorsCount(1);
-      }, 2500);
+        navigate('/farm-checkout');
+      }
     } catch (err) {
       console.error('Failed to place booking:', err);
       alert('Error placing booking: ' + err.message);
@@ -647,6 +827,7 @@ export default function FarmDetails() {
       setSubmittingBooking(false);
     }
   };
+
 
   if (loading || !farm || !editForm) {
     return (
@@ -666,7 +847,7 @@ export default function FarmDetails() {
   const isFree = isEditing ? editForm.costType === 'free' : (!farm.costPerPerson || Number(farm.costPerPerson) === 0);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen">
       
       {/* ── Sticky Bottom Floating Vendor Live Editor Control Bar ──────────── */}
       {isEditing ? (
@@ -686,24 +867,24 @@ export default function FarmDetails() {
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <button
               onClick={() => setIsEditing(false)}
-              className="flex-1 sm:flex-none px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold font-headings border border-white/20 transition-all active:scale-95"
+              className="flex-1 sm:flex-none px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold font-headings border border-white/20 transition-all active:scale-95 cursor-pointer"
             >
               Exit Editing
             </button>
             <button
               onClick={handleSaveAllFarmChanges}
               disabled={savingChanges}
-              className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold font-headings transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-1.5"
+              className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold font-headings transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <CheckCircle size={16} /> {savingChanges ? 'Saving Live...' : 'Save All Changes'}
             </button>
           </div>
         </div>
       ) : isOwner ? (
-        <div className="mb-6 flex justify-end">
+        <div className="mb-4 flex justify-end">
           <button
             onClick={() => setIsEditing(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-2xl text-xs font-bold font-headings transition-all shadow-md active:scale-95 flex items-center gap-1.5"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-2xl text-xs font-bold font-headings transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
           >
             <Pencil size={15} /> Edit Farm Page Live
           </button>
@@ -711,16 +892,24 @@ export default function FarmDetails() {
       ) : null}
 
       {/* ── Breadcrumb Navigation ────────────────────────────────────────── */}
-      <nav className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-6 uppercase tracking-wider text-left">
+      <nav className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-4 uppercase tracking-wider text-left">
         <Link to="/" className="hover:text-emerald-600 transition-colors">Home</Link>
         <span className="text-slate-300">/</span>
-        <Link to="/visit-farms" className="hover:text-emerald-600 transition-colors">Visit Farms</Link>
+        <span
+          onClick={() => {
+            if (window.history.length > 1) navigate(-1);
+            else navigate('/visit-farms');
+          }}
+          className="hover:text-emerald-600 transition-colors cursor-pointer"
+        >
+          Back
+        </span>
         <span className="text-slate-300">/</span>
         <span className="text-slate-600 font-bold">{isEditing ? editForm.farmName : farm.farmName}</span>
       </nav>
 
       {/* ── Hero Farm Banner Showcase ────────────────────────────────────── */}
-      <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-slate-900 text-white min-h-[380px] sm:min-h-[440px] flex flex-col justify-end p-6 sm:p-10 text-left group">
+      <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-slate-900 text-white min-h-[300px] sm:min-h-[360px] flex flex-col justify-end p-6 sm:p-8 text-left group">
         <img
           src={isEditing ? editForm.image : (farm.image || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1200&q=80')}
           alt={isEditing ? editForm.farmName : farm.farmName}
@@ -728,7 +917,7 @@ export default function FarmDetails() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
 
-        <div className="relative z-10 space-y-4 max-w-3xl">
+        <div className="relative z-10 space-y-3 max-w-3xl">
           <div className="flex flex-wrap items-center gap-2">
             {isFree ? (
               <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1 shadow-md">
@@ -746,13 +935,13 @@ export default function FarmDetails() {
 
           {/* Editable Title or Display */}
           {isEditing ? (
-            <div className="space-y-3 bg-black/60 backdrop-blur-md p-4 rounded-2xl border border-white/20">
+            <div className="space-y-2.5 bg-black/60 backdrop-blur-md p-3.5 rounded-2xl border border-white/20">
               <label className="text-[10px] text-emerald-400 font-black uppercase tracking-wider">Edit Farm Title</label>
               <input
                 type="text"
                 value={editForm.farmName}
                 onChange={(e) => setEditForm({ ...editForm, farmName: e.target.value })}
-                className="w-full px-4 py-2 bg-white text-slate-900 rounded-xl font-bold text-xl outline-none"
+                className="w-full px-4 py-2 bg-white text-slate-900 rounded-xl font-bold text-lg outline-none"
                 placeholder="Farm Name"
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -779,12 +968,12 @@ export default function FarmDetails() {
               </div>
             </div>
           ) : (
-            <h1 className="text-3xl sm:text-5xl font-black font-headings text-white leading-tight drop-shadow-md">
+            <h1 className="text-2xl sm:text-4xl font-black font-headings text-white leading-tight drop-shadow-md">
               {farm.farmName}
             </h1>
           )}
 
-          <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-200">
+          <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-200">
             <span className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
               <MapPin size={14} className="text-emerald-400" /> {isEditing ? editForm.location : farm.location}
             </span>
@@ -792,7 +981,7 @@ export default function FarmDetails() {
               <Store size={14} className="text-emerald-400" /> Owner: {farm.vendorName}
             </span>
             <span className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-amber-300">
-              <Star size={14} className="fill-current" /> {farm.rating || 4.9} Rating
+              <Star size={14} className="fill-current" /> {displayRating} ({reviewsList.length} Reviews)
             </span>
           </div>
 
@@ -816,10 +1005,10 @@ export default function FarmDetails() {
 
           {/* Hero Action CTA (Hidden when in Edit Mode) */}
           {!isEditing && (
-            <div className="pt-3 flex flex-wrap items-center gap-3">
+            <div className="pt-2 flex flex-wrap items-center gap-3">
               <button
                 onClick={() => setShowBookingModal(true)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3.5 rounded-2xl font-bold text-xs font-headings transition-all shadow-xl active:scale-95 flex items-center gap-2"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-7 py-3 rounded-2xl font-bold text-xs font-headings transition-all shadow-xl active:scale-95 flex items-center gap-2 cursor-pointer"
               >
                 <Calendar size={16} /> Book Farm Visit Slot
               </button>
@@ -827,7 +1016,7 @@ export default function FarmDetails() {
                 href={`https://maps.google.com/?q=${encodeURIComponent(farm.farmName + ' ' + farm.location)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-md px-5 py-3.5 rounded-2xl font-bold text-xs font-headings transition-all flex items-center gap-2"
+                className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-md px-5 py-3 rounded-2xl font-bold text-xs font-headings transition-all flex items-center gap-2"
               >
                 <Navigation size={16} /> Get Directions
               </a>
@@ -837,9 +1026,9 @@ export default function FarmDetails() {
       </div>
 
       {/* ── Key Highlights Counter Strip ─────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-        <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 rounded-3xl text-left shadow-sm flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 font-bold text-xl">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mt-5">
+        <div className="bg-white/70 backdrop-blur-md border border-white/60 p-4 rounded-3xl text-left shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 font-bold text-lg">
             🌾
           </div>
           <div>
@@ -848,8 +1037,8 @@ export default function FarmDetails() {
           </div>
         </div>
 
-        <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 rounded-3xl text-left shadow-sm flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center flex-shrink-0 font-bold text-xl">
+        <div className="bg-white/70 backdrop-blur-md border border-white/60 p-4 rounded-3xl text-left shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center flex-shrink-0 font-bold text-lg">
             🐄
           </div>
           <div>
@@ -858,8 +1047,8 @@ export default function FarmDetails() {
           </div>
         </div>
 
-        <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 rounded-3xl text-left shadow-sm flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center flex-shrink-0 font-bold text-xl">
+        <div className="bg-white/70 backdrop-blur-md border border-white/60 p-4 rounded-3xl text-left shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center flex-shrink-0 font-bold text-lg">
             🛖
           </div>
           <div>
@@ -869,8 +1058,8 @@ export default function FarmDetails() {
         </div>
 
         {(activeGallery.length > 0 || isEditing) && (
-          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 rounded-3xl text-left shadow-sm flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center flex-shrink-0 font-bold text-xl">
+          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-4 rounded-3xl text-left shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center flex-shrink-0 font-bold text-lg">
               📸
             </div>
             <div>
@@ -882,15 +1071,15 @@ export default function FarmDetails() {
       </div>
 
       {/* ── Main Farm Experience Details Grid ────────────────────────────── */}
-      <div className="mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 text-left">
         
         {/* Left Column: Farm Offerings & Gallery (8 Cols) */}
-        <div className="lg:col-span-8 space-y-10">
+        <div className="lg:col-span-8 space-y-6">
           
           {/* Section 0: Farm Photo Gallery & Visual Tour 📸 */}
           {(activeGallery.length > 0 || isEditing) && (
-            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center font-bold text-lg">
                     📸
@@ -952,8 +1141,8 @@ export default function FarmDetails() {
 
         {/* Section 1: Accommodation & Stay Options 🛖 */}
           {(activeAccommodations.length > 0 || isEditing) && (
-            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold text-lg">
                     🛖
@@ -966,20 +1155,20 @@ export default function FarmDetails() {
                 {isEditing && (
                   <button
                     onClick={() => setShowAddAccModal(true)}
-                    className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold font-headings flex items-center gap-1 shadow-md hover:bg-emerald-700"
+                    className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold font-headings flex items-center gap-1 shadow-md hover:bg-emerald-700 cursor-pointer"
                   >
                     <Plus size={14} /> Add Stay Option
                   </button>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {activeAccommodations.map((acc, index) => (
-                  <div key={acc.id || index} className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-xs hover:shadow-md transition-all space-y-2 relative group">
+                  <div key={acc.id || index} className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs hover:shadow-md transition-all space-y-1.5 relative group">
                     {isEditing && (
                       <button
                         onClick={() => handleRemoveAccItem(acc.id)}
-                        className="absolute top-2 right-2 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                        className="absolute top-2 right-2 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                         title="Delete Stay Choice"
                       >
                         <Trash2 size={14} />
@@ -1005,8 +1194,8 @@ export default function FarmDetails() {
 
           {/* Section 2: Crops & Fruit Orchards Growing 🌾🍎 */}
           {((activeCrops.length > 0 || activeFruits.length > 0) || isEditing) && (
-            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
-              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
                 <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold text-lg">
                   🌾
                 </div>
@@ -1022,10 +1211,10 @@ export default function FarmDetails() {
                     <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">Organic Crops & Produce</h4>
                     <div className="flex flex-wrap gap-2.5">
                       {activeCrops.map((crop, index) => (
-                        <span key={index} className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3.5 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                        <span key={index} className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
                           <Sprout size={14} className="text-emerald-600" /> {crop}
                           {isEditing && (
-                            <button onClick={() => handleRemoveCropItem(index)} className="text-rose-500 hover:text-rose-700 ml-1 font-black">
+                            <button onClick={() => handleRemoveCropItem(index)} className="text-rose-500 hover:text-rose-700 ml-1 font-black cursor-pointer">
                               ×
                             </button>
                           )}
@@ -1094,10 +1283,10 @@ export default function FarmDetails() {
                     <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings pt-2">Fruit Orchards & Trees</h4>
                     <div className="flex flex-wrap gap-2.5">
                       {activeFruits.map((fruit, index) => (
-                        <span key={index} className="bg-amber-50 text-amber-900 border border-amber-200/80 px-3.5 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                        <span key={index} className="bg-amber-50 text-amber-900 border border-amber-200/80 px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
                           🍎 {fruit}
                           {isEditing && (
-                            <button onClick={() => handleRemoveFruitItem(index)} className="text-rose-500 hover:text-rose-700 ml-1 font-black">
+                            <button onClick={() => handleRemoveFruitItem(index)} className="text-rose-500 hover:text-rose-700 ml-1 font-black cursor-pointer">
                               ×
                             </button>
                           )}
@@ -1166,8 +1355,8 @@ export default function FarmDetails() {
 
           {/* Section 3: Poultry, Sheep & Cattle 🐄🐓 */}
           {(activeLivestock.length > 0 || isEditing) && (
-            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center font-bold text-lg">
                     🐄
@@ -1179,18 +1368,18 @@ export default function FarmDetails() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 {activeLivestock.map((animal, index) => (
-                  <div key={index} className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs text-center space-y-1.5 relative group">
+                  <div key={index} className="bg-white border border-slate-200/80 p-3.5 rounded-2xl shadow-xs text-center space-y-1 relative group">
                     {isEditing && (
                       <button
                         onClick={() => handleRemoveAnimalItem(index)}
-                        className="absolute top-2 right-2 p-1 text-rose-500 hover:bg-rose-50 rounded-lg"
+                        className="absolute top-2 right-2 p-1 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer"
                       >
                         <Trash2 size={13} />
                       </button>
                     )}
-                    <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto text-xl">
+                    <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto text-lg">
                       {animal.includes('Cow') || animal.includes('Cattle') ? '🐄' : animal.includes('Sheep') || animal.includes('Goat') ? '🐐' : animal.includes('Honey') || animal.includes('Bee') ? '🐝' : '🐓'}
                     </div>
                     <p className="font-bold text-slate-800 text-xs font-headings truncate">{animal}</p>
@@ -1257,8 +1446,8 @@ export default function FarmDetails() {
 
           {/* Section 4: On-Farm Products For Direct Purchase 🧺 */}
           {(activeFarmProducts.length > 0 || isEditing) && (
-            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center font-bold text-lg">
                     🧺
@@ -1329,6 +1518,95 @@ export default function FarmDetails() {
               )}
             </div>
           )}
+
+          {/* Section 5: Verified Customer Reviews & Guest Photos ⭐ */}
+          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold text-lg">
+                  ⭐
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold font-headings text-slate-800 flex items-center gap-2">
+                    Verified Customer Reviews <span className="bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-bold">★ {displayRating}</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 font-medium font-body">Real feedback & photos from visitors who experienced this farm</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!user) {
+                    navigate('/auth?redirect=visit-farms');
+                    return;
+                  }
+                  setShowAddReviewModal(true);
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+              >
+                <Plus size={14} /> + Leave a Review
+              </button>
+            </div>
+
+            {reviewsList.length === 0 ? (
+              <div className="py-8 text-center bg-white/50 border border-dashed border-slate-200 rounded-2xl p-6">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-2 text-xl font-bold">
+                  🌟
+                </div>
+                <h4 className="font-bold text-slate-800 text-xs font-headings">No Guest Reviews Yet</h4>
+                <p className="text-xs text-slate-400 font-medium max-w-sm mx-auto mt-1 mb-3">Be the first verified visitor to leave a star rating and share your farm photos!</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!user) {
+                      navigate('/auth?redirect=visit-farms');
+                      return;
+                    }
+                    setShowAddReviewModal(true);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings inline-flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                >
+                  <Plus size={14} /> Write First Review
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {reviewsList.map((rev) => (
+                  <div key={rev.id} className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs space-y-2.5 text-left flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-extrabold flex items-center justify-center text-xs">
+                            {rev.reviewerName?.charAt(0) || 'V'}
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-slate-800 text-xs font-headings">{rev.reviewerName}</h5>
+                            <span className="text-[10px] text-slate-400 font-medium">{rev.date || 'Verified Visitor'}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-0.5 text-amber-400">
+                          {[...Array(Number(rev.rating) || 5)].map((_, i) => (
+                            <Star key={i} size={12} className="fill-current" />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-600 font-body leading-relaxed italic">"{rev.comment}"</p>
+                    </div>
+
+                    {rev.photoUrl && (
+                      <div className="pt-2 border-t border-slate-100">
+                        <img
+                          src={rev.photoUrl}
+                          alt="Customer farm photo"
+                          className="h-24 w-full object-cover rounded-xl border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
         </div>
 
@@ -1465,6 +1743,30 @@ export default function FarmDetails() {
                 </div>
               </div>
 
+              {/* Visit Days & Timings */}
+              {(farm.visitDays || farm.visitTimings) && (
+                <div className="bg-emerald-50/60 border border-emerald-200/60 rounded-2xl p-3.5 space-y-2">
+                  {farm.visitDays && (
+                    <div className="flex items-start gap-2 text-xs">
+                      <span className="text-base leading-none mt-0.5">📅</span>
+                      <div>
+                        <p className="text-[9px] font-black text-emerald-700 uppercase tracking-wider font-headings">Visit Days</p>
+                        <p className="font-bold text-slate-700 mt-0.5">{farm.visitDays}</p>
+                      </div>
+                    </div>
+                  )}
+                  {farm.visitTimings && (
+                    <div className="flex items-start gap-2 text-xs">
+                      <span className="text-base leading-none mt-0.5">🕐</span>
+                      <div>
+                        <p className="text-[9px] font-black text-emerald-700 uppercase tracking-wider font-headings">Visit Timings</p>
+                        <p className="font-bold text-slate-700 mt-0.5">{farm.visitTimings}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <button
                 onClick={() => setShowBookingModal(true)}
                 className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs py-3.5 rounded-2xl transition-all shadow-lg shadow-emerald-900/10 active:scale-98 flex items-center justify-center gap-2 font-headings"
@@ -1567,45 +1869,123 @@ export default function FarmDetails() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveNewProduct} className="space-y-3">
+            <form onSubmit={handleSaveNewProduct} className="space-y-3.5 font-body">
+              {/* Product Name */}
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase">Product Name *</label>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Product Name *</label>
                 <input
                   required
                   type="text"
                   value={newProduct.name}
                   onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
                   placeholder="E.g. Fresh Organic Strawberries"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-semibold"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Category & Sub-Category Linked Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Category */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-700 uppercase">Price (₹) *</label>
-                  <input
-                    required
-                    type="number"
-                    value={newProduct.price}
-                    onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                    placeholder="180"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
-                  />
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Category *</label>
+                  <select
+                    value={newProduct.category}
+                    onChange={(e) => {
+                      const selectedCat = e.target.value;
+                      const subCatList = SUB_CATEGORIES_MAP[selectedCat] || [];
+                      const firstSubCat = subCatList[0] || '';
+                      setNewProduct(prev => ({
+                        ...prev,
+                        category: selectedCat,
+                        subCategory: firstSubCat,
+                        name: (!prev.name.trim() || Object.values(SUB_CATEGORIES_MAP).flat().includes(prev.name)) ? firstSubCat : prev.name
+                      }));
+                    }}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-semibold"
+                  >
+                    <option value="Vegetables">Vegetables</option>
+                    <option value="Fruits">Fruits</option>
+                    <option value="Dairy">Dairy</option>
+                    <option value="Honey & Bee Products">Honey & Bee Products</option>
+                    <option value="Preserves & Jams">Preserves & Jams</option>
+                    <option value="Spices">Spices</option>
+                    <option value="Grains & Pulses">Grains & Pulses</option>
+                    <option value="Direct Harvest">Direct Harvest</option>
+                  </select>
                 </div>
+
+                {/* Sub-Category */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-700 uppercase">Unit / Weight</label>
-                  <input
-                    type="text"
-                    value={newProduct.unit}
-                    onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
-                    placeholder="500g box / kg"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
-                  />
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Sub-Category *</label>
+                  <select
+                    value={newProduct.subCategory}
+                    onChange={(e) => {
+                      const selectedSubCat = e.target.value;
+                      setNewProduct(prev => ({
+                        ...prev,
+                        subCategory: selectedSubCat,
+                        name: (!prev.name.trim() || Object.values(SUB_CATEGORIES_MAP).flat().includes(prev.name)) ? selectedSubCat : prev.name
+                      }));
+                    }}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-semibold"
+                  >
+                    {(SUB_CATEGORIES_MAP[newProduct.category] || []).map((subCat, idx) => (
+                      <option key={idx} value={subCat}>{subCat}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
+              {/* Selling Price, Quantity & Unit Grid */}
+              <div className="grid grid-cols-3 gap-2.5">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Selling Price (₹) *</label>
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    value={newProduct.price}
+                    onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                    placeholder="180"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Quantity *</label>
+                  <input
+                    required
+                    type="text"
+                    value={newProduct.quantity}
+                    onChange={(e) => setNewProduct({ ...newProduct, quantity: e.target.value })}
+                    placeholder="1"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Unit *</label>
+                  <select
+                    value={newProduct.unit}
+                    onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
+                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-semibold"
+                  >
+                    <option value="kg">kg</option>
+                    <option value="box">box</option>
+                    <option value="gm">gm</option>
+                    <option value="ml">ml</option>
+                    <option value="tones">tones</option>
+                    <option value="quintals">quintals</option>
+                    <option value="pack">pack</option>
+                    <option value="liter">liter</option>
+                    <option value="piece">piece</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Product Image URL */}
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase">Product Image URL</label>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Image URL</label>
                 <input
                   type="text"
                   value={newProduct.image}
@@ -1842,8 +2222,26 @@ export default function FarmDetails() {
                         value={bookingDate}
                         onChange={(val) => setBookingDate(val)}
                         minDate={new Date().toISOString().split('T')[0]}
+                        visitDays={farm?.visitDays}
+                        visitTimings={farm?.visitTimings}
                         placeholder="Pick visit date..."
                       />
+                      {bookingDate && (
+                        <div className={`mt-2.5 p-3 rounded-2xl border text-xs font-bold flex items-center justify-between shadow-xs ${
+                          isFullyBooked
+                            ? 'bg-rose-50 border-rose-200 text-rose-700'
+                            : availableSlotsForDate < 10
+                            ? 'bg-amber-50 border-amber-200 text-amber-800'
+                            : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                        }`}>
+                          <span>
+                            {isFullyBooked
+                              ? `🔴 Fully Booked (${bookedCountForDate}/${DAILY_MAX_CAPACITY} Slots filled)`
+                              : `🟢 ${availableSlotsForDate} / ${DAILY_MAX_CAPACITY} Visitor Slots Available`}
+                          </span>
+                          <span className="text-[10px] font-mono opacity-80 uppercase tracking-wider">Max {DAILY_MAX_CAPACITY}/day</span>
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -1852,7 +2250,7 @@ export default function FarmDetails() {
                         <button
                           type="button"
                           onClick={() => setVisitorsCount(Math.max(1, (parseInt(visitorsCount) || 1) - 1))}
-                          className="w-8 h-8 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 font-bold hover:bg-slate-100 active:scale-95 flex-shrink-0"
+                          className="w-8 h-8 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 font-bold hover:bg-slate-100 active:scale-95 flex-shrink-0 cursor-pointer"
                         >
                           <Minus size={14} />
                         </button>
@@ -1871,26 +2269,14 @@ export default function FarmDetails() {
                         <button
                           type="button"
                           onClick={() => setVisitorsCount((parseInt(visitorsCount) || 0) + 1)}
-                          className="w-8 h-8 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 font-bold hover:bg-slate-100 active:scale-95 flex-shrink-0"
+                          className="w-8 h-8 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 font-bold hover:bg-slate-100 active:scale-95 flex-shrink-0 cursor-pointer"
                         >
                           <Plus size={14} />
                         </button>
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 font-headings">Accommodation Choice</label>
-                      <select
-                        value={selectedAccommodation}
-                        onChange={(e) => setSelectedAccommodation(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-xs font-medium bg-white"
-                      >
-                        <option value="">Standard Day Access</option>
-                        {activeAccommodations.map(acc => (
-                          <option key={acc.id} value={acc.title}>{acc.title} ({acc.price})</option>
-                        ))}
-                      </select>
-                    </div>
+
 
                     <div className="bg-emerald-50/70 border border-emerald-200/60 p-4 rounded-2xl flex items-center justify-between text-xs">
                       <span className="font-bold text-slate-700">Total Payable:</span>
@@ -1910,19 +2296,93 @@ export default function FarmDetails() {
                   <button
                     type="button"
                     onClick={() => setShowBookingModal(false)}
-                    className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 font-bold text-xs"
+                    className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 font-bold text-xs cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={submittingBooking}
-                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md active:scale-95"
+                    disabled={submittingBooking || isFullyBooked || (bookingDate && Number(visitorsCount) > availableSlotsForDate)}
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer"
                   >
-                    {submittingBooking ? 'Confirming...' : 'Confirm Booking'}
+                    {submittingBooking ? 'Confirming...' : isFullyBooked ? 'Fully Booked' : 'Confirm Booking'}
                   </button>
                 </div>
               )}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Customer Review Popup Modal ───────────────────────────── */}
+      {showAddReviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm transition-opacity" onClick={() => setShowAddReviewModal(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden text-left p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-800 text-base font-headings flex items-center gap-2">
+                ⭐ Leave a Verified Customer Review
+              </h3>
+              <button onClick={() => setShowAddReviewModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCustomerReview} className="space-y-3.5">
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Star Rating</label>
+                <div className="flex items-center gap-2 bg-amber-50/60 p-2.5 rounded-2xl border border-amber-200/80">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setNewReviewForm({ ...newReviewForm, rating: star })}
+                      className="p-1 text-amber-400 hover:scale-125 transition-transform cursor-pointer"
+                    >
+                      <Star size={24} className={star <= newReviewForm.rating ? 'fill-current text-amber-400' : 'text-slate-300'} />
+                    </button>
+                  ))}
+                  <span className="text-xs font-black text-amber-900 ml-2 font-mono">{newReviewForm.rating} / 5 Stars</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Your Review & Feedback *</label>
+                <textarea
+                  required
+                  rows="3"
+                  value={newReviewForm.comment}
+                  onChange={(e) => setNewReviewForm({ ...newReviewForm, comment: e.target.value })}
+                  placeholder="Share your farm experience, fresh produce quality, or stay details..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body resize-none"
+                ></textarea>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Attach Farm Visit Photo URL (Optional)</label>
+                <input
+                  type="text"
+                  value={newReviewForm.photoUrl}
+                  onChange={(e) => setNewReviewForm({ ...newReviewForm, photoUrl: e.target.value })}
+                  placeholder="https://images.unsplash.com/photo-..."
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddReviewModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-700 cursor-pointer"
+                >
+                  Submit Review
+                </button>
+              </div>
             </form>
           </div>
         </div>

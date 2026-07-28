@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
+import BackToTop from './components/layout/BackToTop';
 import Home from './pages/Home';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -13,6 +14,7 @@ import ProductDetails from './pages/ProductDetails';
 import OrderTracking from './pages/OrderTracking';
 import VisitFarms from './pages/VisitFarms';
 import FarmDetails from './pages/FarmDetails';
+import FarmCheckout from './pages/FarmCheckout';
 import Marketplace from './pages/Marketplace';
 import Admin from './pages/Admin';
 import { CartProvider } from './context/CartContext';
@@ -83,11 +85,13 @@ function App() {
                   <Route path="/farm/:id" element={<FarmDetails />} />
                   <Route path="/order/:orderId" element={<OrderTracking />} />
                   <Route path="/visit-farms" element={<VisitFarms />} />
+                  <Route path="/farm-checkout" element={<FarmCheckout />} />
                   <Route path="/marketplace" element={<Marketplace />} />
                   <Route path="/admin" element={<Admin />} />
                 </Routes>
               </main>
               <Footer />
+              <BackToTop />
             </div>
           </Router>
         </CartProvider>

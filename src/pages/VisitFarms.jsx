@@ -116,7 +116,7 @@ export default function VisitFarms() {
     setBookingSuccess(false);
   };
 
-  // Submit Booking to Firebase
+  // Submit Booking to Firebase (or route to checkout for payable farms)
   const handleConfirmBooking = async (e) => {
     e.preventDefault();
     if (!selectedFarm || !bookingDate) {
@@ -137,27 +137,64 @@ export default function VisitFarms() {
     setBookingError('');
 
     try {
-      const bookingsRef = ref(realtimeDb, 'farmBookings');
-      const newBookingRef = push(bookingsRef);
-      
-      const newBooking = {
-        farmId: selectedFarm.id,
-        farmName: selectedFarm.farmName,
-        customerId: user.uid,
-        customerName: userProfile?.displayName || user.displayName || 'Customer',
-        customerEmail: user.email,
-        date: bookingDate,
-        visitorsCount: Number(visitorsCount),
-        status: 'pending',
-        timestamp: new Date().toISOString()
-      };
+      const isFree = !selectedFarm.costPerPerson || Number(selectedFarm.costPerPerson) === 0;
+      const totalAmount = isFree ? 0 : Number(selectedFarm.costPerPerson) * Number(visitorsCount);
 
-      await set(newBookingRef, newBooking);
-      setBookingSuccess(true);
-      setTimeout(() => {
+      if (isFree) {
+        // Free farms: confirm immediately
+        const bookingsRef = ref(realtimeDb, 'farmBookings');
+        const newBookingRef = push(bookingsRef);
+
+        const newBooking = {
+          farmId: selectedFarm.id,
+          farmName: selectedFarm.farmName,
+          location: selectedFarm.location || '',
+          farmImage: selectedFarm.image || '',
+          vendorId: selectedFarm.vendorId || 'vendor-default',
+          vendorName: selectedFarm.vendorName || 'Farm Owner',
+          customerId: user.uid,
+          customerName: userProfile?.displayName || user.displayName || 'Customer',
+          customerEmail: user.email,
+          date: bookingDate,
+          visitorsCount: Number(visitorsCount),
+          costPerPerson: 0,
+          totalAmount: 0,
+          isFree: true,
+          status: 'confirmed',
+          paymentMethod: 'Free Entry',
+          timestamp: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        };
+
+        await set(newBookingRef, newBooking);
+        setBookingSuccess(true);
+        setTimeout(() => {
+          setSelectedFarm(null);
+          setBookingSuccess(false);
+        }, 2500);
+      } else {
+        // Payable farms: route to farm checkout page
+        const bookingData = {
+          farmId: selectedFarm.id,
+          farmName: selectedFarm.farmName,
+          location: selectedFarm.location || '',
+          farmImage: selectedFarm.image || '',
+          vendorId: selectedFarm.vendorId || 'vendor-default',
+          vendorName: selectedFarm.vendorName || 'Farm Owner',
+          customerId: user.uid,
+          customerName: userProfile?.displayName || user.displayName || 'Customer',
+          customerEmail: user.email,
+          date: bookingDate,
+          visitorsCount: Number(visitorsCount),
+          costPerPerson: Number(selectedFarm.costPerPerson),
+          totalAmount,
+          isFree: false,
+        };
+
+        sessionStorage.setItem('pendingFarmBooking', JSON.stringify(bookingData));
         setSelectedFarm(null);
-        setBookingSuccess(false);
-      }, 2500);
+        navigate('/farm-checkout');
+      }
     } catch (err) {
       console.error('Failed to submit booking:', err);
       setBookingError('Booking failed. Check your internet connection.');
@@ -165,6 +202,7 @@ export default function VisitFarms() {
       setSubmittingBooking(false);
     }
   };
+
 
   // Cancel Booking
   const handleCancelBooking = async (bookingId) => {
@@ -178,10 +216,10 @@ export default function VisitFarms() {
   };
 
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div className="min-h-screen py-5 sm:py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       
       {/* ── Page Header ── */}
-      <div className="relative overflow-hidden mb-12 bg-white/70 backdrop-blur-md border border-white/60 p-8 sm:p-10 rounded-3xl shadow-xl shadow-emerald-950/[0.02] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 animate-fade-in">
+      <div className="relative overflow-hidden mb-6 bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 animate-fade-in">
         <div className="text-left space-y-2">
           <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-100/50 px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
             <Compass size={12} className="text-emerald-600" /> Refreshment Weekend Tours
@@ -198,7 +236,7 @@ export default function VisitFarms() {
       </div>
 
       {/* ── Search and Category Filter Tabs ── */}
-      <div className="mb-10 flex flex-col md:flex-row justify-between items-center gap-5 bg-white/70 backdrop-blur-md p-4 rounded-3xl shadow-sm border border-white/60">
+      <div className="mb-6 flex flex-col md:flex-row justify-between items-center gap-5 bg-white/70 backdrop-blur-md p-4 rounded-3xl shadow-sm border border-white/60">
         {/* Search bar */}
         <div className="relative w-full md:max-w-md group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
@@ -511,6 +549,8 @@ export default function VisitFarms() {
                       <ModernDatePicker
                         value={bookingDate}
                         onChange={(newDate) => setBookingDate(newDate)}
+                        visitDays={selectedFarm?.visitDays}
+                        visitTimings={selectedFarm?.visitTimings}
                       />
                     </div>
 

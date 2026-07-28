@@ -1,9 +1,49 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Check, X } from 'lucide-react';
 
-export default function ModernDatePicker({ value, onChange, minDate = new Date().toISOString().split('T')[0] }) {
+export default function ModernDatePicker({
+  value,
+  onChange,
+  minDate = new Date().toISOString().split('T')[0],
+  visitDays,
+  visitTimings
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
+
+  // Parse allowed days of week from vendor's visitDays string
+  const getAllowedDaysOfWeek = (daysStr) => {
+    if (!daysStr || typeof daysStr !== 'string') return null;
+    const str = daysStr.toLowerCase().trim();
+    if (!str || str.includes('365') || str.includes('appointment') || str.includes('festive') || str.includes('all')) {
+      return null;
+    }
+
+    const allowed = new Set();
+
+    if (str.includes('weekend')) {
+      allowed.add(0); // Sun
+      allowed.add(6); // Sat
+    }
+    if (str.includes('weekday')) {
+      allowed.add(1); allowed.add(2); allowed.add(3); allowed.add(4); allowed.add(5);
+    }
+    if (str.includes('mon–sat') || str.includes('mon-sat')) {
+      allowed.add(1); allowed.add(2); allowed.add(3); allowed.add(4); allowed.add(5); allowed.add(6);
+    }
+
+    if (str.includes('sun')) allowed.add(0);
+    if (str.includes('mon')) allowed.add(1);
+    if (str.includes('tue')) allowed.add(2);
+    if (str.includes('wed')) allowed.add(3);
+    if (str.includes('thu')) allowed.add(4);
+    if (str.includes('fri')) allowed.add(5);
+    if (str.includes('sat')) allowed.add(6);
+
+    return allowed.size > 0 ? Array.from(allowed) : null;
+  };
+
+  const allowedDays = getAllowedDaysOfWeek(visitDays);
 
   // Parse current value or fallback to today
   const selectedDate = value ? new Date(value + 'T00:00:00') : null;
@@ -64,10 +104,16 @@ export default function ModernDatePicker({ value, onChange, minDate = new Date()
     setIsOpen(false);
   };
 
-  // Check if date string is disabled (before minDate)
+  // Check if date string is disabled (before minDate or closed on vendor schedule)
   const isDisabled = (day) => {
     const dateStr = formatYMD(year, month, day);
-    return dateStr < minDate;
+    if (dateStr < minDate) return true;
+
+    if (allowedDays && allowedDays.length > 0) {
+      const d = new Date(year, month, day);
+      if (!allowedDays.includes(d.getDay())) return true;
+    }
+    return false;
   };
 
   // Check if date is selected
@@ -86,10 +132,23 @@ export default function ModernDatePicker({ value, onChange, minDate = new Date()
   const setPreset = (offsetDays) => {
     const d = new Date();
     d.setDate(d.getDate() + offsetDays);
-    const dateStr = d.toISOString().split('T')[0];
-    onChange(dateStr);
-    setViewDate(d);
-    setIsOpen(false);
+    // Find next valid day if offset date is disabled
+    let attempts = 0;
+    while (attempts < 14) {
+      const dateStr = d.toISOString().split('T')[0];
+      const dayOfWeek = d.getDay();
+      const isPast = dateStr < minDate;
+      const isClosed = allowedDays && !allowedDays.includes(dayOfWeek);
+
+      if (!isPast && !isClosed) {
+        onChange(dateStr);
+        setViewDate(d);
+        setIsOpen(false);
+        return;
+      }
+      d.setDate(d.getDate() + 1);
+      attempts++;
+    }
   };
 
   const setSaturdayPreset = () => {
@@ -98,9 +157,13 @@ export default function ModernDatePicker({ value, onChange, minDate = new Date()
     const daysUntilSaturday = (6 - dayOfWeek + 7) % 7 || 7;
     d.setDate(d.getDate() + daysUntilSaturday);
     const dateStr = d.toISOString().split('T')[0];
-    onChange(dateStr);
-    setViewDate(d);
-    setIsOpen(false);
+    if (!allowedDays || allowedDays.includes(6)) {
+      onChange(dateStr);
+      setViewDate(d);
+      setIsOpen(false);
+    } else {
+      setPreset(1);
+    }
   };
 
   // Format display string on trigger button
@@ -165,7 +228,31 @@ export default function ModernDatePicker({ value, onChange, minDate = new Date()
 
       {/* Expandable Custom Calendar Card */}
       {isOpen && (
-        <div className="mt-2.5 w-full bg-slate-50/90 border-2 border-emerald-500/25 rounded-3xl p-3.5 shadow-lg shadow-emerald-950/5 transition-all">
+        <div className="mt-2.5 w-full bg-slate-50/90 border-2 border-emerald-500/25 rounded-3xl p-3.5 shadow-lg shadow-emerald-950/5 transition-all z-30">
+          
+          {/* Vendor Operating Schedule Banner */}
+          {(visitDays || visitTimings) && (
+            <div className="mb-3 p-3 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl space-y-1 text-xs">
+              {visitDays && (
+                <div className="flex items-start gap-1.5 text-emerald-900 font-bold">
+                  <span>📅 Open Days:</span>
+                  <span className="text-emerald-700 font-extrabold">{visitDays}</span>
+                </div>
+              )}
+              {visitTimings && (
+                <div className="flex items-start gap-1.5 text-emerald-900 font-bold">
+                  <span>🕐 Timings:</span>
+                  <span className="text-teal-700 font-extrabold">{visitTimings}</span>
+                </div>
+              )}
+              {allowedDays && allowedDays.length > 0 && (
+                <p className="text-[10px] text-slate-400 font-medium italic pt-0.5">
+                  * Calendar disables dates when farm is closed.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Quick Presets */}
           <div className="flex items-center gap-1.5 mb-3 overflow-x-auto pb-1 scrollbar-hide">
             <button
@@ -173,7 +260,7 @@ export default function ModernDatePicker({ value, onChange, minDate = new Date()
               onClick={() => setPreset(1)}
               className="px-2.5 py-1 text-[11px] font-extrabold bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors whitespace-nowrap border border-emerald-200/60"
             >
-              ⚡ Tomorrow
+              ⚡ Next Open Day
             </button>
             <button
               type="button"
@@ -218,11 +305,19 @@ export default function ModernDatePicker({ value, onChange, minDate = new Date()
 
           {/* Weekday Labels */}
           <div className="grid grid-cols-7 gap-1 text-center mb-1">
-            {daysOfWeek.map((day, idx) => (
-              <div key={idx} className="text-[10px] font-extrabold text-slate-400 uppercase py-1">
-                {day}
-              </div>
-            ))}
+            {daysOfWeek.map((day, idx) => {
+              const isAllowedDay = !allowedDays || allowedDays.includes(idx);
+              return (
+                <div
+                  key={idx}
+                  className={`text-[10px] font-extrabold uppercase py-1 ${
+                    isAllowedDay ? 'text-emerald-700 font-black' : 'text-slate-300'
+                  }`}
+                >
+                  {day}
+                </div>
+              );
+            })}
           </div>
 
           {/* Calendar Day Grid */}
@@ -245,14 +340,15 @@ export default function ModernDatePicker({ value, onChange, minDate = new Date()
                   type="button"
                   disabled={disabled}
                   onClick={() => handleSelectDate(dayNum)}
+                  title={disabled ? 'Farm closed or past date' : 'Available for visit'}
                   className={`h-9 w-9 mx-auto flex flex-col items-center justify-center rounded-xl text-xs font-bold transition-all relative ${
                     selected
                       ? 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/30 scale-105 z-10'
                       : disabled
-                      ? 'text-slate-300 cursor-not-allowed line-through opacity-50'
+                      ? 'bg-slate-100/50 text-slate-300 cursor-not-allowed line-through opacity-40'
                       : todayFlag
                       ? 'text-emerald-700 bg-emerald-50 border-2 border-emerald-500 hover:bg-emerald-100'
-                      : 'text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'
+                      : 'text-slate-700 bg-white border border-slate-100 hover:bg-emerald-50 hover:text-emerald-700 shadow-xs'
                   }`}
                 >
                   <span>{dayNum}</span>
