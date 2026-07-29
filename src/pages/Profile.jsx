@@ -43,6 +43,16 @@ export const SUB_CATEGORIES_MAP = {
 };
 const STANDARD_UNITS = ['kg', 'gm', 'litre', 'ml', 'BOX', 'Packet', 'Bunch', 'Piece', 'Dozen'];
 
+const INITIAL_KIDS_ACTIVITIES = [
+  '🎈 Kids Playground & Swings', '🐰 Bunny & Petting Corner', '🎨 Pottery & Clay Crafts',
+  '🚜 Mini Tractor Rides', '🐟 Fish Feeding Pond', '🌾 Straw Maze Adventure'
+];
+
+const EXTRA_KIDS_ACTIVITIES = [
+  '🚴 Kids Bicycle Trails', '🏹 Archery & Ring Toss', '🪁 Kite Flying & Open Lawns',
+  '🌳 Treehouse Play Zone', '🐴 Pony & Donkey Rides', '🧁 Organic Cookie & Jam Workshops'
+];
+
 export default function Profile() {
   const { user, userProfile, loading, updateProfile, logout } = useAuth();
   const { products: allProducts, addProduct, updateProduct, deleteProduct, categories: dynamicCategories } = useProducts();
@@ -428,6 +438,13 @@ export default function Profile() {
   const [incomingFarmBookings, setIncomingFarmBookings] = useState([]);
   const [showAddFarmForm, setShowAddFarmForm] = useState(false);
   const [farmFormStep, setFarmFormStep] = useState(1);
+
+  // Automatically scroll page to top on every step change in Vendor My Farms wizard
+  useEffect(() => {
+    if (showAddFarmForm) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [farmFormStep, showAddFarmForm]);
   const [newFarmForm, setNewFarmForm] = useState({
     farmName: '',
     location: '',
@@ -438,6 +455,7 @@ export default function Profile() {
     crops: '',
     fruits: '',
     livestock: '',
+    kidsActivities: '',
     accommodations: '',
     accommodationPrice: '',
     amenities: '',
@@ -459,11 +477,56 @@ export default function Profile() {
   const [showMoreCrops, setShowMoreCrops] = useState(false);
   const [showMoreFruits, setShowMoreFruits] = useState(false);
   const [showMoreLivestock, setShowMoreLivestock] = useState(false);
+  const [showMoreKidsActivities, setShowMoreKidsActivities] = useState(false);
   const [showMoreAccommodations, setShowMoreAccommodations] = useState(false);
   const [cropInputText, setCropInputText] = useState('');
   const [fruitInputText, setFruitInputText] = useState('');
   const [livestockInputText, setLivestockInputText] = useState('');
+  const [kidsActivityInputText, setKidsActivityInputText] = useState('');
   const [accInputText, setAccInputText] = useState('');
+
+  // Kids Entertainments Photos State & Handlers
+  const [kidsPhotosList, setKidsPhotosList] = useState([]);
+  const [kidsPhotoInputUrl, setKidsPhotoInputUrl] = useState('');
+  const [kidsPhotoInputCaption, setKidsPhotoInputCaption] = useState('');
+
+  const handleAddKidsActivityChip = (activityName) => {
+    if (!activityName || !activityName.trim()) return;
+    const trimmed = activityName.trim();
+    const current = newFarmForm.kidsActivities
+      ? newFarmForm.kidsActivities.split(',').map(a => a.trim()).filter(Boolean)
+      : [];
+    if (!current.some(a => a.toLowerCase() === trimmed.toLowerCase())) {
+      const updated = [...current, trimmed].join(', ');
+      setNewFarmForm(prev => ({ ...prev, kidsActivities: updated }));
+    }
+    setKidsActivityInputText('');
+  };
+
+  const handleRemoveKidsActivityChip = (activityToRemove) => {
+    const current = newFarmForm.kidsActivities
+      ? newFarmForm.kidsActivities.split(',').map(a => a.trim()).filter(Boolean)
+      : [];
+    const updated = current.filter(a => a.toLowerCase() !== activityToRemove.toLowerCase()).join(', ');
+    setNewFarmForm(prev => ({ ...prev, kidsActivities: updated }));
+  };
+
+  const handleAddKidsPhoto = (e) => {
+    if (e) e.preventDefault();
+    if (!kidsPhotoInputUrl.trim()) return;
+    const photoObj = {
+      id: `kp-${Date.now()}`,
+      url: kidsPhotoInputUrl.trim(),
+      caption: kidsPhotoInputCaption.trim() || 'Kids Play Area Photo'
+    };
+    setKidsPhotosList(prev => [...prev, photoObj]);
+    setKidsPhotoInputUrl('');
+    setKidsPhotoInputCaption('');
+  };
+
+  const handleRemoveKidsPhoto = (indexToRemove) => {
+    setKidsPhotosList(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
 
   const [showAddFarmProductModal, setShowAddFarmProductModal] = useState(false);
   const [editingModalProductIndex, setEditingModalProductIndex] = useState(null);
@@ -551,6 +614,128 @@ export default function Profile() {
   const [showAddGalleryModal, setShowAddGalleryModal] = useState(false);
   const [newGalleryForm, setNewGalleryForm] = useState({ url: '', caption: '' });
   const [farmGalleryList, setFarmGalleryList] = useState([]);
+
+  // Step 2, 3 Photos State & Handlers
+  const [cropPhotosList, setCropPhotosList] = useState([]);
+  const [cropPhotoInputUrl, setCropPhotoInputUrl] = useState('');
+  const [cropPhotoInputCaption, setCropPhotoInputCaption] = useState('');
+
+  const [livestockPhotosList, setLivestockPhotosList] = useState([]);
+  const [livestockPhotoInputUrl, setLivestockPhotoInputUrl] = useState('');
+  const [livestockPhotoInputCaption, setLivestockPhotoInputCaption] = useState('');
+
+  // Step 4 Structured Accommodation Entries State & Handlers
+  const [accEntriesList, setAccEntriesList] = useState([]);
+  const [currAccTitle, setCurrAccTitle] = useState('');
+  const [currAccPrice, setCurrAccPrice] = useState('');
+  const [currAccPhotos, setCurrAccPhotos] = useState([]);
+  const [currAccPhotoUrl, setCurrAccPhotoUrl] = useState('');
+  const [currAccPhotoCaption, setCurrAccPhotoCaption] = useState('');
+  const [editingAccEntryIndex, setEditingAccEntryIndex] = useState(null);
+
+  const handleAddCurrAccPhoto = (e) => {
+    if (e) e.preventDefault();
+    if (!currAccPhotoUrl.trim()) return;
+    const photoObj = {
+      id: `ap-${Date.now()}`,
+      url: currAccPhotoUrl.trim(),
+      caption: currAccPhotoCaption.trim() || 'Accommodation Photo'
+    };
+    setCurrAccPhotos(prev => [...prev, photoObj]);
+    setCurrAccPhotoUrl('');
+    setCurrAccPhotoCaption('');
+  };
+
+  const handleSaveAccEntry = (e) => {
+    if (e) e.preventDefault();
+    if (!currAccTitle.trim()) {
+      alert("Please select or enter an accommodation name (e.g. Mud Huts).");
+      return;
+    }
+    const priceNum = Number(currAccPrice) || 0;
+    const priceStr = priceNum > 0 ? `₹${priceNum} / night` : 'Included';
+
+    const entryObj = {
+      id: `acc-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      title: currAccTitle.trim(),
+      price: priceStr,
+      priceNum: priceNum,
+      desc: `Comfortable ${currAccTitle.trim().toLowerCase()} experience at the farm`,
+      photos: [...currAccPhotos],
+      icon: currAccTitle.toLowerCase().includes('tent') ? 'tent' : currAccTitle.toLowerCase().includes('hut') ? 'hut' : 'house'
+    };
+
+    if (editingAccEntryIndex !== null && editingAccEntryIndex >= 0) {
+      setAccEntriesList(prev => prev.map((item, idx) => idx === editingAccEntryIndex ? entryObj : item));
+      setEditingAccEntryIndex(null);
+    } else {
+      setAccEntriesList(prev => [...prev, entryObj]);
+    }
+
+    setCurrAccTitle('');
+    setCurrAccPrice('');
+    setCurrAccPhotos([]);
+    setCurrAccPhotoUrl('');
+    setCurrAccPhotoCaption('');
+  };
+
+  const handleEditAccEntry = (idx) => {
+    const entry = accEntriesList[idx];
+    if (!entry) return;
+    setEditingAccEntryIndex(idx);
+    setCurrAccTitle(entry.title || '');
+    setCurrAccPrice(entry.priceNum ? String(entry.priceNum) : '');
+    setCurrAccPhotos(entry.photos || []);
+  };
+
+  const handleRemoveAccEntry = (idx) => {
+    setAccEntriesList(prev => prev.filter((_, i) => i !== idx));
+    if (editingAccEntryIndex === idx) {
+      setEditingAccEntryIndex(null);
+      setCurrAccTitle('');
+      setCurrAccPrice('');
+      setCurrAccPhotos([]);
+    }
+  };
+
+  const handleAddCropPhoto = (e) => {
+    if (e) e.preventDefault();
+    if (!cropPhotoInputUrl.trim()) return;
+    const photoObj = {
+      id: `cp-${Date.now()}`,
+      url: cropPhotoInputUrl.trim(),
+      caption: cropPhotoInputCaption.trim() || 'Crops & Fruits Photo'
+    };
+    setCropPhotosList(prev => [...prev, photoObj]);
+    setCropPhotoInputUrl('');
+    setCropPhotoInputCaption('');
+  };
+
+  const handleAddLivestockPhoto = (e) => {
+    if (e) e.preventDefault();
+    if (!livestockPhotoInputUrl.trim()) return;
+    const photoObj = {
+      id: `lp-${Date.now()}`,
+      url: livestockPhotoInputUrl.trim(),
+      caption: livestockPhotoInputCaption.trim() || 'Livestock Photo'
+    };
+    setLivestockPhotosList(prev => [...prev, photoObj]);
+    setLivestockPhotoInputUrl('');
+    setLivestockPhotoInputCaption('');
+  };
+
+  const handleAddAccPhoto = (e) => {
+    if (e) e.preventDefault();
+    if (!accPhotoInputUrl.trim()) return;
+    const photoObj = {
+      id: `ap-${Date.now()}`,
+      url: accPhotoInputUrl.trim(),
+      caption: accPhotoInputCaption.trim() || 'Accommodation Photo'
+    };
+    setAccPhotosList(prev => [...prev, photoObj]);
+    setAccPhotoInputUrl('');
+    setAccPhotoInputCaption('');
+  };
 
   const handleAddGalleryPhoto = (e) => {
     if (e) e.preventDefault();
@@ -956,6 +1141,9 @@ export default function Profile() {
         });
       };
 
+      const allAccPhotos = accEntriesList.flatMap(entry => entry.photos || []);
+      const finalAccommodations = accEntriesList.length > 0 ? accEntriesList : parseAccommodations(newFarmForm.accommodations);
+
       const farmData = {
         farmName: newFarmForm.farmName.trim(),
         location: newFarmForm.location.trim(),
@@ -963,18 +1151,23 @@ export default function Profile() {
         costPerPerson: finalCost,
         image: newFarmForm.image.trim() || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80',
         crops: parseList(newFarmForm.crops),
+        cropPhotos: cropPhotosList,
         fruits: parseList(newFarmForm.fruits),
         livestock: parseList(newFarmForm.livestock),
-        accommodations: parseAccommodations(newFarmForm.accommodations),
-        accommodationPrice: newFarmForm.accommodationPrice ? parseFloat(newFarmForm.accommodationPrice) : 0,
+        livestockPhotos: livestockPhotosList,
+        kidsActivities: parseList(newFarmForm.kidsActivities),
+        kidsPhotos: kidsPhotosList,
+        accommodations: finalAccommodations,
+        accommodationPhotos: allAccPhotos,
+        accommodationPrice: accEntriesList.length > 0 ? (accEntriesList[0].priceNum || 0) : (newFarmForm.accommodationPrice ? parseFloat(newFarmForm.accommodationPrice) : 0),
         amenities: parseList(newFarmForm.amenities),
         farmProducts: parseProducts(newFarmForm.farmProducts),
-        gallery: farmGalleryList,
+        gallery: [...farmGalleryList, ...cropPhotosList, ...livestockPhotosList, ...kidsPhotosList, ...allAccPhotos],
         visitDays: (newFarmForm.visitDays || '').trim(),
-        visitTimings: (newFarmForm.visitTimings || '').trim(),
         vendorId: user.uid,
         vendorName: userProfile?.displayName || user?.displayName || 'Vendor',
-        createdAt: new Date().toISOString()
+        createdAt: editingFarmId ? (farmData?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
       if (editingFarmId) {
@@ -995,6 +1188,15 @@ export default function Profile() {
       }
 
       setEditingFarmId(null);
+      setCropPhotosList([]);
+      setLivestockPhotosList([]);
+      setAccEntriesList([]);
+      setCurrAccTitle('');
+      setCurrAccPrice('');
+      setCurrAccPhotos([]);
+      setCurrAccPhotoUrl('');
+      setCurrAccPhotoCaption('');
+      setEditingAccEntryIndex(null);
       setNewFarmForm({
         farmName: '', location: '', description: '', costPerPerson: '', image: '', costType: 'free',
         crops: '', fruits: '', livestock: '', accommodations: '', amenities: '', farmProducts: '',
@@ -1011,6 +1213,15 @@ export default function Profile() {
 
   const handleCancelFarmForm = () => {
     setEditingFarmId(null);
+    setCropPhotosList([]);
+    setLivestockPhotosList([]);
+    setAccEntriesList([]);
+    setCurrAccTitle('');
+    setCurrAccPrice('');
+    setCurrAccPhotos([]);
+    setCurrAccPhotoUrl('');
+    setCurrAccPhotoCaption('');
+    setEditingAccEntryIndex(null);
     setNewFarmForm({
       farmName: '', location: '', description: '', costPerPerson: '', image: '', costType: 'free',
       crops: '', fruits: '', livestock: '', accommodations: '', amenities: '', farmProducts: '',
@@ -2684,6 +2895,9 @@ export default function Profile() {
                       setFarmFormStep(1);
                       setFarmGalleryList([]);
                       setFarmProductList([]);
+                      setCropPhotosList([]);
+                      setLivestockPhotosList([]);
+                      setAccPhotosList([]);
                       setNewFarmForm({
                         farmName: '', location: '', description: '', costPerPerson: '', image: '', costType: 'free',
                         crops: '', fruits: '', livestock: '', accommodations: '', amenities: '', farmProducts: '',
@@ -2701,7 +2915,7 @@ export default function Profile() {
 
               {/* Add / Edit Farm Step-by-Step Wizard Form */}
               {showAddFarmForm && (
-                <form onSubmit={(e) => e.preventDefault()} className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6 max-w-5xl animate-fade-in">
+                <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-6 max-w-5xl animate-fade-in">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4 text-left">
                     <div>
                       <h3 className="text-base font-bold text-slate-800 font-headings">
@@ -2710,7 +2924,7 @@ export default function Profile() {
                       <p className="text-xs text-slate-400 font-medium font-body">Step-by-step farm listing setup</p>
                     </div>
                     <div className="bg-emerald-50 border border-emerald-200/80 px-3.5 py-1 rounded-xl text-emerald-800 text-xs font-extrabold font-mono">
-                      Step {farmFormStep} of 6
+                      Step {farmFormStep} of 7
                     </div>
                   </div>
 
@@ -2721,28 +2935,30 @@ export default function Profile() {
                         {farmFormStep === 1 && '📍 Step 1: Basic Details (Up to Description)'}
                         {farmFormStep === 2 && '🌾 Step 2: Crops & Fruit Orchards'}
                         {farmFormStep === 3 && '🐄 Step 3: Livestock & Poultry'}
-                        {farmFormStep === 4 && '🛖 Step 4: Accommodations Provided'}
-                        {farmFormStep === 5 && '🧺 Step 5: Direct Farm Products For Sale'}
-                        {farmFormStep === 6 && '📋 Step 6: Full Farm Listing Summary & Confirmation'}
+                        {farmFormStep === 4 && '🎈 Step 4: Kids Section Entertainments & Play Area'}
+                        {farmFormStep === 5 && '🛖 Step 5: Accommodations Provided'}
+                        {farmFormStep === 6 && '🧺 Step 6: Direct Farm Products For Sale'}
+                        {farmFormStep === 7 && '📋 Step 7: Full Farm Listing Summary & Confirmation'}
                       </span>
-                      <span className="text-[11px] font-bold text-emerald-600 font-mono">{Math.round((farmFormStep / 6) * 100)}% Completed</span>
+                      <span className="text-[11px] font-bold text-emerald-600 font-mono">{Math.round((farmFormStep / 7) * 100)}% Completed</span>
                     </div>
 
                     <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
                       <div
                         className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full transition-all duration-300 rounded-full"
-                        style={{ width: `${Math.round((farmFormStep / 6) * 100)}%` }}
+                        style={{ width: `${Math.round((farmFormStep / 7) * 100)}%` }}
                       />
                     </div>
 
-                    <div className="grid grid-cols-6 gap-1 text-center">
+                    <div className="grid grid-cols-7 gap-1 text-center">
                       {[
                         { step: 1, label: '1. Basic Info' },
                         { step: 2, label: '2. Produce & Fruits' },
                         { step: 3, label: '3. Animals' },
-                        { step: 4, label: '4. Stays' },
-                        { step: 5, label: '5. Direct Products' },
-                        { step: 6, label: '6. Review & Submit' }
+                        { step: 4, label: '4. Kids Fun' },
+                        { step: 5, label: '5. Stays' },
+                        { step: 6, label: '6. Direct Products' },
+                        { step: 7, label: '7. Review & Submit' }
                       ].map((s) => (
                         <button
                           type="button"
@@ -3268,6 +3484,128 @@ export default function Profile() {
                           );
                         })()}
                       </div>
+
+                      {/* Field 3: 📸 Photos of Crops & Fruit Orchards */}
+                      <div className="space-y-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <label className={labelCls}>📸 Photos of Crops & Fruit Orchards ({cropPhotosList.length})</label>
+                            <p className="text-[11px] text-slate-400 font-medium font-body">Upload or add photos of your growing crops and fruit trees.</p>
+                          </div>
+                        </div>
+
+                        {/* Added Crop Photos Grid */}
+                        {cropPhotosList.length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                            {cropPhotosList.map((item, idx) => (
+                              <div key={item.id || idx} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs relative group">
+                                <button
+                                  type="button"
+                                  onClick={() => setCropPhotosList(prev => prev.filter((_, i) => i !== idx))}
+                                  className="absolute top-1.5 right-1.5 bg-rose-600/90 hover:bg-rose-700 text-white p-1 rounded-lg z-20 transition-transform active:scale-95 cursor-pointer"
+                                  title="Remove photo"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                                <div className="h-20 bg-slate-100 overflow-hidden relative">
+                                  <img
+                                    src={item.url}
+                                    alt={item.caption || 'Crop Photo'}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=600&q=80'; }}
+                                  />
+                                </div>
+                                <div className="p-1.5 text-center bg-white">
+                                  <p className="text-[10px] font-bold text-slate-700 truncate">{item.caption || 'Crops & Fruits Photo'}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Upload / URL Input Controls for Step 2 */}
+                        <div className="bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-100 space-y-2.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Upload Photo File or Enter Image URL</label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const reader = new FileReader();
+                                      reader.onloadend = () => {
+                                        setCropPhotoInputUrl(reader.result);
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }
+                                  }}
+                                  className="hidden"
+                                  id="crop-photo-file-input"
+                                />
+                                <label
+                                  htmlFor="crop-photo-file-input"
+                                  className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 px-3 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer flex items-center gap-1 active:scale-95"
+                                >
+                                  <ImageIcon size={14} className="text-emerald-600" /> Choose File
+                                </label>
+                                <input
+                                  type="text"
+                                  value={cropPhotoInputUrl}
+                                  onChange={(e) => setCropPhotoInputUrl(e.target.value)}
+                                  placeholder="Or paste Image URL (https://...)..."
+                                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Photo Caption (Optional)</label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={cropPhotoInputCaption}
+                                  onChange={(e) => setCropPhotoInputCaption(e.target.value)}
+                                  placeholder="E.g. Strawberry Patch, Mango Orchard..."
+                                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleAddCropPhoto}
+                                  disabled={!cropPhotoInputUrl.trim()}
+                                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 cursor-pointer transition-all active:scale-95"
+                                >
+                                  + Add
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Preset Sample Photos for Step 2 */}
+                          <div className="pt-1 border-t border-emerald-100/70 flex flex-wrap items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase font-headings">Sample Photos:</span>
+                            {[
+                              { url: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=600&q=80', caption: 'Strawberry Patch' },
+                              { url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&q=80', caption: 'Cherry Tomatoes' },
+                              { url: 'https://images.unsplash.com/photo-1557800636-894a64c1696f?w=600&q=80', caption: 'Mango Orchards' },
+                              { url: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=600&q=80', caption: 'Fresh Spinach Fields' }
+                            ].map((sample, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => {
+                                  const photoObj = { id: `cp-${Date.now()}-${i}`, url: sample.url, caption: sample.caption };
+                                  setCropPhotosList(prev => [...prev, photoObj]);
+                                }}
+                                className="bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                              >
+                                <span>+ {sample.caption}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -3377,37 +3715,158 @@ export default function Profile() {
                           );
                         })()}
                       </div>
-                    </div>
-                  )}
 
-                  {/* STEP 4: Accommodations Provided */}
+                      {/* Field: 📸 Photos of Livestock & Poultry */}
+                      <div className="space-y-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <label className={labelCls}>📸 Photos of Livestock & Poultry ({livestockPhotosList.length})</label>
+                            <p className="text-[11px] text-slate-400 font-medium font-body">Upload or add photos of your cows, goats, poultry birds, or farm animals.</p>
+                          </div>
+                        </div>
+
+                        {/* Added Livestock Photos Grid */}
+                        {livestockPhotosList.length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                            {livestockPhotosList.map((item, idx) => (
+                              <div key={item.id || idx} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs relative group">
+                                <button
+                                  type="button"
+                                  onClick={() => setLivestockPhotosList(prev => prev.filter((_, i) => i !== idx))}
+                                  className="absolute top-1.5 right-1.5 bg-rose-600/90 hover:bg-rose-700 text-white p-1 rounded-lg z-20 transition-transform active:scale-95 cursor-pointer"
+                                  title="Remove photo"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                                <div className="h-20 bg-slate-100 overflow-hidden relative">
+                                  <img
+                                    src={item.url}
+                                    alt={item.caption || 'Livestock Photo'}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=600&q=80'; }}
+                                  />
+                                </div>
+                                <div className="p-1.5 text-center bg-white">
+                                  <p className="text-[10px] font-bold text-slate-700 truncate">{item.caption || 'Livestock & Poultry Photo'}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Upload / URL Input Controls for Step 3 */}
+                        <div className="bg-teal-50/50 p-3.5 rounded-xl border border-teal-100 space-y-2.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Upload Photo File or Enter Image URL</label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const reader = new FileReader();
+                                      reader.onloadend = () => {
+                                        setLivestockPhotoInputUrl(reader.result);
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }
+                                  }}
+                                  className="hidden"
+                                  id="livestock-photo-file-input"
+                                />
+                                <label
+                                  htmlFor="livestock-photo-file-input"
+                                  className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 px-3 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer flex items-center gap-1 active:scale-95"
+                                >
+                                  <ImageIcon size={14} className="text-teal-600" /> Choose File
+                                </label>
+                                <input
+                                  type="text"
+                                  value={livestockPhotoInputUrl}
+                                  onChange={(e) => setLivestockPhotoInputUrl(e.target.value)}
+                                  placeholder="Or paste Image URL (https://...)..."
+                                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-teal-500 font-body"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Photo Caption (Optional)</label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={livestockPhotoInputCaption}
+                                  onChange={(e) => setLivestockPhotoInputCaption(e.target.value)}
+                                  placeholder="E.g. Gir Cows Pasture, Free-Range Ducks..."
+                                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-teal-500 font-body"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleAddLivestockPhoto}
+                                  disabled={!livestockPhotoInputUrl.trim()}
+                                  className="bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 cursor-pointer transition-all active:scale-95"
+                                >
+                                  + Add
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Preset Sample Photos for Step 3 */}
+                          <div className="pt-1 border-t border-teal-100/70 flex flex-wrap items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase font-headings">Sample Photos:</span>
+                            {[
+                              { url: 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=600&q=80', caption: 'Gir Cattle Grazing' },
+                              { url: 'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?w=600&q=80', caption: 'Free-Range Poultry Hens' },
+                              { url: 'https://images.unsplash.com/photo-1516467508483-a7212febe31a?w=600&q=80', caption: 'Goats & Sheep Flock' },
+                              { url: 'https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=600&q=80', caption: 'Bee Hives & Apiary' }
+                            ].map((sample, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => {
+                                  const photoObj = { id: `lp-${Date.now()}-${i}`, url: sample.url, caption: sample.caption };
+                                  setLivestockPhotosList(prev => [...prev, photoObj]);
+                                }}
+                                className="bg-white hover:bg-teal-50 text-teal-800 border border-teal-200/80 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                              >
+                                <span>+ {sample.caption}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                  {/* STEP 4: Kids Section Entertainments & Play Area */}
                   {farmFormStep === 4 && (
                     <div className="space-y-6 animate-fade-in text-left max-w-3xl mx-auto py-2">
-                      <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-100 flex items-start gap-3">
-                        <div className="text-2xl">🛖</div>
+                      <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-100 flex items-start gap-3">
+                        <div className="text-2xl">🎈</div>
                         <div>
-                          <h4 className="font-bold text-amber-900 text-sm font-headings">Step 4: Accommodations Provided</h4>
-                          <p className="text-xs text-amber-700 font-medium font-body mt-0.5">Select suggested accommodation chips below or type custom text and press <span className="font-extrabold text-amber-900">Enter</span> to add. Click <span className="font-extrabold">Skip Step</span> if day-visit only.</p>
+                          <h4 className="font-bold text-purple-900 text-sm font-headings">Step 4: Kids Section Entertainments & Play Area</h4>
+                          <p className="text-xs text-purple-700 font-medium font-body mt-0.5">Select suggested kids entertainment chips below or type custom text and press <span className="font-extrabold text-purple-900">Enter</span> to add. Click <span className="font-extrabold">Skip Step</span> if none.</p>
                         </div>
                       </div>
 
-                      {/* Field: Accommodations Provided */}
+                      {/* Field: Kids Entertainments */}
                       <div className="space-y-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-                        <label className={labelCls}>🛖 Accommodations Provided</label>
+                        <label className={labelCls}>🎈 Kids Entertainments & Play Features</label>
 
-                        {/* Selected Accommodation Chips */}
+                        {/* Selected Kids Activity Chips */}
                         {(() => {
-                          const selectedAcc = newFarmForm.accommodations ? newFarmForm.accommodations.split(',').map(a => a.trim()).filter(Boolean) : [];
+                          const selectedKids = newFarmForm.kidsActivities ? newFarmForm.kidsActivities.split(',').map(a => a.trim()).filter(Boolean) : [];
                           return (
                             <>
-                              {selectedAcc.length > 0 && (
-                                <div className="flex flex-wrap gap-2 p-2.5 bg-amber-50/60 rounded-xl border border-amber-200">
-                                  {selectedAcc.map((acc, idx) => (
-                                    <span key={idx} className="bg-amber-600 text-white border border-amber-700 px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-xs">
-                                      🛖 {acc}
+                              {selectedKids.length > 0 && (
+                                <div className="flex flex-wrap gap-2 p-2.5 bg-purple-50/60 rounded-xl border border-purple-200">
+                                  {selectedKids.map((activity, idx) => (
+                                    <span key={idx} className="bg-purple-600 text-white border border-purple-700 px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-xs">
+                                      🎈 {activity}
                                       <button
                                         type="button"
-                                        onClick={() => handleRemoveAccChip(acc)}
+                                        onClick={() => handleRemoveKidsActivityChip(activity)}
                                         className="text-white hover:text-rose-200 font-black ml-0.5 text-xs cursor-pointer"
                                         title="Remove chip"
                                       >
@@ -3422,57 +3881,57 @@ export default function Profile() {
                               <div className="flex items-center gap-2">
                                 <input
                                   type="text"
-                                  value={accInputText}
-                                  onChange={(e) => setAccInputText(e.target.value)}
+                                  value={kidsActivityInputText}
+                                  onChange={(e) => setKidsActivityInputText(e.target.value)}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter' || e.key === ',') {
                                       e.preventDefault();
-                                      handleAddAccChip(accInputText);
+                                      handleAddKidsActivityChip(kidsActivityInputText);
                                     }
                                   }}
                                   className={inputCls.replace('pl-10', 'px-4')}
-                                  placeholder="Type stay option name and press Enter (e.g. Mud Huts, Treehouse)..."
+                                  placeholder="Type kids activity and press Enter (e.g. Playground Swings, Petting Corner)..."
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => handleAddAccChip(accInputText)}
-                                  disabled={!accInputText.trim()}
-                                  className="bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 cursor-pointer transition-all active:scale-95"
+                                  onClick={() => handleAddKidsActivityChip(kidsActivityInputText)}
+                                  disabled={!kidsActivityInputText.trim()}
+                                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 cursor-pointer transition-all active:scale-95"
                                 >
                                   + Add
                                 </button>
                               </div>
 
-                              {/* Suggested Accommodation Chips */}
+                              {/* Suggested Kids Activity Chips */}
                               <div className="space-y-2 pt-1">
                                 <div className="flex items-center justify-between">
                                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-headings">
-                                    Suggested Accommodations & Stays (Click to Select):
+                                    Suggested Kids Activities (Click to Select):
                                   </span>
                                   <button
                                     type="button"
-                                    onClick={() => setShowMoreAccommodations(!showMoreAccommodations)}
-                                    className="text-xs font-bold text-amber-600 hover:text-amber-700 hover:underline flex items-center gap-1 cursor-pointer"
+                                    onClick={() => setShowMoreKidsActivities(!showMoreKidsActivities)}
+                                    className="text-xs font-bold text-purple-600 hover:text-purple-700 hover:underline flex items-center gap-1 cursor-pointer"
                                   >
-                                    {showMoreAccommodations ? 'Show Less' : `+ Others (${EXTRA_ACCOMMODATIONS.length} more)`}
+                                    {showMoreKidsActivities ? 'Show Less' : `+ Others (${EXTRA_KIDS_ACTIVITIES.length} more)`}
                                   </button>
                                 </div>
 
                                 <div className="flex flex-wrap gap-2">
-                                  {(showMoreAccommodations ? [...INITIAL_ACCOMMODATIONS, ...EXTRA_ACCOMMODATIONS] : INITIAL_ACCOMMODATIONS).map((chip, idx) => {
-                                    const isSelected = selectedAcc.some(a => a.toLowerCase() === chip.toLowerCase());
+                                  {(showMoreKidsActivities ? [...INITIAL_KIDS_ACTIVITIES, ...EXTRA_KIDS_ACTIVITIES] : INITIAL_KIDS_ACTIVITIES).map((chip, idx) => {
+                                    const isSelected = selectedKids.some(a => a.toLowerCase() === chip.toLowerCase());
                                     return (
                                       <button
                                         key={idx}
                                         type="button"
                                         onClick={() => {
-                                          if (isSelected) handleRemoveAccChip(chip);
-                                          else handleAddAccChip(chip);
+                                          if (isSelected) handleRemoveKidsActivityChip(chip);
+                                          else handleAddKidsActivityChip(chip);
                                         }}
                                         className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition-all border cursor-pointer active:scale-95 flex items-center gap-1.5 ${
                                           isSelected
-                                            ? 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-500/20'
-                                            : 'bg-white text-slate-700 border-slate-200 hover:border-amber-400 hover:text-amber-700 shadow-xs'
+                                            ? 'bg-purple-600 text-white border-purple-600 shadow-sm ring-2 ring-purple-500/20'
+                                            : 'bg-white text-slate-700 border-slate-200 hover:border-purple-400 hover:text-purple-700 shadow-xs'
                                         }`}
                                       >
                                         <span>{chip}</span>
@@ -3482,45 +3941,412 @@ export default function Profile() {
                                   })}
                                 </div>
                               </div>
-
-                              {/* Separate Accommodation Stay Price Field (Excluded from visit ticket) */}
-                              <div className="space-y-2 pt-4 border-t border-slate-100">
-                                <label className={labelCls}>
-                                  🛖 Accommodation & Stay Price per Night (₹) <span className="text-amber-700 font-normal text-[11px]">(Excluded from general farm visit admission price)</span>
-                                </label>
-                                <div className="relative">
-                                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₹</span>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    name="accommodationPrice"
-                                    value={newFarmForm.accommodationPrice || ''}
-                                    onChange={(e) => setNewFarmForm({ ...newFarmForm, accommodationPrice: e.target.value })}
-                                    className={inputCls}
-                                    placeholder="E.g. 1500 (Enter price per night for stay, or leave blank if 0 / day-visit only)"
-                                  />
-                                </div>
-                                <p className="text-[11px] text-amber-800 font-medium italic">
-                                  💡 Note: This accommodation stay price is separate from the farm visit ticket price and will be billed separately when a visitor chooses overnight stay.
-                                </p>
-                              </div>
                             </>
                           );
                         })()}
                       </div>
+
+                      {/* 📸 Kids Entertainments Photos Uploader */}
+                      <div className="space-y-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                        <label className={labelCls}>📸 Photos of Kids Entertainments & Play Area ({kidsPhotosList.length})</label>
+                        <p className="text-[11px] text-slate-400 font-medium">Upload or paste photo URLs of swings, playgrounds, petting areas, or kids activities.</p>
+
+                        {/* Thumbnail Grid */}
+                        {kidsPhotosList.length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-2 bg-purple-50/50 rounded-xl border border-purple-100">
+                            {kidsPhotosList.map((photo, idx) => (
+                              <div key={photo.id || idx} className="relative bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs group">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveKidsPhoto(idx)}
+                                  className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-md z-10 hover:bg-rose-700 cursor-pointer"
+                                  title="Remove photo"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                                <img src={photo.url} alt={photo.caption} className="w-full h-20 object-cover" />
+                                <div className="p-1 text-center bg-white">
+                                  <p className="text-[9px] font-extrabold text-slate-700 truncate">{photo.caption}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* File Upload / URL input */}
+                        <div className="space-y-2 pt-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Upload File</label>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      const photoObj = { id: `kp-${Date.now()}`, url: reader.result, caption: kidsPhotoInputCaption.trim() || file.name.replace(/\.[^/.]+$/, "") };
+                                      setKidsPhotosList(prev => [...prev, photoObj]);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                                className="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Photo URL</label>
+                              <input
+                                type="text"
+                                value={kidsPhotoInputUrl}
+                                onChange={(e) => setKidsPhotoInputUrl(e.target.value)}
+                                placeholder="Paste photo URL (https://...)..."
+                                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-purple-500 font-body"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 pt-1">
+                            <input
+                              type="text"
+                              value={kidsPhotoInputCaption}
+                              onChange={(e) => setKidsPhotoInputCaption(e.target.value)}
+                              placeholder="Photo caption (e.g. Playground Swings, Bunny Feeding)..."
+                              className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-purple-500 font-body"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddKidsPhoto}
+                              disabled={!kidsPhotoInputUrl.trim()}
+                              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white px-3.5 py-1.5 rounded-xl font-bold text-xs shrink-0 cursor-pointer transition-all active:scale-95"
+                            >
+                              + Add Photo
+                            </button>
+                          </div>
+
+                          {/* Preset Sample Photos for Step 4 */}
+                          <div className="pt-1 border-t border-purple-100/70 flex flex-wrap items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase font-headings">Sample Photos:</span>
+                            {[
+                              { url: 'https://images.unsplash.com/photo-1596464716127-f2a82984de30?w=600&q=80', caption: 'Playground Swings & Slides' },
+                              { url: 'https://images.unsplash.com/photo-1516467508483-a7212febe31a?w=600&q=80', caption: 'Petting Zoo Corner' },
+                              { url: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=600&q=80', caption: 'Pottery Craft Workshop' },
+                              { url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80', caption: 'Mini Tractor Ride' }
+                            ].map((sample, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => {
+                                  const photoObj = { id: `kp-${Date.now()}-${i}`, url: sample.url, caption: sample.caption };
+                                  setKidsPhotosList(prev => [...prev, photoObj]);
+                                }}
+                                className="bg-white hover:bg-purple-50 text-purple-800 border border-purple-200/80 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                              >
+                                <span>+ {sample.caption}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  {/* STEP 5: Direct Farm Products For Sale */}
+                  {/* STEP 5: Accommodations Provided */}
                   {farmFormStep === 5 && (
                     <div className="space-y-6 animate-fade-in text-left max-w-3xl mx-auto py-2">
-                      {/* Step 5 Banner */}
+                      <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-100 flex items-start gap-3">
+                        <div className="text-2xl">🛖</div>
+                        <div>
+                          <h4 className="font-bold text-amber-900 text-sm font-headings">Step 5: Accommodations & Stay Setup</h4>
+                          <p className="text-xs text-amber-700 font-medium font-body mt-0.5">
+                            Add one accommodation per entry: select/type accommodation provided, set stay price per night, upload photos, and click <span className="font-extrabold text-amber-900">+ Save & Add Accommodation Entry</span>. Repeat for each stay choice!
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Display Added Accommodations List */}
+                      {accEntriesList.length > 0 && (
+                        <div className="bg-white p-5 rounded-2xl border border-amber-200 shadow-xs space-y-3">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <h4 className="text-xs font-black uppercase tracking-wider text-amber-900 font-headings">
+                              🛖 Added Accommodations & Stays ({accEntriesList.length})
+                            </h4>
+                            <span className="text-[10px] text-amber-700 font-bold bg-amber-100 px-2.5 py-0.5 rounded-full">
+                              Sequential Entries
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {accEntriesList.map((item, idx) => (
+                              <div key={item.id || idx} className="bg-amber-50/40 border border-amber-200 p-3.5 rounded-2xl space-y-2 relative group hover:shadow-md transition-all">
+                                <div className="flex items-center justify-between pr-14">
+                                  <span className="font-extrabold text-slate-800 text-xs font-headings">🛖 {item.title}</span>
+                                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">
+                                    {item.price}
+                                  </span>
+                                </div>
+
+                                {item.photos && item.photos.length > 0 && (
+                                  <div className="flex gap-1.5 overflow-x-auto py-1">
+                                    {item.photos.map((p, pIdx) => (
+                                      <img key={pIdx} src={p.url} alt={p.caption} className="w-12 h-12 object-cover rounded-lg border border-amber-200" />
+                                    ))}
+                                  </div>
+                                )}
+
+                                <div className="absolute top-2.5 right-2.5 flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditAccEntry(idx)}
+                                    className="p-1 text-slate-600 hover:text-amber-700 hover:bg-amber-100 rounded-lg transition-colors cursor-pointer"
+                                    title="Edit Entry"
+                                  >
+                                    <Pencil size={13} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveAccEntry(idx)}
+                                    className="p-1 text-rose-500 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
+                                    title="Remove Entry"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Entry Form Container */}
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
+                        <div className="border-b border-slate-100 pb-2 flex items-center justify-between">
+                          <h4 className="font-bold text-slate-800 text-xs font-headings uppercase tracking-wider">
+                            {editingAccEntryIndex !== null ? `✏️ Edit Accommodation Entry #${editingAccEntryIndex + 1}` : '➕ Add Accommodation Entry'}
+                          </h4>
+                          {editingAccEntryIndex !== null && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingAccEntryIndex(null);
+                                setCurrAccTitle('');
+                                setCurrAccPrice('');
+                                setCurrAccPhotos([]);
+                              }}
+                              className="text-[11px] font-bold text-rose-600 hover:underline"
+                            >
+                              Cancel Edit
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Sequence 1: Accommodations Provided (Name / Title) */}
+                        <div className="space-y-2">
+                          <label className={labelCls}>1. Accommodations Provided *</label>
+                          <input
+                            type="text"
+                            value={currAccTitle}
+                            onChange={(e) => setCurrAccTitle(e.target.value)}
+                            placeholder="Select chip below or type custom stay choice (e.g. Rustic Mud Huts, Camping Tents)..."
+                            className={inputCls.replace('pl-10', 'px-4')}
+                          />
+
+                          {/* Preset Accommodation Chips */}
+                          <div className="space-y-1.5 pt-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-headings">
+                                Suggested Accommodations (Click to Select):
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowMoreAccommodations(!showMoreAccommodations)}
+                                className="text-xs font-bold text-amber-600 hover:text-amber-700 hover:underline flex items-center gap-1 cursor-pointer"
+                              >
+                                {showMoreAccommodations ? 'Show Less' : `+ Others (${EXTRA_ACCOMMODATIONS.length} more)`}
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {(showMoreAccommodations ? [...INITIAL_ACCOMMODATIONS, ...EXTRA_ACCOMMODATIONS] : INITIAL_ACCOMMODATIONS).map((chip, idx) => {
+                                const isSelected = currAccTitle.toLowerCase() === chip.toLowerCase();
+                                return (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => setCurrAccTitle(chip)}
+                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${
+                                      isSelected
+                                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs ring-2 ring-amber-500/20'
+                                        : 'bg-white text-slate-700 border-slate-200 hover:border-amber-400 hover:text-amber-700 shadow-xs'
+                                    }`}
+                                  >
+                                    <span>{chip}</span>
+                                    {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Sequence 2: Accommodation & Stay Price per Night (₹) */}
+                        <div className="space-y-2 pt-2 border-t border-slate-100">
+                          <label className={labelCls}>
+                            2. Accommodation & Stay Price per Night (₹) <span className="text-amber-700 font-normal text-[11px]">(Excluded from general farm visit admission price)</span>
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₹</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={currAccPrice}
+                              onChange={(e) => setCurrAccPrice(e.target.value)}
+                              className={inputCls}
+                              placeholder="E.g. 1500 (Enter price per night for stay, or leave 0 for free/included stay)"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Sequence 3: Photos of Accommodations & Stays */}
+                        <div className="space-y-3 pt-2 border-t border-slate-100">
+                          <div>
+                            <label className={labelCls}>3. Photos of Accommodations & Stays ({currAccPhotos.length})</label>
+                            <p className="text-[11px] text-slate-400 font-medium font-body">Upload or add photos specific to this accommodation choice.</p>
+                          </div>
+
+                          {/* Thumbnail preview of current entry photos */}
+                          {currAccPhotos.length > 0 && (
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
+                              {currAccPhotos.map((item, idx) => (
+                                <div key={item.id || idx} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs relative group">
+                                  <button
+                                    type="button"
+                                    onClick={() => setCurrAccPhotos(prev => prev.filter((_, i) => i !== idx))}
+                                    className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-lg z-20 active:scale-95 cursor-pointer"
+                                    title="Remove photo"
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                  <div className="h-16 bg-slate-100 overflow-hidden relative">
+                                    <img src={item.url} alt={item.caption} className="w-full h-full object-cover" />
+                                  </div>
+                                  <p className="text-[9px] font-bold text-slate-700 truncate p-1 text-center bg-white">{item.caption || 'Stay Photo'}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Upload / URL Input Controls */}
+                          <div className="bg-amber-50/50 p-3.5 rounded-xl border border-amber-100 space-y-2.5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Upload Photo File or Enter Image URL</label>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                          setCurrAccPhotoUrl(reader.result);
+                                        };
+                                        reader.readAsDataURL(file);
+                                      }
+                                    }}
+                                    className="hidden"
+                                    id="acc-photo-file-input"
+                                  />
+                                  <label
+                                    htmlFor="acc-photo-file-input"
+                                    className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 px-3 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer flex items-center gap-1 active:scale-95"
+                                  >
+                                    <ImageIcon size={14} className="text-amber-600" /> Choose File
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={currAccPhotoUrl}
+                                    onChange={(e) => setCurrAccPhotoUrl(e.target.value)}
+                                    placeholder="Or paste Image URL (https://...)..."
+                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-amber-500 font-body"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Photo Caption (Optional)</label>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={currAccPhotoCaption}
+                                    onChange={(e) => setCurrAccPhotoCaption(e.target.value)}
+                                    placeholder="E.g. Exterior View, Interior Beds..."
+                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-amber-500 font-body"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={handleAddCurrAccPhoto}
+                                    disabled={!currAccPhotoUrl.trim()}
+                                    className="bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 cursor-pointer transition-all active:scale-95"
+                                  >
+                                    + Add Photo
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Preset Sample Photos */}
+                            <div className="pt-1 border-t border-amber-100/70 flex flex-wrap items-center gap-2">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase font-headings">Sample Photos:</span>
+                              {[
+                                { url: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600&q=80', caption: 'Rustic Clay Huts' },
+                                { url: 'https://images.unsplash.com/photo-1510312305653-8ed496efae75?w=600&q=80', caption: 'Camping Tents under Stars' },
+                                { url: 'https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=600&q=80', caption: 'Farmhouse Guest Rooms' },
+                                { url: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=600&q=80', caption: 'Shaded Hammocks' }
+                              ].map((sample, i) => (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() => {
+                                    const photoObj = { id: `ap-${Date.now()}-${i}`, url: sample.url, caption: sample.caption };
+                                    setCurrAccPhotos(prev => [...prev, photoObj]);
+                                  }}
+                                  className="bg-white hover:bg-amber-50 text-amber-800 border border-amber-200/80 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                                >
+                                  <span>+ {sample.caption}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Sequence 4: Submit / Save Entry Button */}
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={handleSaveAccEntry}
+                            disabled={!currAccTitle.trim()}
+                            className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-extrabold text-xs py-3 px-5 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider font-headings"
+                          >
+                            <Plus size={16} />
+                            {editingAccEntryIndex !== null ? 'Update Accommodation Entry' : '+ Save & Add Accommodation Entry'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 6: Direct Farm Products For Sale */}
+                  {farmFormStep === 6 && (
+                    <div className="space-y-6 animate-fade-in text-left max-w-3xl mx-auto py-2">
+                      {/* Step 6 Banner */}
                       <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex items-start gap-3">
                           <div className="text-2xl">🧺</div>
                           <div>
-                            <h4 className="font-bold text-purple-900 text-sm font-headings">Step 5: Direct Farm Products For Sale</h4>
+                            <h4 className="font-bold text-purple-900 text-sm font-headings">Step 6: Direct Farm Products For Sale</h4>
                             <p className="text-xs text-purple-700 font-medium font-body mt-0.5">Click <span className="font-extrabold">+ Add Product</span> to list products for sale, or click <span className="font-extrabold">Next Step →</span> to review your listing.</p>
                           </div>
                         </div>
@@ -3615,13 +4441,13 @@ export default function Profile() {
                     </div>
                   )}
 
-                  {/* STEP 6: Full Farm Listing Summary & Final Confirmation */}
-                  {farmFormStep === 6 && (
+                  {/* STEP 7: Full Farm Listing Summary & Final Confirmation */}
+                  {farmFormStep === 7 && (
                     <div className="space-y-6 animate-fade-in text-left max-w-3xl mx-auto py-2">
                       <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-100 flex items-start gap-3">
                         <div className="text-2xl">📋</div>
                         <div>
-                          <h4 className="font-bold text-emerald-900 text-sm font-headings">Step 6: Review Farm Listing Summary</h4>
+                          <h4 className="font-bold text-emerald-900 text-sm font-headings">Step 7: Review Farm Listing Summary</h4>
                           <p className="text-xs text-emerald-700 font-medium font-body mt-0.5">Please review all your farm information below. Click <span className="font-extrabold">{editingFarmId ? 'Update Farm' : 'List Farm'}</span> to publish.</p>
                         </div>
                       </div>
@@ -3664,37 +4490,53 @@ export default function Profile() {
                             <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider">🌾 Step 2: Crops & Orchards</span>
                             <p className="text-slate-300 line-clamp-2"><strong className="text-slate-400">Crops:</strong> {newFarmForm.crops || 'None added'}</p>
                             <p className="text-slate-300 line-clamp-2"><strong className="text-slate-400">Fruits:</strong> {newFarmForm.fruits || 'None added'}</p>
+                            <p className="text-slate-400">Photos: <span className="text-emerald-400 font-bold">{cropPhotosList.length} Crop/Fruit Photos</span></p>
                           </div>
 
                           {/* Step 3 Preview */}
                           <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-1.5">
                             <span className="text-[10px] font-black text-teal-400 uppercase tracking-wider">🐄 Step 3: Livestock & Poultry</span>
                             <p className="text-slate-300 line-clamp-3">{newFarmForm.livestock || 'None added'}</p>
+                            <p className="text-slate-400">Photos: <span className="text-teal-300 font-bold">{livestockPhotosList.length} Animal Photos</span></p>
                           </div>
 
-                          {/* Step 4 Preview */}
+                          {/* Step 4 Preview: Kids Entertainments */}
                           <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-1.5">
-                            <span className="text-[10px] font-black text-purple-400 uppercase tracking-wider">🛖 Step 4: Accommodations & Stay Price</span>
-                            <p className="text-slate-300 line-clamp-3">{newFarmForm.accommodations || 'None added'}</p>
-                            {newFarmForm.accommodationPrice && Number(newFarmForm.accommodationPrice) > 0 && (
-                              <p className="text-xs font-bold text-amber-400">
-                                Stay Price: ₹{newFarmForm.accommodationPrice} / night <span className="text-[10px] font-normal text-slate-400">(Excluded from visit price)</span>
-                              </p>
+                            <span className="text-[10px] font-black text-pink-400 uppercase tracking-wider">🎈 Step 4: Kids Entertainments</span>
+                            <p className="text-slate-300 line-clamp-3">{newFarmForm.kidsActivities || 'None added'}</p>
+                            <p className="text-slate-400">Photos: <span className="text-pink-300 font-bold">{kidsPhotosList.length} Kids Area Photos</span></p>
+                          </div>
+
+                          {/* Step 5 Preview: Accommodations */}
+                          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-1.5 md:col-span-2">
+                            <span className="text-[10px] font-black text-purple-400 uppercase tracking-wider">🛖 Step 5: Accommodations & Stay Setup</span>
+                            {accEntriesList.length > 0 ? (
+                              <div className="space-y-1 pt-1">
+                                {accEntriesList.map((acc, i) => (
+                                  <div key={i} className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-200 font-bold">• {acc.title}</span>
+                                    <span className="text-amber-400 font-bold">{acc.price}</span>
+                                  </div>
+                                ))}
+                                <p className="text-slate-400 text-[10px] pt-1">Total Photos: <span className="text-purple-300 font-bold">{accEntriesList.reduce((sum, a) => sum + (a.photos?.length || 0), 0)} Attached Photos</span></p>
+                              </div>
+                            ) : (
+                              <p className="text-slate-400 italic">Day-visit only / No accommodation entries added.</p>
                             )}
                           </div>
                         </div>
 
-                        {/* Step 5 Direct Products Summary */}
+                        {/* Step 6 Direct Products Summary */}
                         <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black text-rose-400 uppercase tracking-wider">🧺 Step 5: Direct Farm Products</span>
+                            <span className="text-[10px] font-black text-rose-400 uppercase tracking-wider">🧺 Step 6: Direct Farm Products</span>
                             <span className="font-extrabold text-white text-xs">{farmProductList.length} Products Added</span>
                           </div>
                           {farmProductList.length > 0 && (
                             <div className="flex flex-wrap gap-2 pt-1">
                               {farmProductList.map((prod, i) => (
                                 <span key={i} className="bg-slate-700/80 border border-slate-600 text-slate-200 px-3 py-1 rounded-full text-[11px] font-bold">
-                                  {prod.name} (₹{prod.price}/{prod.unit})
+                                  {`${prod.name} (₹${prod.price}/${prod.unit})`}
                                 </span>
                               ))}
                             </div>
@@ -3727,14 +4569,15 @@ export default function Profile() {
                         </button>
                       )}
 
-                      {farmFormStep > 1 && farmFormStep < 6 && (
+                      {farmFormStep > 1 && farmFormStep < 7 && (
                         <button
                           type="button"
                           onClick={() => {
                             if (farmFormStep === 2) setNewFarmForm(prev => ({ ...prev, crops: '', fruits: '' }));
                             if (farmFormStep === 3) setNewFarmForm(prev => ({ ...prev, livestock: '' }));
-                            if (farmFormStep === 4) setNewFarmForm(prev => ({ ...prev, accommodations: '' }));
-                            if (farmFormStep === 5) {
+                            if (farmFormStep === 4) setNewFarmForm(prev => ({ ...prev, kidsActivities: '' }));
+                            if (farmFormStep === 5) setNewFarmForm(prev => ({ ...prev, accommodations: '' }));
+                            if (farmFormStep === 6) {
                               setFarmProductList([]);
                               setNewFarmForm(prev => ({ ...prev, farmProducts: [] }));
                             }
@@ -3746,7 +4589,7 @@ export default function Profile() {
                         </button>
                       )}
 
-                      {farmFormStep < 6 ? (
+                      {farmFormStep < 7 ? (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -3780,7 +4623,7 @@ export default function Profile() {
                     </div>
                   </div>
 
-                </form>
+                </div>
               )}
 
               {/* ── Vendor Business & Analytics Summary Cards ── */}
@@ -4036,9 +4879,7 @@ export default function Profile() {
                 </div>
 
               </div>
-
-            </div>
-          )}
+            )}
 
           {/* ─── Vendor: Set Up Your Shop Tab ──────────────────────────────────── */}
           {(isVendor && activeTab === 'setup') && (

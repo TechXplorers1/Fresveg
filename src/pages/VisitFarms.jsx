@@ -209,98 +209,150 @@ export default function VisitFarms() {
   };
 
   return (
-    <div className="min-h-screen py-5 sm:py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div className="min-h-screen py-5 sm:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
       
-      {/* ── Page Header ── */}
-      <div className="relative overflow-hidden mb-6 bg-white/70 backdrop-blur-md border border-white/60 p-6 sm:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 animate-fade-in">
-        <div className="text-left space-y-2">
-          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-100/50 px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
-            <Compass size={12} className="text-emerald-600" /> Refreshment Weekend Tours
-          </span>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-800 font-headings leading-tight">Visit Local Farms</h1>
-          <p className="text-slate-500 text-sm max-w-2xl font-medium leading-relaxed">
-            Take a break from software jobs or busy city routines. Connect directly with local farmers, book weekend refreshment visits, and experience organic farming firsthand.
-          </p>
+      {/* ── Section 1: Modern Glassmorphic Hero Banner ── */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white p-6 sm:p-10 rounded-3xl shadow-2xl space-y-6 text-left animate-fade-in border border-emerald-500/20">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute bottom-0 left-1/3 -mb-10 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div className="space-y-3 max-w-3xl">
+            <div className="inline-flex items-center gap-2 bg-emerald-500/20 backdrop-blur-md text-emerald-300 border border-emerald-500/30 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider">
+              <Compass size={14} className="text-emerald-400 animate-spin" style={{ animationDuration: '10s' }} />
+              <span>Direct Farm Refreshment Tours & Stays</span>
+            </div>
+            <h1 className="text-3xl sm:text-5xl font-black font-headings leading-tight tracking-tight text-white drop-shadow-sm">
+              Discover & Visit Local <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300 bg-clip-text text-transparent">Organic Farms</span>
+            </h1>
+            <p className="text-slate-300 text-xs sm:text-sm font-medium leading-relaxed max-w-2xl font-body">
+              Take a refreshing break from city routines and work stress. Connect directly with local organic farmers, pick fresh berries, observe livestock, and experience rustic farm stays.
+            </p>
+          </div>
+
+          <div className="relative z-10 bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/20 text-white flex flex-col items-center justify-center shrink-0 w-full sm:w-auto text-center space-y-2">
+            <Sparkles size={32} className="animate-pulse text-amber-400" />
+            <div>
+              <span className="block text-xs font-black uppercase tracking-widest text-emerald-300">100% Verified</span>
+              <span className="text-[11px] text-slate-300 font-medium font-body">Organic Farmers & Hosts</span>
+            </div>
+          </div>
         </div>
-        <div className="relative z-10 bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 text-emerald-700 flex flex-col items-center justify-center flex-shrink-0 w-full md:w-36 text-center">
-          <Sparkles size={28} className="animate-pulse mb-1 text-emerald-600" />
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-850">Direct Connect</span>
+
+        {/* Feature Badges Strip */}
+        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-white/10 text-xs font-bold">
+          <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm p-2.5 rounded-xl border border-white/10">
+            <span className="text-lg">🍓</span>
+            <div>
+              <p className="text-emerald-400 font-extrabold text-[11px]">Organic Crops</p>
+              <p className="text-slate-400 text-[9px] font-normal">Self Picking & Tasting</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm p-2.5 rounded-xl border border-white/10">
+            <span className="text-lg">🐄</span>
+            <div>
+              <p className="text-amber-400 font-extrabold text-[11px]">Desi Livestock</p>
+              <p className="text-slate-400 text-[9px] font-normal">Cows, Poultry & Sheep</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm p-2.5 rounded-xl border border-white/10">
+            <span className="text-lg">🛖</span>
+            <div>
+              <p className="text-teal-300 font-extrabold text-[11px]">Rustic Stays</p>
+              <p className="text-slate-400 text-[9px] font-normal">Clay Huts & Camping</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm p-2.5 rounded-xl border border-white/10">
+            <span className="text-lg">🎟️</span>
+            <div>
+              <p className="text-purple-300 font-extrabold text-[11px]">Easy Slots</p>
+              <p className="text-slate-400 text-[9px] font-normal">Free & Paid Entry</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Search and Category Filter Tabs ── */}
-      <div className="mb-6 flex flex-col md:flex-row justify-between items-center gap-5 bg-white/70 backdrop-blur-md p-4 rounded-3xl shadow-sm border border-white/60">
-        {/* Search bar */}
+      {/* ── Section 2: Search and Category Filter Toolbar ── */}
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white/80 backdrop-blur-md p-4 rounded-3xl shadow-sm border border-slate-200/80">
+        {/* Search Input */}
         <div className="relative w-full md:max-w-md group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
           <input
             type="text"
-            placeholder="Search farm name, location, or vendor..."
+            placeholder="Search farm name, crops, fruits, location, or host..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 bg-slate-50/60 border border-slate-200/80 rounded-2xl text-xs focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
+            className="w-full pl-11 pr-9 py-2.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-xs font-medium focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-body"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-black cursor-pointer"
+            >
+              ×
+            </button>
+          )}
         </div>
 
-        {/* Category Tabs: All / Free of Cost / Payable */}
+        {/* Category Filter Pills */}
         <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-hide">
           <button
             type="button"
             onClick={() => setCostCategory('all')}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
               costCategory === 'all'
-                ? 'bg-slate-900 text-white shadow-md'
+                ? 'bg-slate-900 text-white shadow-md ring-2 ring-slate-900/20'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            All Farms ({farms.length})
+            All Organic Farms ({farms.length})
           </button>
           <button
             type="button"
             onClick={() => setCostCategory('free')}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
               costCategory === 'free'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20 ring-2 ring-emerald-500/30'
                 : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60'
             }`}
           >
-            <Sparkles size={13} /> Free of Cost ({freeFarmsCount})
+            <Sparkles size={13} /> Free Admission ({freeFarmsCount})
           </button>
           <button
             type="button"
             onClick={() => setCostCategory('payable')}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
               costCategory === 'payable'
-                ? 'bg-teal-700 text-white shadow-md shadow-teal-500/20'
+                ? 'bg-teal-700 text-white shadow-md shadow-teal-500/20 ring-2 ring-teal-600/30'
                 : 'bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200/60'
             }`}
           >
-            💳 Payable ({payableFarmsCount})
+            💳 Payable Entry ({payableFarmsCount})
           </button>
         </div>
       </div>
 
-      {/* ── Two Column Layout (Farms on Left, Bookings on Right) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      {/* ── Section 3: Main 2-Column Content Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start text-left">
         
-        {/* Left: Farms Grid (8 Columns) */}
+        {/* Left Column: Farm Listing Cards (8 Columns) */}
         <div className="lg:col-span-8 space-y-6">
           {loadingFarms ? (
             <div className="flex flex-col items-center justify-center py-20 bg-white/70 backdrop-blur-md rounded-3xl border border-white/60 shadow-inner">
               <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-100 border-t-emerald-650"></div>
-              <p className="mt-4 text-emerald-800 font-semibold animate-pulse text-xs uppercase tracking-wider font-headings">Loading listed farms...</p>
+              <p className="mt-4 text-emerald-800 font-bold animate-pulse text-xs uppercase tracking-wider font-headings">Loading organic farms...</p>
             </div>
           ) : filteredFarms.length === 0 ? (
-            <div className="text-center py-16 bg-white/70 backdrop-blur-md border border-white rounded-3xl shadow-sm max-w-lg mx-auto">
-              <Compass className="mx-auto text-slate-350 mb-4 animate-spin" size={48} style={{ animationDuration: '6s' }} />
+            <div className="text-center py-16 bg-white/70 backdrop-blur-md border border-white rounded-3xl shadow-sm max-w-lg mx-auto p-6">
+              <Compass className="mx-auto text-slate-300 mb-4 animate-spin" size={48} style={{ animationDuration: '6s' }} />
               <h3 className="text-lg font-bold font-headings text-slate-800 mb-1">No Farms Found</h3>
-              <p className="text-slate-500 text-xs mb-6 max-w-xs mx-auto">We couldn't find any farms matching your selected category or search filter.</p>
+              <p className="text-slate-500 text-xs mb-6 max-w-xs mx-auto font-body">We couldn't find any farms matching your selected category or search query.</p>
               <button
                 onClick={() => {
                   setSearchQuery('');
                   setCostCategory('all');
                 }}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
               >
                 Reset Filters
               </button>
@@ -311,15 +363,16 @@ export default function VisitFarms() {
                 const isFree = !farm.costPerPerson || Number(farm.costPerPerson) === 0;
 
                 return (
-                  <div key={farm.id} className="bg-white/70 backdrop-blur-md border border-white/60 rounded-3xl overflow-hidden shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col group h-full">
+                  <div key={farm.id} className="bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-3xl overflow-hidden shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col group h-full relative">
                     
-                    {/* Farm Image */}
-                    <div className="relative h-48 overflow-hidden bg-slate-50">
+                    {/* Farm Image & Badges */}
+                    <div className="relative h-52 overflow-hidden bg-slate-100">
                       <img
                         src={farm.image || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80'}
                         alt={farm.farmName}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80"></div>
                       
                       {/* Cost Category Badge */}
                       {isFree ? (
@@ -327,35 +380,67 @@ export default function VisitFarms() {
                           <Sparkles size={11} /> FREE ADMISSION
                         </div>
                       ) : (
-                        <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
-                          PAYABLE
+                        <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-md border border-white/20">
+                          PAYABLE ENTRY
                         </div>
                       )}
+
+                      {/* Last Updated Badge on Card */}
+                      <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md text-white text-[9px] font-extrabold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1 border border-white/20">
+                        <Clock size={10} className="text-emerald-400" />
+                        <span>
+                          {farm.updatedAt || farm.createdAt ? `Updated ${new Date(farm.updatedAt || farm.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'Recently Updated'}
+                        </span>
+                      </div>
+
+                      {/* Location Badge on Image */}
+                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs font-bold drop-shadow-md">
+                        <span className="flex items-center gap-1 text-[11px] truncate font-body">
+                          <MapPin size={13} className="text-emerald-400 shrink-0" /> {farm.location}
+                        </span>
+                        {farm.rating && (
+                          <span className="bg-amber-500/90 text-white text-[10px] font-black px-2 py-0.5 rounded-full shrink-0">
+                            ★ {farm.rating}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Farm Info */}
-                    <div className="p-5 flex flex-col flex-grow text-left space-y-4">
-                      <div className="space-y-1">
+                    {/* Farm Details Body */}
+                    <div className="p-5 flex flex-col flex-grow text-left space-y-3.5">
+                      <div>
                         <h3 className="text-lg font-bold text-slate-800 font-headings group-hover:text-emerald-700 transition-colors line-clamp-1">
                           {farm.farmName}
                         </h3>
-                        <div className="flex items-center gap-1.5 text-xs text-slate-450 font-semibold font-body">
-                          <MapPin size={13} className="text-emerald-600 flex-shrink-0" />
-                          <span className="truncate">{farm.location}</span>
-                        </div>
+                        <p className="text-slate-500 text-xs leading-relaxed line-clamp-2 font-medium italic mt-1">
+                          "{farm.description}"
+                        </p>
                       </div>
 
-                      <p className="text-slate-500 text-xs leading-relaxed line-clamp-3 font-medium italic">
-                        "{farm.description}"
-                      </p>
+                      {/* Crops / Features Chips preview */}
+                      {((farm.crops && farm.crops.length > 0) || (farm.accommodations && farm.accommodations.length > 0)) && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {(farm.crops || []).slice(0, 3).map((crop, cIdx) => (
+                            <span key={cIdx} className="bg-emerald-50 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-100">
+                              🌾 {typeof crop === 'string' ? crop : crop.name}
+                            </span>
+                          ))}
+                          {farm.accommodations && farm.accommodations.length > 0 && (
+                            <span className="bg-amber-50 text-amber-900 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-200">
+                              🛖 Stays Available
+                            </span>
+                          )}
+                        </div>
+                      )}
 
-                      <div className="border-t border-slate-100/80 pt-4 mt-auto flex items-center justify-between gap-3">
+                      {/* Footer Row */}
+                      <div className="border-t border-slate-100 pt-3 mt-auto flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider font-headings">Farm Owner</p>
+                          <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider font-headings">Host / Owner</p>
                           <p className="text-xs font-bold text-slate-700 truncate">{farm.vendorName}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider font-headings">Entry Cost</p>
+                          <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider font-headings">Visit Fee</p>
                           {isFree ? (
                             <p className="font-black text-emerald-600 text-sm">FREE ENTRY <span className="text-[10px] text-emerald-600/70 font-bold">(₹0)</span></p>
                           ) : (
@@ -364,6 +449,7 @@ export default function VisitFarms() {
                         </div>
                       </div>
 
+                      {/* Action Buttons */}
                       <div className="flex items-center gap-2 pt-1">
                         <button
                           type="button"
@@ -373,7 +459,7 @@ export default function VisitFarms() {
                               : farm.id;
                             navigate(`/farm/${slug}`);
                           }}
-                          className="flex-1 bg-white border-2 border-emerald-600/80 text-emerald-700 hover:bg-emerald-50 font-bold text-xs py-2.5 px-3 rounded-2xl transition-all shadow-xs active:scale-95 flex items-center justify-center gap-1.5 font-headings"
+                          className="flex-1 bg-white border-2 border-emerald-600/80 text-emerald-700 hover:bg-emerald-50 font-bold text-xs py-2.5 px-3 rounded-2xl transition-all shadow-xs active:scale-95 flex items-center justify-center gap-1.5 font-headings cursor-pointer"
                         >
                           <Compass size={14} className="text-emerald-600" /> Explore Farm
                         </button>
@@ -381,7 +467,7 @@ export default function VisitFarms() {
                         <button
                           type="button"
                           onClick={() => handleOpenBooking(farm)}
-                          className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs py-2.5 px-3 rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 font-headings"
+                          className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs py-2.5 px-3 rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 font-headings cursor-pointer"
                         >
                           <Calendar size={14} /> Book Slot
                         </button>
@@ -478,7 +564,61 @@ export default function VisitFarms() {
 
           </div>
         </div>
+      </div>
 
+      {/* ── Section 4: Experience Highlights & Feature Pillars ── */}
+      <div className="pt-6 border-t border-slate-200/80 space-y-4 text-left">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <h2 className="text-xl font-bold font-headings text-slate-800">Why Visit Local Organic Farms?</h2>
+            <p className="text-xs text-slate-400 font-medium font-body">Four unique weekend experiences waiting for you</p>
+          </div>
+          <span className="bg-emerald-50 text-emerald-800 text-[10px] font-black uppercase px-3 py-1 rounded-full border border-emerald-200">
+            🌿 Refresh & Recharge
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2 hover:shadow-md transition-all">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center text-xl font-bold">
+              🍓
+            </div>
+            <h4 className="font-bold text-slate-800 text-sm font-headings">Pick Fresh Crops</h4>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed font-body">
+              Harvest organic strawberries, tomatoes, leafy greens, and fresh fruits straight from soil to hand.
+            </p>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2 hover:shadow-md transition-all">
+            <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center text-xl font-bold">
+              🐄
+            </div>
+            <h4 className="font-bold text-slate-800 text-sm font-headings">Desi Livestock & Birds</h4>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed font-body">
+              Feed pure Gir cows, observe free-range poultry hens, sheep flocks, and witness natural honeybee hives.
+            </p>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2 hover:shadow-md transition-all">
+            <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center text-xl font-bold">
+              🛖
+            </div>
+            <h4 className="font-bold text-slate-800 text-sm font-headings">Rustic Farm Stays</h4>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed font-body">
+              Stay overnight in mud clay huts, solar-powered guest rooms, or eco-camping tents under nighttime stars.
+            </p>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2 hover:shadow-md transition-all">
+            <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center text-xl font-bold">
+              🧺
+            </div>
+            <h4 className="font-bold text-slate-800 text-sm font-headings">Direct Farm Store</h4>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed font-body">
+              Buy 100% genuine farm produce, wild honey, and fruit jams directly from the farmers without middlemen.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* ── Booking Modal/Form Overlay ── */}

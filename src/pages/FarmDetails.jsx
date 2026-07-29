@@ -70,6 +70,18 @@ const MOCK_FARM_DATA = {
       { id: 'fp-2', name: 'Pure Organic Honey Jar (250g)', price: 290, unit: 'jar', image: 'https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=400&q=80', vendor: 'Orchard Farms', category: 'Honey' },
       { id: 'fp-3', name: 'Fresh Strawberry Jam (300g)', price: 220, unit: 'jar', image: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=400&q=80', vendor: 'Orchard Farms', category: 'Preserves' }
     ],
+    cropPhotos: [
+      { id: 'cp1', url: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=800&q=80', caption: 'Strawberry Harvest Patch' },
+      { id: 'cp2', url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=800&q=80', caption: 'Fresh Berry Trees & Orchard Trails' }
+    ],
+    livestockPhotos: [
+      { id: 'lp1', url: 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=800&q=80', caption: 'Farm Cattle Grazing Pasture' },
+      { id: 'lp2', url: 'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?w=800&q=80', caption: 'Free-Range Poultry Backyard' }
+    ],
+    accommodationPhotos: [
+      { id: 'ap1', url: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=800&q=80', caption: 'Shaded Hammocks & Clay Huts' },
+      { id: 'ap2', url: 'https://images.unsplash.com/photo-1510312305653-8ed496efae75?w=800&q=80', caption: 'Overnight Eco Camping Tents' }
+    ],
     gallery: [
       { id: 'g1', url: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=1000&q=80', caption: 'Organic Strawberry Fields' },
       { id: 'g2', url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1000&q=80', caption: 'Lush Green Orchard Trails' },
@@ -99,6 +111,15 @@ const MOCK_FARM_DATA = {
     farmProducts: [
       { id: 'fp-4', name: 'Fresh Organic Spinach (250g)', price: 35, unit: 'bunch', image: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=400&q=80', vendor: 'Green Valley Farm', category: 'Spinach' },
       { id: 'fp-5', name: 'Organic Cherry Tomatoes (500g)', price: 80, unit: 'pack', image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&q=80', vendor: 'Green Valley Farm', category: 'Tomatoes' }
+    ],
+    cropPhotos: [
+      { id: 'cp1', url: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=800&q=80', caption: 'Organic Leafy Greens & Spinach Field' }
+    ],
+    livestockPhotos: [
+      { id: 'lp1', url: 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=800&q=80', caption: 'Desi Gir Cows Shelter' }
+    ],
+    accommodationPhotos: [
+      { id: 'ap1', url: 'https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=800&q=80', caption: 'Eco Solar-Powered Rooms' }
     ],
     gallery: [
       { id: 'g1', url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1000&q=80', caption: 'River Stream & Open Pastures' },
@@ -198,10 +219,8 @@ export default function FarmDetails() {
         const farmKey = Object.keys(data).find(key => {
           const item = data[key];
           if (key === id) return true;
-          const slug = getFarmSlug(item);
-          return slug === id || id.startsWith(slug) || id.endsWith(key);
+          return getFarmSlug(item) === id;
         });
-
         if (farmKey) {
           matchedFarm = { ...data[farmKey], id: farmKey };
           matchedId = farmKey;
@@ -222,9 +241,12 @@ export default function FarmDetails() {
         const fullFarm = {
           ...matchedFarm,
           crops: matchedFarm.crops || [],
+          cropPhotos: matchedFarm.cropPhotos || [],
           fruits: matchedFarm.fruits || [],
           livestock: matchedFarm.livestock || [],
+          livestockPhotos: matchedFarm.livestockPhotos || [],
           accommodations: matchedFarm.accommodations || [],
+          accommodationPhotos: matchedFarm.accommodationPhotos || [],
           farmProducts: matchedFarm.farmProducts || [],
           gallery: matchedFarm.gallery || [],
           amenities: matchedFarm.amenities || []
@@ -238,9 +260,12 @@ export default function FarmDetails() {
           costType: (!fullFarm.costPerPerson || Number(fullFarm.costPerPerson) === 0) ? 'free' : 'payable',
           image: fullFarm.image || '',
           crops: [...fullFarm.crops],
+          cropPhotos: [...fullFarm.cropPhotos],
           fruits: [...fullFarm.fruits],
           livestock: [...fullFarm.livestock],
+          livestockPhotos: [...fullFarm.livestockPhotos],
           accommodations: [...fullFarm.accommodations],
+          accommodationPhotos: [...fullFarm.accommodationPhotos],
           farmProducts: [...fullFarm.farmProducts],
           gallery: [...fullFarm.gallery],
           amenities: [...fullFarm.amenities]
@@ -256,9 +281,12 @@ export default function FarmDetails() {
           vendorName: 'Organic Farm Owner',
           rating: 4.9,
           crops: [],
+          cropPhotos: [],
           fruits: [],
           livestock: [],
+          livestockPhotos: [],
           accommodations: [],
+          accommodationPhotos: [],
           farmProducts: [],
           gallery: [],
           amenities: []
@@ -272,9 +300,12 @@ export default function FarmDetails() {
           costType: 'payable',
           image: fallbackFarm.image,
           crops: [...fallbackFarm.crops],
+          cropPhotos: [...fallbackFarm.cropPhotos],
           fruits: [...fallbackFarm.fruits],
           livestock: [...fallbackFarm.livestock],
+          livestockPhotos: [...fallbackFarm.livestockPhotos],
           accommodations: [...fallbackFarm.accommodations],
+          accommodationPhotos: [...fallbackFarm.accommodationPhotos],
           farmProducts: [...fallbackFarm.farmProducts],
           gallery: [...fallbackFarm.gallery],
           amenities: [...fallbackFarm.amenities]
@@ -875,9 +906,14 @@ export default function FarmDetails() {
   }
 
   const activeCrops = isEditing ? editForm.crops : farm.crops;
+  const activeCropPhotos = isEditing ? editForm.cropPhotos : (farm.cropPhotos || []);
   const activeFruits = isEditing ? editForm.fruits : farm.fruits;
   const activeLivestock = isEditing ? editForm.livestock : farm.livestock;
+  const activeLivestockPhotos = isEditing ? editForm.livestockPhotos : (farm.livestockPhotos || []);
+  const activeKidsActivities = isEditing ? editForm.kidsActivities : (farm.kidsActivities || []);
+  const activeKidsPhotos = isEditing ? editForm.kidsPhotos : (farm.kidsPhotos || []);
   const activeAccommodations = isEditing ? editForm.accommodations : farm.accommodations;
+  const activeAccommodationPhotos = isEditing ? editForm.accommodationPhotos : (farm.accommodationPhotos || []);
   const activeFarmProducts = isEditing ? editForm.farmProducts : farm.farmProducts;
   const activeGallery = isEditing ? editForm.gallery : farm.gallery;
   const isFree = isEditing ? editForm.costType === 'free' : (!farm.costPerPerson || Number(farm.costPerPerson) === 0);
@@ -945,6 +981,12 @@ export default function FarmDetails() {
             )}
             <span className="bg-white/20 backdrop-blur-md text-white border border-white/30 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
               🚜 Verified Agritourism Spot
+            </span>
+            <span className="bg-slate-900/85 backdrop-blur-md text-emerald-300 border border-emerald-500/40 px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-xs font-mono">
+              <Clock size={13} className="text-emerald-400" />
+              <span>
+                Page Updated: {farm.updatedAt || farm.createdAt ? new Date(farm.updatedAt || farm.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recently Updated'}
+              </span>
             </span>
           </div>
 
@@ -1182,43 +1224,77 @@ export default function FarmDetails() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {activeAccommodations.map((acc, index) => (
-                  <div key={acc.id || index} className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs hover:shadow-md transition-all space-y-1.5 relative group">
-                    {isEditing && (
-                      <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
-                        <button
-                          type="button"
-                          onClick={() => handleEditAccClick(acc)}
-                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                          title="Edit Stay Choice"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveAccItem(acc.id)}
-                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                          title="Delete Stay Choice"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between pr-6">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-100/60 text-emerald-700 flex items-center justify-center font-bold text-sm">
-                          {acc.title.includes('Tent') ? '⛺' : acc.title.includes('Hut') ? '🛖' : acc.title.includes('Tree') ? '🌳' : '🏠'}
+                {activeAccommodations.map((acc, index) => {
+                  const accTitle = typeof acc === 'string' ? acc : (acc.title || 'Accommodation');
+                  const accPrice = typeof acc === 'object' && acc.price ? acc.price : 'Included';
+                  const accDesc = typeof acc === 'object' && acc.desc ? acc.desc : 'Comfortable farm stay choice';
+                  const accPhotos = typeof acc === 'object' && Array.isArray(acc.photos) ? acc.photos : [];
+
+                  return (
+                    <div key={acc.id || index} className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs hover:shadow-md transition-all space-y-2 relative group">
+                      {isEditing && (
+                        <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
+                          <button
+                            type="button"
+                            onClick={() => handleEditAccClick(acc)}
+                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                            title="Edit Stay Choice"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAccItem(acc.id)}
+                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="Delete Stay Choice"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
-                        <h4 className="font-bold text-slate-800 text-sm font-headings">{acc.title}</h4>
+                      )}
+                      <div className="flex items-center justify-between pr-6">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-100/60 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                            {accTitle.includes('Tent') ? '⛺' : accTitle.includes('Hut') ? '🛖' : accTitle.includes('Tree') ? '🌳' : '🏠'}
+                          </div>
+                          <h4 className="font-bold text-slate-800 text-sm font-headings">{accTitle}</h4>
+                        </div>
+                        <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-200/60 font-mono">
+                          {accPrice}
+                        </span>
                       </div>
-                      <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-200/60 font-mono">
-                        {acc.price}
-                      </span>
+                      <p className="text-xs text-slate-500 font-medium leading-relaxed italic">{accDesc}</p>
+
+                      {accPhotos.length > 0 && (
+                        <div className="flex gap-1.5 pt-1.5 overflow-x-auto">
+                          {accPhotos.map((p, pIdx) => (
+                            <img key={pIdx} src={p.url} alt={p.caption} className="w-14 h-14 object-cover rounded-xl border border-slate-200 shrink-0" />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed italic">{acc.desc}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+
+              {/* Accommodation & Stay Photos Grid */}
+              {activeAccommodationPhotos.length > 0 && (
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Accommodation & Stay Photos</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {activeAccommodationPhotos.map((photo, idx) => (
+                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
+                        <img src={photo.url} alt={photo.caption || 'Stay Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        {photo.caption && (
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
+                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1380,6 +1456,25 @@ export default function FarmDetails() {
                   </>
                 )}
               </div>
+
+              {/* Crops & Fruit Orchards Photos Grid */}
+              {activeCropPhotos.length > 0 && (
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Crops & Fruit Orchard Photos</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {activeCropPhotos.map((photo, idx) => (
+                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
+                        <img src={photo.url} alt={photo.caption || 'Crop Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        {photo.caption && (
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
+                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1468,6 +1563,73 @@ export default function FarmDetails() {
                     <button onClick={handleAddAnimalItem} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer">
                       + Add
                     </button>
+                  </div>
+                </div>
+              )}
+              {/* Livestock & Poultry Photos Grid */}
+              {activeLivestockPhotos.length > 0 && (
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Livestock & Poultry Photos</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {activeLivestockPhotos.map((photo, idx) => (
+                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
+                        <img src={photo.url} alt={photo.caption || 'Livestock Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        {photo.caption && (
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
+                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Section: Kids Section & Fun Entertainments 🎈 */}
+          {((activeKidsActivities && activeKidsActivities.length > 0) || (activeKidsPhotos && activeKidsPhotos.length > 0) || isEditing) && (
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4 text-left">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center font-bold text-lg">
+                    🎈
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold font-headings text-slate-800">Kids Section & Fun Entertainments</h2>
+                    <p className="text-xs text-slate-400 font-medium font-body">Safe playgrounds, petting corners, pottery & mini tractor rides for children</p>
+                  </div>
+                </div>
+                <span className="bg-purple-50 text-purple-800 text-[10px] font-black uppercase px-3 py-1 rounded-full border border-purple-200">
+                  Family Friendly 👨‍👩‍👧‍👦
+                </span>
+              </div>
+
+              {activeKidsActivities && activeKidsActivities.length > 0 && (
+                <div className="flex flex-wrap gap-2.5">
+                  {(Array.isArray(activeKidsActivities) ? activeKidsActivities : activeKidsActivities.split(',').map(a => a.trim())).map((act, index) => (
+                    <span key={index} className="bg-purple-50 text-purple-900 border border-purple-200/80 px-3.5 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                      🎈 {act}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Kids Entertainments Photos Grid */}
+              {activeKidsPhotos && activeKidsPhotos.length > 0 && (
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Kids Play Area & Activity Photos</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {activeKidsPhotos.map((photo, idx) => (
+                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
+                        <img src={photo.url} alt={photo.caption || 'Kids Activity Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        {photo.caption && (
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
+                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
