@@ -122,158 +122,169 @@ export default function Home() {
          </section>
 
          {/* Premium Special Offers & Deals */}
-         {userProfile?.role !== 'vendor' && userProfile?.role !== 'delivery_person' && (
-            <section className="py-12 relative">
-               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="text-left mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
-                     <div>
-                        <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                           Special Offers & Banners <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
-                        </h2>
-                        <p className="text-gray-500 text-xs mt-1">Unlock discount coupons and deals direct from organic farms.</p>
-                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                     {/* Offer 1 */}
-                     <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-6 sm:p-8 text-left shadow-lg group hover:shadow-xl transition-all duration-300">
-                        <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
-                        <div className="relative z-10 space-y-4">
-                           <span className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider">
-                              Weekend Special
-                           </span>
-                           <h3 className="text-2xl font-black font-headings leading-tight">{homeContent.promo1Title}</h3>
-                           <p className="text-emerald-100 text-xs max-w-sm font-medium">{homeContent.promo1Desc}</p>
-
-                           <div className="flex flex-wrap items-center gap-4 pt-2">
-                              <div className="bg-white/15 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-2xl flex items-center gap-2">
-                                 <Tag size={13} className="text-emerald-300" />
-                                 <span className="text-xs font-black tracking-wide">Code: <span className="text-amber-300">{homeContent.promo1Code}</span></span>
-                              </div>
-                              <Link to="/marketplace" className="bg-white text-emerald-900 hover:bg-emerald-50 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1">
-                                 Claim Offer <ArrowRight size={12} />
-                              </Link>
-                           </div>
-                        </div>
-                     </div>
-
-                     {/* Offer 2 */}
-                     <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-amber-500 to-orange-600 text-white p-6 sm:p-8 text-left shadow-lg group hover:shadow-xl transition-all duration-300">
-                        <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
-                        <div className="relative z-10 space-y-4">
-                           <span className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider">
-                              Flat 15% Off
-                           </span>
-                           <h3 className="text-2xl font-black font-headings leading-tight">{homeContent.promo2Title}</h3>
-                           <p className="text-amber-100 text-xs max-w-sm font-medium">{homeContent.promo2Desc}</p>
-
-                           <div className="flex flex-wrap items-center gap-4 pt-2">
-                              <div className="bg-white/15 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-2xl flex items-center gap-2">
-                                 <Percent size={13} className="text-amber-200" />
-                                 <span className="text-xs font-black tracking-wide">Code: <span className="text-amber-200">{homeContent.promo2Code}</span></span>
-                              </div>
-                              <Link to="/marketplace" className="bg-white text-amber-950 hover:bg-amber-50 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1">
-                                 Shop Now <ArrowRight size={12} />
-                              </Link>
-                           </div>
-                        </div>
-                     </div>
-
+         <section className="py-8 sm:py-12 relative">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+               <div className="text-left mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
+                  <div>
+                     <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2 font-headings">
+                        Special Offers & Banners <span className="w-2 h-2 rounded-full bg-brand"></span>
+                     </h2>
+                     <p className="text-gray-500 text-xs mt-1 font-body">Unlock discount coupons and deals direct from organic farms.</p>
                   </div>
                </div>
-            </section>
-         )}
 
-         {/* About Section */}
-         <section className="py-24">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-               <div className="grid md:grid-cols-2 gap-16 items-center">
-                  <div className="text-left space-y-6">
-                     <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                        {homeContent.aboutHeadline} <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
-                     </h2>
-                     <div className="space-y-4 text-gray-500 text-sm leading-relaxed">
-                        <p>
-                           {homeContent.aboutText1}
-                        </p>
-                        <p>
-                           {homeContent.aboutText2}
-                        </p>
-                     </div>
-                     {userProfile?.role !== 'vendor' && userProfile?.role !== 'delivery_person' && (
-                        <Link to="/marketplace" className="inline-flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-8 py-3.5 rounded-full font-bold text-sm tracking-wide transition-all shadow-lg shadow-brand/10 hover:-translate-y-0.5 active:translate-y-0">
-                           Shop Now <ArrowRight size={18} />
-                        </Link>
-                     )}
-                  </div>
-                  <div className="relative flex justify-center">
-                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-brand-light rounded-full blur-3xl opacity-60"></div>
-                     <div className="rounded-3xl overflow-hidden shadow-2xl border-4 border-white relative z-10 max-w-md w-full hover:scale-101 transition-transform">
-                        <img src={homeContent.aboutImage} alt="Farm Fresh Produce" className="w-full h-88 object-cover" />
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                  {/* Offer 1 */}
+                  <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-6 sm:p-8 text-left shadow-lg group hover:shadow-xl transition-all duration-300">
+                     <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
+                     <div className="relative z-10 space-y-4">
+                        <span className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider font-mono">
+                           Weekend Special
+                        </span>
+                        <h3 className="text-2xl font-black font-headings leading-tight">{homeContent.promo1Title}</h3>
+                        <p className="text-emerald-100 text-xs max-w-sm font-medium font-body leading-relaxed">{homeContent.promo1Desc}</p>
+
+                        <div className="flex flex-wrap items-center gap-4 pt-2">
+                           <div className="bg-white/15 backdrop-blur-md border border-white/20 px-3.5 py-2 rounded-2xl flex items-center gap-2">
+                              <Tag size={13} className="text-emerald-300" />
+                              <span className="text-xs font-black tracking-wide font-mono">Code: <span className="text-amber-300">{homeContent.promo1Code}</span></span>
+                           </div>
+                           <Link to="/marketplace" className="bg-white text-emerald-900 hover:bg-emerald-50 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1 font-headings">
+                              Claim Offer <ArrowRight size={12} />
+                           </Link>
+                        </div>
                      </div>
                   </div>
+
+                  {/* Offer 2 */}
+                  <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-amber-500 to-orange-600 text-white p-6 sm:p-8 text-left shadow-lg group hover:shadow-xl transition-all duration-300">
+                     <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
+                     <div className="relative z-10 space-y-4">
+                        <span className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider font-mono">
+                           Flat 15% Off
+                        </span>
+                        <h3 className="text-2xl font-black font-headings leading-tight">{homeContent.promo2Title}</h3>
+                        <p className="text-amber-100 text-xs max-w-sm font-medium font-body leading-relaxed">{homeContent.promo2Desc}</p>
+
+                        <div className="flex flex-wrap items-center gap-4 pt-2">
+                           <div className="bg-white/15 backdrop-blur-md border border-white/20 px-3.5 py-2 rounded-2xl flex items-center gap-2">
+                              <Percent size={13} className="text-amber-200" />
+                              <span className="text-xs font-black tracking-wide font-mono">Code: <span className="text-amber-200">{homeContent.promo2Code}</span></span>
+                           </div>
+                           <Link to="/marketplace" className="bg-white text-amber-950 hover:bg-amber-50 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1 font-headings">
+                              Shop Now <ArrowRight size={12} />
+                           </Link>
+                        </div>
+                     </div>
+                  </div>
+
                </div>
             </div>
          </section>
 
-          {/* Our Farm-to-Table Process */}
-          <section className="py-20 bg-white">
-             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="text-center mb-16">
-                   <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">{homeContent.processTitle || "Our Farm-to-Table Process"}</h2>
-                   <p className="text-gray-500 max-w-xl mx-auto text-sm">{homeContent.processSubtitle || "We maintain a clean, temperature-controlled, and highly efficient network to ship organic products from local soil directly to your shelf."}</p>
-                </div>
+         {/* ── About FresVeg Section ────────────────── */}
+         <section className="py-16 sm:py-20 relative bg-emerald-500/5">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+               <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center text-left">
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative">
+                  {/* Text Column on Left */}
+                  <div className="lg:col-span-7 space-y-6">
+                     <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight font-headings flex items-center gap-2">
+                        {homeContent.aboutHeadline || 'About FresVeg'} <span className="w-2.5 h-2.5 rounded-full bg-brand inline-block"></span>
+                     </h2>
 
-                   {/* Step 1 */}
-                   <div className="space-y-4 text-center group">
-                      <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                         <Sprout size={28} />
-                      </div>
-                      <div className="space-y-2">
-                         <h3 className="text-base font-extrabold text-gray-900">{homeContent.process1Title || "1. Fresh Harvest"}</h3>
-                         <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process1Desc || "Farmers pick organic produce only after you place your order to ensure peak flavor."}</p>
-                      </div>
-                   </div>
+                     <div className="space-y-4 text-gray-500 text-sm sm:text-base leading-relaxed font-body">
+                        <p>
+                           {homeContent.aboutText1 || 'We are committed to providing the freshest, highest quality produce directly from our farms to your table. Our mission is to support local farmers while delivering exceptional products that nourish your family.'}
+                        </p>
+                        <p>
+                           {homeContent.aboutText2 || 'Every product is carefully selected, harvested at peak ripeness, and delivered with care to ensure you receive only the best nature has to offer.'}
+                        </p>
+                     </div>
 
-                   {/* Step 2 */}
-                   <div className="space-y-4 text-center group">
-                      <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                         <Box size={28} />
-                      </div>
-                      <div className="space-y-2">
-                         <h3 className="text-base font-extrabold text-gray-900">{homeContent.process2Title || "2. Eco Packaging"}</h3>
-                         <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process2Desc || "Items are sorted and wrapped in plastic-free biodegradable packets to protect the planet."}</p>
-                      </div>
-                   </div>
+                     <div className="pt-2">
+                        <Link
+                           to="/marketplace"
+                           className="bg-brand hover:bg-brand-dark text-white px-7 py-3.5 rounded-full font-bold text-sm tracking-wide shadow-md shadow-brand/20 transition-all hover:-translate-y-0.5 active:translate-y-0 inline-flex items-center gap-2 font-headings"
+                        >
+                           Shop Now <ArrowRight size={16} />
+                        </Link>
+                     </div>
+                  </div>
 
-                   {/* Step 3 */}
-                   <div className="space-y-4 text-center group">
-                      <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                         <Truck size={28} />
-                      </div>
-                      <div className="space-y-2">
-                         <h3 className="text-base font-extrabold text-gray-900">{homeContent.process3Title || "3. Swift Transit"}</h3>
-                         <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process3Desc || "Delivery partners collect your box immediately and run optimized routes using maps."}</p>
-                      </div>
-                   </div>
+                  {/* Image Column on Right */}
+                  <div className="lg:col-span-5 relative flex justify-center">
+                     <div className="w-full h-72 sm:h-80 lg:h-96 rounded-[2rem] overflow-hidden shadow-xl border-4 border-white bg-white">
+                        <img
+                           src="https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=800&q=80"
+                           alt="About FresVeg Organic Farms"
+                           className="w-full h-full object-cover"
+                        />
+                     </div>
+                  </div>
 
-                   {/* Step 4 */}
-                   <div className="space-y-4 text-center group">
-                      <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                         <MapPin size={28} />
-                      </div>
-                      <div className="space-y-2">
-                         <h3 className="text-base font-extrabold text-gray-900">{homeContent.process4Title || "4. Doorstep Joy"}</h3>
-                         <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process4Desc || "Get contact-free drop off in under 4 hours, and scan farm codes for origin tracing."}</p>
-                      </div>
-                   </div>
+               </div>
+            </div>
+         </section>
 
-                </div>
-             </div>
-          </section>
+         {/* Our Farm-to-Table Process */}
+         <section className="py-20 bg-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+               <div className="text-center mb-16">
+                  <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">{homeContent.processTitle || "Our Farm-to-Table Process"}</h2>
+                  <p className="text-gray-500 max-w-xl mx-auto text-sm">{homeContent.processSubtitle || "We maintain a clean, temperature-controlled, and highly efficient network to ship organic products from local soil directly to your shelf."}</p>
+               </div>
+
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative">
+
+                  {/* Step 1 */}
+                  <div className="space-y-4 text-center group">
+                     <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                        <Sprout size={28} />
+                     </div>
+                     <div className="space-y-2">
+                        <h3 className="text-base font-extrabold text-gray-900">{homeContent.process1Title || "1. Fresh Harvest"}</h3>
+                        <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process1Desc || "Farmers pick organic produce only after you place your order to ensure peak flavor."}</p>
+                     </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="space-y-4 text-center group">
+                     <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                        <Box size={28} />
+                     </div>
+                     <div className="space-y-2">
+                        <h3 className="text-base font-extrabold text-gray-900">{homeContent.process2Title || "2. Eco Packaging"}</h3>
+                        <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process2Desc || "Items are sorted and wrapped in plastic-free biodegradable packets to protect the planet."}</p>
+                     </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="space-y-4 text-center group">
+                     <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                        <Truck size={28} />
+                     </div>
+                     <div className="space-y-2">
+                        <h3 className="text-base font-extrabold text-gray-900">{homeContent.process3Title || "3. Swift Transit"}</h3>
+                        <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process3Desc || "Delivery partners collect your box immediately and run optimized routes using maps."}</p>
+                     </div>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div className="space-y-4 text-center group">
+                     <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                        <MapPin size={28} />
+                     </div>
+                     <div className="space-y-2">
+                        <h3 className="text-base font-extrabold text-gray-900">{homeContent.process4Title || "4. Doorstep Joy"}</h3>
+                        <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process4Desc || "Get contact-free drop off in under 4 hours, and scan farm codes for origin tracing."}</p>
+                     </div>
+                  </div>
+
+               </div>
+            </div>
+         </section>
 
          {/* Why Choose FresVeg? */}
          <section className="py-20 relative bg-emerald-500/5">
