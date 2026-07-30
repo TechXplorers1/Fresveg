@@ -6,6 +6,24 @@ import { useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, Users, Compass, Search, Sparkles, CheckCircle, Clock, Trash2, ShieldAlert, ArrowRight, BookOpen, X, Minus, Plus } from 'lucide-react';
 import ModernDatePicker from '../components/common/ModernDatePicker';
 
+const formatUpdatedTime = (isoString) => {
+  if (!isoString) return null;
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return null;
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch {
+    return null;
+  }
+};
+
 export default function VisitFarms() {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
@@ -389,14 +407,14 @@ export default function VisitFarms() {
                       <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md text-white text-[9px] font-extrabold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1 border border-white/20">
                         <Clock size={10} className="text-emerald-400" />
                         <span>
-                          {farm.updatedAt || farm.createdAt ? `Updated ${new Date(farm.updatedAt || farm.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'Recently Updated'}
+                          {farm.updatedAt || farm.createdAt ? `Updated ${formatUpdatedTime(farm.updatedAt || farm.createdAt)}` : 'Recently Updated'}
                         </span>
                       </div>
 
                       {/* Location Badge on Image */}
                       <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs font-bold drop-shadow-md">
-                        <span className="flex items-center gap-1 text-[11px] truncate font-body">
-                          <MapPin size={13} className="text-emerald-400 shrink-0" /> {farm.location}
+                        <span onClick={(e) => { e.stopPropagation(); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(farm.location)}`, '_blank'); }} className="flex items-center gap-1 text-[11px] truncate font-body hover:underline hover:text-emerald-300 transition-colors cursor-pointer" title="Click to open location in Google Maps">
+                          <MapPin size={13} className="text-emerald-400 shrink-0" /> {farm.location} ↗
                         </span>
                         {farm.rating && (
                           <span className="bg-amber-500/90 text-white text-[10px] font-black px-2 py-0.5 rounded-full shrink-0">

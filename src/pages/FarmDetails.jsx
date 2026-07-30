@@ -59,6 +59,7 @@ const MOCK_FARM_DATA = {
     crops: ['Organic Strawberries', 'Sweet Cherries', 'Red Raspberries', 'Mulberries'],
     fruits: ['Mahabaleshwar Strawberries', 'Plums & Apricots', 'Wild Berries'],
     livestock: ['Poultry & Free-Range Ducks', 'Sheep & Goats Flock', 'Apiculture Honey Bees'],
+    kidsActivities: ['🎈 Kids Playground & Swings', '🐰 Bunny & Petting Corner', '🎨 Pottery & Clay Crafts', '🚜 Mini Tractor Rides', '🐟 Fish Feeding Pond'],
     accommodations: [
       { id: 'acc-1', title: 'Farmhouse Guest Rooms', desc: 'Cozy, air-cooled rooms with private veranda facing strawberry fields.', price: 'Included', icon: 'house' },
       { id: 'acc-2', title: 'Traditional Clay Huts', desc: 'Cool eco-huts built with natural mud & thatched roofs.', price: 'Included', icon: 'hut' },
@@ -140,6 +141,24 @@ export function getFarmSlug(farm) {
   return cleanName || farm.id || 'farm';
 }
 
+const formatUpdatedTime = (isoString) => {
+  if (!isoString) return null;
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return null;
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch {
+    return null;
+  }
+};
+
 export default function FarmDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -180,6 +199,16 @@ export default function FarmDetails() {
   const [newPhoto, setNewPhoto] = useState({ url: '', caption: '' });
 
   // Lightbox Viewer Index
+  const openLocationInMaps = (locationStr, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!locationStr) return;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationStr)}`;
+    window.open(url, '_blank');
+  };
+
   const [lightboxIndex, setLightboxIndex] = useState(null);
 
   // Booking Modal State
@@ -553,6 +582,7 @@ export default function FarmDetails() {
         crops: editForm.crops,
         fruits: editForm.fruits,
         livestock: editForm.livestock,
+        kidsActivities: editForm.kidsActivities,
         accommodations: editForm.accommodations,
         farmProducts: editForm.farmProducts,
         gallery: editForm.gallery,
@@ -906,16 +936,45 @@ export default function FarmDetails() {
   }
 
   const activeCrops = isEditing ? editForm.crops : farm.crops;
-  const activeCropPhotos = isEditing ? editForm.cropPhotos : (farm.cropPhotos || []);
   const activeFruits = isEditing ? editForm.fruits : farm.fruits;
   const activeLivestock = isEditing ? editForm.livestock : farm.livestock;
-  const activeLivestockPhotos = isEditing ? editForm.livestockPhotos : (farm.livestockPhotos || []);
   const activeKidsActivities = isEditing ? editForm.kidsActivities : (farm.kidsActivities || []);
-  const activeKidsPhotos = isEditing ? editForm.kidsPhotos : (farm.kidsPhotos || []);
   const activeAccommodations = isEditing ? editForm.accommodations : farm.accommodations;
-  const activeAccommodationPhotos = isEditing ? editForm.accommodationPhotos : (farm.accommodationPhotos || []);
   const activeFarmProducts = isEditing ? editForm.farmProducts : farm.farmProducts;
-  const activeGallery = isEditing ? editForm.gallery : farm.gallery;
+  const activeGallery = (isEditing ? editForm.gallery : farm.gallery) || [];
+
+  const rawCropPhotos = (isEditing ? editForm.cropPhotos : farm.cropPhotos) || [];
+  const activeCropPhotos = rawCropPhotos.length > 0
+    ? rawCropPhotos
+    : activeGallery.filter(g => g.caption?.toLowerCase().includes('crop') || g.caption?.toLowerCase().includes('fruit') || g.caption?.toLowerCase().includes('harvest') || g.caption?.toLowerCase().includes('orchard') || g.caption?.toLowerCase().includes('produce') || g.category === 'crop');
+
+  const rawLivestockPhotos = (isEditing ? editForm.livestockPhotos : farm.livestockPhotos) || [];
+  const activeLivestockPhotos = rawLivestockPhotos.length > 0
+    ? rawLivestockPhotos
+    : activeGallery.filter(g => g.caption?.toLowerCase().includes('cow') || g.caption?.toLowerCase().includes('goat') || g.caption?.toLowerCase().includes('animal') || g.caption?.toLowerCase().includes('livestock') || g.caption?.toLowerCase().includes('poultry') || g.caption?.toLowerCase().includes('bee') || g.caption?.toLowerCase().includes('duck') || g.caption?.toLowerCase().includes('sheep') || g.caption?.toLowerCase().includes('chicken') || g.category === 'livestock');
+
+  const rawKidsPhotos = (isEditing ? editForm.kidsPhotos : farm.kidsPhotos) || [];
+  const activeKidsPhotos = rawKidsPhotos.length > 0
+    ? rawKidsPhotos
+    : activeGallery.filter(g => g.caption?.toLowerCase().includes('kid') || g.caption?.toLowerCase().includes('play') || g.caption?.toLowerCase().includes('child') || g.caption?.toLowerCase().includes('swing') || g.caption?.toLowerCase().includes('toy') || g.caption?.toLowerCase().includes('petting') || g.caption?.toLowerCase().includes('fun') || g.category === 'kids');
+
+  const rawAccommodationPhotos = (isEditing ? editForm.accommodationPhotos : farm.accommodationPhotos) || [];
+  const activeAccommodationPhotos = rawAccommodationPhotos.length > 0
+    ? rawAccommodationPhotos
+    : activeGallery.filter(g => g.caption?.toLowerCase().includes('stay') || g.caption?.toLowerCase().includes('hut') || g.caption?.toLowerCase().includes('tent') || g.caption?.toLowerCase().includes('room') || g.caption?.toLowerCase().includes('cottage') || g.caption?.toLowerCase().includes('villa') || g.category === 'stay');
+
+  // Exclude section-specific photos (Crops, Animals, Kids, Stays) from the main General Farm Gallery
+  const generalGalleryPhotos = activeGallery.filter(p => {
+    const c = (p.caption || '').toLowerCase();
+    const cat = (p.category || '').toLowerCase();
+    
+    const isCrop = cat === 'crop' || c.includes('crop') || c.includes('fruit') || c.includes('harvest') || c.includes('orchard') || c.includes('produce');
+    const isAnimal = cat === 'livestock' || c.includes('cow') || c.includes('goat') || c.includes('animal') || c.includes('livestock') || c.includes('poultry') || c.includes('bee') || c.includes('duck') || c.includes('sheep') || c.includes('chicken');
+    const isKids = cat === 'kids' || c.includes('kid') || c.includes('play') || c.includes('child') || c.includes('swing') || c.includes('toy') || c.includes('petting') || c.includes('fun');
+    const isStay = cat === 'stay' || c.includes('stay') || c.includes('hut') || c.includes('tent') || c.includes('room') || c.includes('cottage') || c.includes('villa');
+
+    return !(isCrop || isAnimal || isKids || isStay);
+  });
   const isFree = isEditing ? editForm.costType === 'free' : (!farm.costPerPerson || Number(farm.costPerPerson) === 0);
 
   return (
@@ -985,7 +1044,7 @@ export default function FarmDetails() {
             <span className="bg-slate-900/85 backdrop-blur-md text-emerald-300 border border-emerald-500/40 px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-xs font-mono">
               <Clock size={13} className="text-emerald-400" />
               <span>
-                Page Updated: {farm.updatedAt || farm.createdAt ? new Date(farm.updatedAt || farm.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recently Updated'}
+                Page Updated: {formatUpdatedTime(farm.updatedAt || farm.createdAt) || 'Recently Updated'}
               </span>
             </span>
           </div>
@@ -1031,8 +1090,8 @@ export default function FarmDetails() {
           )}
 
           <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-200">
-            <span className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
-              <MapPin size={14} className="text-emerald-400" /> {isEditing ? editForm.location : farm.location}
+            <span onClick={(e) => openLocationInMaps(isEditing ? editForm.location : farm.location, e)} className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 hover:border-emerald-400 hover:text-emerald-300 transition-all cursor-pointer" title="Click to open location in Google Maps">
+              <MapPin size={14} className="text-emerald-400" /> {isEditing ? editForm.location : farm.location} ↗
             </span>
             <span className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
               <Store size={14} className="text-emerald-400" /> Owner: {farm.vendorName}
@@ -1157,7 +1216,7 @@ export default function FarmDetails() {
               </div>
 
               {/* Photo Grid Showcase */}
-              {activeGallery.length === 0 ? (
+              {generalGalleryPhotos.length === 0 ? (
                 <div className="py-8 text-center bg-white/50 border border-dashed border-slate-200 rounded-2xl">
                   <p className="text-xs text-slate-400 font-medium">No gallery photos added yet.</p>
                   {isEditing && (
@@ -1171,7 +1230,7 @@ export default function FarmDetails() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-                  {activeGallery.map((photo, idx) => (
+                  {generalGalleryPhotos.map((photo, idx) => (
                     <div
                       key={photo.id || idx}
                       className="relative h-36 sm:h-44 rounded-2xl overflow-hidden group cursor-pointer border border-slate-200/80 shadow-xs hover:shadow-lg transition-all"
@@ -1283,7 +1342,7 @@ export default function FarmDetails() {
                   <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Accommodation & Stay Photos</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     {activeAccommodationPhotos.map((photo, idx) => (
-                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
+                      <div key={photo.id || idx} onClick={() => { const i = activeGallery.findIndex(g => g.url === photo.url); setLightboxIndex(i >= 0 ? i : 0); }} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs cursor-pointer hover:border-emerald-400">
                         <img src={photo.url} alt={photo.caption || 'Stay Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                         {photo.caption && (
                           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">

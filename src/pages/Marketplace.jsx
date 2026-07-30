@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ShoppingCart, Star, Search, Filter, Plus, Minus, X, ChevronLeft, ChevronRight, MapPin, Clock, Store, ArrowLeft, CheckCircle, Sprout, Compass } from 'lucide-react';
+import { ShoppingCart, Star, Search, Filter, Plus, Minus, X, ChevronLeft, ChevronRight, MapPin, Clock, Store, ArrowLeft, CheckCircle, Sprout, Compass, Navigation, ExternalLink } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
 import { realtimeDb } from '../firebase';
@@ -55,12 +55,40 @@ const MOCK_FARMS_LIST = [
    }
 ];
 
+const formatUpdatedTime = (isoString) => {
+   if (!isoString) return null;
+   try {
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) return null;
+      return date.toLocaleString('en-US', {
+         month: 'short',
+         day: 'numeric',
+         year: 'numeric',
+         hour: 'numeric',
+         minute: '2-digit',
+         hour12: true
+      });
+   } catch {
+      return null;
+   }
+};
+
 export default function Marketplace() {
    const { cartItems, addToCart, updateQuantity } = useCart();
    const { products, searchQuery, setSearchQuery, categoriesWithDetails = [] } = useProducts();
    const navigate = useNavigate();
    const [activeCategory, setActiveCategory] = useState('All');
    const [sortBy, setSortBy] = useState('none');
+
+   const openLocationInMaps = (locationStr, e) => {
+      if (e) {
+         e.preventDefault();
+         e.stopPropagation();
+      }
+      if (!locationStr) return;
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationStr)}`;
+      window.open(url, '_blank');
+   };
 
    // Filter states
    const [priceRanges, setPriceRanges] = useState([]);
@@ -370,9 +398,15 @@ export default function Marketplace() {
                location,
                rating,
                deliveryTime,
+               updatedAt: p.updatedAt || p.createdAt || null,
                categories: new Set(),
                products: []
             };
+         }
+
+         const pTime = p.updatedAt || p.createdAt;
+         if (pTime && (!shopMap[vendorName].updatedAt || new Date(pTime) > new Date(shopMap[vendorName].updatedAt))) {
+            shopMap[vendorName].updatedAt = pTime;
          }
 
          shopMap[vendorName].products.push(p);
@@ -916,6 +950,32 @@ export default function Marketplace() {
                      </div>
 
                      {/* Farm Hero Storefront Banner */}
+                     {/* Farm Shop Location Address & Map Redirect Bar */}
+                     <div className="bg-emerald-50/90 border border-emerald-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left shadow-xs">
+                        <div className="flex items-center gap-3 min-w-0">
+                           <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
+                              <MapPin size={20} />
+                           </div>
+                           <div className="min-w-0">
+                              <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider font-headings">Farm Shop Location Address:</h4>
+                              <p
+                                 onClick={(e) => openLocationInMaps(selectedFarmShop.location, e)}
+                                 className="text-xs font-bold text-emerald-900 hover:text-emerald-600 hover:underline cursor-pointer transition-colors truncate mt-0.5"
+                                 title="Click to open location in Google Maps"
+                              >
+                                 📍 {selectedFarmShop.location}
+                              </p>
+                           </div>
+                        </div>
+                        <button
+                           type="button"
+                           onClick={(e) => openLocationInMaps(selectedFarmShop.location, e)}
+                           className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer shrink-0 font-headings"
+                        >
+                           <Navigation size={14} /> Open Location in Maps ↗
+                        </button>
+                     </div>
+
                      <div className="relative rounded-3xl overflow-hidden border border-white/60 shadow-xl bg-white">
                         <div className="relative h-48 sm:h-64 w-full overflow-hidden bg-slate-900">
                            <img
@@ -940,9 +1000,13 @@ export default function Marketplace() {
                                     {selectedFarmShop.farmName}
                                  </h1>
                                  <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-200">
-                                    <span className="flex items-center gap-1.5"><MapPin size={14} className="text-emerald-400" /> {selectedFarmShop.location}</span>
+                                    <span onClick={(e) => openLocationInMaps(selectedFarmShop.location, e)} className="flex items-center gap-1.5 hover:underline hover:text-emerald-300 cursor-pointer" title="Click to open location in Google Maps"><MapPin size={14} className="text-emerald-400" /> {selectedFarmShop.location} ↗</span>
                                     <span className="flex items-center gap-1.5"><Store size={14} className="text-emerald-400" /> Owner: {selectedFarmShop.vendorName || 'Farm Owner'}</span>
                                     <span className="flex items-center gap-1.5"><Sprout size={14} className="text-emerald-400" /> {selectedFarmProducts.length} Direct Farm Products</span>
+                                    <span className="bg-slate-900/80 backdrop-blur-md text-emerald-300 border border-emerald-500/40 px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-xs font-mono">
+                                       <Clock size={13} className="text-emerald-400" />
+                                       <span>Page Updated: {formatUpdatedTime(selectedFarmShop.updatedAt || selectedFarmShop.createdAt) || 'Recently Updated'}</span>
+                                    </span>
                                  </div>
                               </div>
 
@@ -1177,9 +1241,13 @@ export default function Marketplace() {
                                  {selectedShop.name}
                               </h1>
                               <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-200">
-                                 <span className="flex items-center gap-1.5"><MapPin size={14} className="text-emerald-400" /> {selectedShop.location}</span>
+                                 <span onClick={(e) => openLocationInMaps(selectedShop.location, e)} className="flex items-center gap-1.5 hover:underline hover:text-emerald-300 cursor-pointer" title="Click to open location in Google Maps"><MapPin size={14} className="text-emerald-400" /> {selectedShop.location} ↗</span>
                                  <span className="flex items-center gap-1.5"><Clock size={14} className="text-emerald-400" /> {selectedShop.deliveryTime} Express Delivery</span>
                                  <span className="flex items-center gap-1.5"><Store size={14} className="text-emerald-400" /> {selectedShop.products.length} Fresh Produce Available</span>
+                                 <span className="bg-slate-900/80 backdrop-blur-md text-emerald-300 border border-emerald-500/40 px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-xs font-mono">
+                                    <Clock size={13} className="text-emerald-400" />
+                                    <span>Page Updated: {formatUpdatedTime(selectedShop.updatedAt || selectedShop.createdAt) || 'Recently Updated'}</span>
+                                 </span>
                               </div>
                            </div>
                         </div>
@@ -1430,6 +1498,12 @@ export default function Marketplace() {
                                              )}
                                           </div>
                                           <p className="text-xs text-slate-500 font-body line-clamp-2 italic">"{farm.description}"</p>
+                                          {(farm.updatedAt || farm.createdAt) && (
+                                             <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100/60 px-2.5 py-0.5 rounded-full font-mono w-fit mt-1">
+                                                <Clock size={10} className="text-emerald-600" />
+                                                <span>Updated {formatUpdatedTime(farm.updatedAt || farm.createdAt)}</span>
+                                             </div>
+                                          )}
                                        </div>
 
                                        <button
@@ -1493,7 +1567,7 @@ export default function Marketplace() {
 
                                     <div className="absolute bottom-3 left-3 right-3 text-white">
                                        <h3 className="font-black text-lg font-headings leading-tight drop-shadow-sm text-white line-clamp-1">{shop.name}</h3>
-                                       <p className="text-[11px] text-slate-200 font-medium flex items-center gap-1 mt-0.5">
+                                       <p onClick={(e) => openLocationInMaps(shop.location, e)} className="text-[11px] text-slate-200 font-medium flex items-center gap-1 mt-0.5 hover:underline hover:text-emerald-300 cursor-pointer transition-colors" title="Click to open location in Google Maps">
                                           <MapPin size={11} className="text-emerald-400" /> {shop.location}
                                        </p>
                                     </div>
@@ -1502,9 +1576,17 @@ export default function Marketplace() {
                                  {/* Shop Content Info */}
                                  <div className="p-5 flex flex-col flex-1 justify-between space-y-4">
                                     <div className="space-y-2">
-                                       <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                                          <Clock size={13} className="text-emerald-600" />
-                                          <span>Delivery: <strong className="text-emerald-700">{shop.deliveryTime}</strong></span>
+                                       <div className="flex items-center justify-between gap-2 text-xs font-bold text-slate-600">
+                                          <div className="flex items-center gap-1">
+                                             <Clock size={13} className="text-emerald-600" />
+                                             <span>Delivery: <strong className="text-emerald-700">{shop.deliveryTime}</strong></span>
+                                          </div>
+                                          {(shop.updatedAt || shop.createdAt) && (
+                                             <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100/60 px-2 py-0.5 rounded-full font-mono">
+                                                <Clock size={10} className="text-emerald-600" />
+                                                <span>Updated {formatUpdatedTime(shop.updatedAt || shop.createdAt)}</span>
+                                             </div>
+                                          )}
                                        </div>
 
                                        <div className="flex flex-wrap gap-1.5 pt-1">

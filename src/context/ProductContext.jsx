@@ -228,16 +228,34 @@ export const ProductProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const deletedRef = ref(realtimeDb, 'deletedMockProducts');
+    const deletedRef = ref(realtimeDb, 'deletedProducts');
     const unsubscribeDeleted = onValue(deletedRef, (snapshot) => {
       const val = snapshot.val();
-      if (val) {
-        setDeletedMockIds(Object.keys(val).map(String));
+      if (val && typeof val === 'object') {
+        const keys = Array.isArray(val)
+          ? val.map((v, i) => (v ? String(i) : null)).filter(Boolean)
+          : Object.keys(val).map(String);
+        setDeletedMockIds(keys);
       } else {
         setDeletedMockIds([]);
       }
     });
-    return () => unsubscribeDeleted();
+
+    const deletedMockRef = ref(realtimeDb, 'deletedMockProducts');
+    const unsubscribeDeletedMock = onValue(deletedMockRef, (snapshot) => {
+      const val = snapshot.val();
+      if (val && typeof val === 'object') {
+        const keys = Array.isArray(val)
+          ? val.map((v, i) => (v ? String(i) : null)).filter(Boolean)
+          : Object.keys(val).map(String);
+        setDeletedMockIds(prev => Array.from(new Set([...prev, ...keys])));
+      }
+    });
+
+    return () => {
+      unsubscribeDeleted();
+      unsubscribeDeletedMock();
+    };
   }, []);
 
   // Use Realtime Database to get products and listen for updates
@@ -264,25 +282,31 @@ export const ProductProvider = ({ children }) => {
         manuallyDeletedIds = JSON.parse(localStorage.getItem('fresveg_deleted_product_ids') || '[]');
       } catch (e) {}
 
+      const globalDeletedSet = new Set([...deletedMockIds, ...manuallyDeletedIds]);
+
       // Deduplicate dbProducts by ID
       const uniqueDbMap = new Map();
       dbProducts.forEach(p => {
-        if (p && p.id) {
+        if (p && p.id && !globalDeletedSet.has(String(p.id)) && !globalDeletedSet.has(`mock_${p.id}`)) {
           uniqueDbMap.set(String(p.id), p);
         }
       });
       const uniqueDbProducts = Array.from(uniqueDbMap.values());
 
       const activeMockProducts = INITIAL_MOCK_PRODUCTS.filter(p => 
-        !deletedMockIds.includes(String(p.id)) && !manuallyDeletedIds.includes(String(p.id))
+        !globalDeletedSet.has(String(p.id)) && !globalDeletedSet.has(`mock_${p.id}`)
       );
       
-      const filteredDbProducts = uniqueDbProducts.filter(p => !manuallyDeletedIds.includes(String(p.id)));
+      const filteredDbProducts = uniqueDbProducts.filter(p => 
+        !globalDeletedSet.has(String(p.id)) && !globalDeletedSet.has(`mock_${p.id}`)
+      );
 
       // Final deduplication across mock + db products
       const finalProductsMap = new Map();
       [...activeMockProducts, ...filteredDbProducts].forEach(p => {
-        finalProductsMap.set(String(p.id), p);
+        if (p && p.id && !globalDeletedSet.has(String(p.id))) {
+          finalProductsMap.set(String(p.id), p);
+        }
       });
 
       const mergedProducts = Array.from(finalProductsMap.values());
@@ -409,7 +433,7 @@ const cleanFirebaseData = (data) => {
 
       // 1. Immediately remove from React state & localStorage
       setProducts(prev => {
-        const updated = prev.filter(p => String(p.id) !== strId);
+        const updated = prev.filter(p => String(p.id) !== strId && String(p.id) !== `mock_${strId}`);
         saveProductsToStorage(updated);
         return updated;
       });
@@ -423,16 +447,29 @@ const cleanFirebaseData = (data) => {
         }
       } catch (e) {}
 
-      // 3. Remove permanently from Firebase Realtime Database
-      const isMock = typeof id === 'number' || (!isNaN(id) && !strId.includes('-'));
-      if (isMock) {
-        await set(ref(realtimeDb, `deletedMockProducts/${id}`), true);
-      } else {
+      // 3. Sync deletion to Firebase Realtime DB (deletedProducts & deletedMockProducts nodes)
+      try {
+        await set(ref(realtimeDb, `deletedProducts/${strId}`), true);
+        await set(ref(realtimeDb, `deletedMockProducts/${strId}`), true);
+
         if (strId.startsWith('mock_')) {
-          const originalId = strId.replace('mock_', '');
-          await set(ref(realtimeDb, `deletedMockProducts/${originalId}`), true);
+          const origId = strId.replace('mock_', '');
+          await set(ref(realtimeDb, `deletedMockProducts/${origId}`), true);
+          await set(ref(realtimeDb, `deletedProducts/${origId}`), true);
         }
-        await remove(ref(realtimeDb, `products/${id}`));
+      } catch (err) {
+        console.warn('Sync deleted products node write warning:', err);
+      }
+
+      // 4. Remove permanently from Firebase Realtime Database products node
+      try {
+        await remove(ref(realtimeDb, `products/${strId}`));
+        if (strId.startsWith('mock_')) {
+          const origId = strId.replace('mock_', '');
+          await remove(ref(realtimeDb, `products/${origId}`));
+        }
+      } catch (err) {
+        console.warn('Remove products node write warning:', err);
       }
     } catch (error) {
       console.error('Error deleting product from Realtime DB:', error);

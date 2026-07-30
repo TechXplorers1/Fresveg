@@ -19,7 +19,7 @@
     },
     "products": {
       ".read": "true",
-      ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'admin'"
+      ".write": "auth != null"
     },
     "orders": {
       ".read": "auth != null",
@@ -35,7 +35,7 @@
     },
     "deletedMockProducts": {
       ".read": "true",
-      ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'admin'"
+      ".write": "auth != null"
     }
   }
 }
