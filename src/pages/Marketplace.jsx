@@ -108,6 +108,43 @@ const buildSocialLinks = (source) => {
    return { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' };
 };
 
+const resolveShopSocialLinks = (shopOrFarm, publicShopsData) => {
+   if (!shopOrFarm) return { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' };
+   
+   const direct = buildSocialLinks(shopOrFarm);
+   
+   let matchedPublic = {};
+   if (publicShopsData && typeof publicShopsData === 'object') {
+      const targetName = normalizeLookupText(shopOrFarm.name || shopOrFarm.shopName || shopOrFarm.farmName || shopOrFarm.vendorName);
+      const targetVendorId = shopOrFarm.vendorId || shopOrFarm.uid;
+      
+      Object.entries(publicShopsData).forEach(([vUid, vShops]) => {
+         const shopsArr = Array.isArray(vShops) ? vShops : Object.values(vShops || {});
+         if (targetVendorId && vUid === targetVendorId) {
+            shopsArr.forEach(s => {
+               const sSocials = buildSocialLinks(s);
+               matchedPublic = { ...sSocials, ...matchedPublic };
+            });
+         }
+         shopsArr.forEach(s => {
+            const sName = normalizeLookupText(s.shopName || s.name || s.farmName);
+            if (targetName && sName && (targetName === sName || targetName.includes(sName) || sName.includes(targetName))) {
+               const sSocials = buildSocialLinks(s);
+               matchedPublic = { ...sSocials, ...matchedPublic };
+            }
+         });
+      });
+   }
+   
+   return {
+      instagram: direct.instagram || matchedPublic.instagram || '',
+      facebook: direct.facebook || matchedPublic.facebook || '',
+      youtube: direct.youtube || matchedPublic.youtube || '',
+      whatsapp: direct.whatsapp || matchedPublic.whatsapp || '',
+      website: direct.website || matchedPublic.website || ''
+   };
+};
+
 export default function Marketplace() {
    const { cartItems, addToCart, updateQuantity } = useCart();
    const { products, searchQuery, setSearchQuery, categoriesWithDetails = [] } = useProducts();
@@ -1124,6 +1161,73 @@ export default function Marketplace() {
                                        <span>Page Updated: {formatUpdatedTime(selectedFarmShop.updatedAt || selectedFarmShop.createdAt) || 'Recently Updated'}</span>
                                     </span>
                                  </div>
+
+                                 {/* Customer Social Media Links Bar for Selected Farm Shop */}
+                                 {(() => {
+                                    const farmSocials = resolveShopSocialLinks(selectedFarmShop, publicShopsData);
+                                    const hasSocials = farmSocials.instagram || farmSocials.facebook || farmSocials.youtube || farmSocials.whatsapp || farmSocials.website;
+                                    if (!hasSocials) return null;
+                                    return (
+                                       <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/20 mt-2">
+                                          <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider font-headings mr-1">Social Links:</span>
+                                          {farmSocials.instagram && (
+                                             <a
+                                                href={farmSocials.instagram.startsWith('http') ? farmSocials.instagram : `https://instagram.com/${farmSocials.instagram.replace('@', '')}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                             >
+                                                <Instagram size={12} /> <span>Instagram</span>
+                                             </a>
+                                          )}
+                                          {farmSocials.facebook && (
+                                             <a
+                                                href={farmSocials.facebook.startsWith('http') ? farmSocials.facebook : `https://facebook.com/${farmSocials.facebook}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="px-2.5 py-1 rounded-xl bg-blue-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                             >
+                                                <Facebook size={12} /> <span>Facebook</span>
+                                             </a>
+                                          )}
+                                          {farmSocials.youtube && (
+                                             <a
+                                                href={farmSocials.youtube.startsWith('http') ? farmSocials.youtube : `https://youtube.com/${farmSocials.youtube}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="px-2.5 py-1 rounded-xl bg-red-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                             >
+                                                <Youtube size={12} /> <span>YouTube</span>
+                                             </a>
+                                          )}
+                                          {farmSocials.whatsapp && (
+                                             <a
+                                                href={farmSocials.whatsapp.startsWith('http') ? farmSocials.whatsapp : `https://wa.me/${farmSocials.whatsapp.replace(/[^0-9]/g, '')}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="px-2.5 py-1 rounded-xl bg-emerald-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                             >
+                                                <MessageCircle size={12} /> <span>WhatsApp</span>
+                                             </a>
+                                          )}
+                                          {farmSocials.website && (
+                                             <a
+                                                href={farmSocials.website.startsWith('http') ? farmSocials.website : `https://${farmSocials.website}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="px-2.5 py-1 rounded-xl bg-slate-800 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings border border-white/20"
+                                             >
+                                                <Globe size={12} /> <span>Website</span>
+                                             </a>
+                                          )}
+                                       </div>
+                                    );
+                                 })()}
                               </div>
 
                               <button
@@ -1364,69 +1468,73 @@ export default function Marketplace() {
                                     <Clock size={13} className="text-emerald-400" />
                                     <span>Page Updated: {formatUpdatedTime(selectedShop.updatedAt || selectedShop.createdAt) || 'Recently Updated'}</span>
                                  </span>
+                                 {/* Customer Social Media Links Bar */}
+                                 {(() => {
+                                    const shopSocials = resolveShopSocialLinks(selectedShop, publicShopsData);
+                                    const hasSocials = shopSocials.instagram || shopSocials.facebook || shopSocials.youtube || shopSocials.whatsapp || shopSocials.website;
+                                    if (!hasSocials) return null;
+                                    return (
+                                       <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/20 mt-2">
+                                          <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider font-headings mr-1">Social Links:</span>
+                                          {shopSocials.instagram && (
+                                             <a
+                                                href={shopSocials.instagram.startsWith('http') ? shopSocials.instagram : `https://instagram.com/${shopSocials.instagram.replace('@', '')}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                             >
+                                                <Instagram size={12} /> <span>Instagram</span>
+                                             </a>
+                                          )}
+                                          {shopSocials.facebook && (
+                                             <a
+                                                href={shopSocials.facebook.startsWith('http') ? shopSocials.facebook : `https://facebook.com/${shopSocials.facebook}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="px-2.5 py-1 rounded-xl bg-blue-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                             >
+                                                <Facebook size={12} /> <span>Facebook</span>
+                                             </a>
+                                          )}
+                                          {shopSocials.youtube && (
+                                             <a
+                                                href={shopSocials.youtube.startsWith('http') ? shopSocials.youtube : `https://youtube.com/${shopSocials.youtube}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="px-2.5 py-1 rounded-xl bg-red-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                             >
+                                                <Youtube size={12} /> <span>YouTube</span>
+                                             </a>
+                                          )}
+                                          {shopSocials.whatsapp && (
+                                             <a
+                                                href={shopSocials.whatsapp.startsWith('http') ? shopSocials.whatsapp : `https://wa.me/${shopSocials.whatsapp.replace(/[^0-9]/g, '')}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="px-2.5 py-1 rounded-xl bg-emerald-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                             >
+                                                <MessageCircle size={12} /> <span>WhatsApp</span>
+                                             </a>
+                                          )}
+                                          {shopSocials.website && (
+                                             <a
+                                                href={shopSocials.website.startsWith('http') ? shopSocials.website : `https://${shopSocials.website}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="px-2.5 py-1 rounded-xl bg-slate-800 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings border border-white/20"
+                                             >
+                                                <Globe size={12} /> <span>Website</span>
+                                             </a>
+                                          )}
+                                       </div>
+                                    );
+                                 })()}
                               </div>
-
-                              {/* Customer Social Media Links Bar */}
-                              {selectedShop.socialLinks && (selectedShop.socialLinks.instagram || selectedShop.socialLinks.facebook || selectedShop.socialLinks.youtube || selectedShop.socialLinks.whatsapp || selectedShop.socialLinks.website) && (
-                                 <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/20 mt-2">
-                                    <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider font-headings mr-1">Social Links:</span>
-                                    {selectedShop.socialLinks.instagram && (
-                                       <a
-                                          href={selectedShop.socialLinks.instagram.startsWith('http') ? selectedShop.socialLinks.instagram : `https://instagram.com/${selectedShop.socialLinks.instagram.replace('@', '')}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
-                                       >
-                                          <Instagram size={12} /> <span>Instagram</span>
-                                       </a>
-                                    )}
-                                    {selectedShop.socialLinks.facebook && (
-                                       <a
-                                          href={selectedShop.socialLinks.facebook.startsWith('http') ? selectedShop.socialLinks.facebook : `https://facebook.com/${selectedShop.socialLinks.facebook}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="px-2.5 py-1 rounded-xl bg-blue-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
-                                       >
-                                          <Facebook size={12} /> <span>Facebook</span>
-                                       </a>
-                                    )}
-                                    {selectedShop.socialLinks.youtube && (
-                                       <a
-                                          href={selectedShop.socialLinks.youtube.startsWith('http') ? selectedShop.socialLinks.youtube : `https://youtube.com/${selectedShop.socialLinks.youtube}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="px-2.5 py-1 rounded-xl bg-red-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
-                                       >
-                                          <Youtube size={12} /> <span>YouTube</span>
-                                       </a>
-                                    )}
-                                    {selectedShop.socialLinks.whatsapp && (
-                                       <a
-                                          href={selectedShop.socialLinks.whatsapp.startsWith('http') ? selectedShop.socialLinks.whatsapp : `https://wa.me/${selectedShop.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="px-2.5 py-1 rounded-xl bg-emerald-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
-                                       >
-                                          <MessageCircle size={12} /> <span>WhatsApp</span>
-                                       </a>
-                                    )}
-                                    {selectedShop.socialLinks.website && (
-                                       <a
-                                          href={selectedShop.socialLinks.website.startsWith('http') ? selectedShop.socialLinks.website : `https://${selectedShop.socialLinks.website}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="px-2.5 py-1 rounded-xl bg-slate-800 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings border border-white/20"
-                                       >
-                                          <Globe size={12} /> <span>Website</span>
-                                       </a>
-                                    )}
-                                 </div>
-                              )}
                            </div>
                         </div>
 
@@ -1682,6 +1790,43 @@ export default function Marketplace() {
                                                 <span>Updated {formatUpdatedTime(farm.updatedAt || farm.createdAt)}</span>
                                              </div>
                                           )}
+
+                                          {/* Social Media Links Icons on Farm Card */}
+                                          {(() => {
+                                             const farmSocials = resolveShopSocialLinks(farm, publicShopsData);
+                                             const hasSocials = farmSocials.instagram || farmSocials.facebook || farmSocials.youtube || farmSocials.whatsapp || farmSocials.website;
+                                             if (!hasSocials) return null;
+                                             return (
+                                                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                                   <span className="text-[10px] font-bold text-slate-400 font-headings">Socials:</span>
+                                                   {farmSocials.instagram && (
+                                                      <a href={farmSocials.instagram.startsWith('http') ? farmSocials.instagram : `https://instagram.com/${farmSocials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white hover:scale-110 transition-transform" title="Instagram">
+                                                         <Instagram size={11} />
+                                                      </a>
+                                                   )}
+                                                   {farmSocials.facebook && (
+                                                      <a href={farmSocials.facebook.startsWith('http') ? farmSocials.facebook : `https://facebook.com/${farmSocials.facebook}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-blue-600 text-white hover:scale-110 transition-transform" title="Facebook">
+                                                         <Facebook size={11} />
+                                                      </a>
+                                                   )}
+                                                   {farmSocials.youtube && (
+                                                      <a href={farmSocials.youtube.startsWith('http') ? farmSocials.youtube : `https://youtube.com/${farmSocials.youtube}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-red-600 text-white hover:scale-110 transition-transform" title="YouTube">
+                                                         <Youtube size={11} />
+                                                      </a>
+                                                   )}
+                                                   {farmSocials.whatsapp && (
+                                                      <a href={farmSocials.whatsapp.startsWith('http') ? farmSocials.whatsapp : `https://wa.me/${farmSocials.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-emerald-600 text-white hover:scale-110 transition-transform" title="WhatsApp">
+                                                         <MessageCircle size={11} />
+                                                      </a>
+                                                   )}
+                                                   {farmSocials.website && (
+                                                      <a href={farmSocials.website.startsWith('http') ? farmSocials.website : `https://${farmSocials.website}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-slate-800 text-white hover:scale-110 transition-transform" title="Website">
+                                                         <Globe size={11} />
+                                                      </a>
+                                                   )}
+                                                </div>
+                                             );
+                                          })()}
                                        </div>
 
                                        <button
@@ -1779,36 +1924,41 @@ export default function Marketplace() {
                                        </div>
 
                                        {/* Social Media Links Icons on Shop Card */}
-                                       {shop.socialLinks && (shop.socialLinks.instagram || shop.socialLinks.facebook || shop.socialLinks.youtube || shop.socialLinks.whatsapp || shop.socialLinks.website) && (
-                                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                                             <span className="text-[10px] font-bold text-slate-400 font-headings">Socials:</span>
-                                             {shop.socialLinks.instagram && (
-                                                <a href={shop.socialLinks.instagram.startsWith('http') ? shop.socialLinks.instagram : `https://instagram.com/${shop.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white hover:scale-110 transition-transform" title="Instagram">
-                                                   <Instagram size={11} />
-                                                </a>
-                                             )}
-                                             {shop.socialLinks.facebook && (
-                                                <a href={shop.socialLinks.facebook.startsWith('http') ? shop.socialLinks.facebook : `https://facebook.com/${shop.socialLinks.facebook}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-blue-600 text-white hover:scale-110 transition-transform" title="Facebook">
-                                                   <Facebook size={11} />
-                                                </a>
-                                             )}
-                                             {shop.socialLinks.youtube && (
-                                                <a href={shop.socialLinks.youtube.startsWith('http') ? shop.socialLinks.youtube : `https://youtube.com/${shop.socialLinks.youtube}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-red-600 text-white hover:scale-110 transition-transform" title="YouTube">
-                                                   <Youtube size={11} />
-                                                </a>
-                                             )}
-                                             {shop.socialLinks.whatsapp && (
-                                                <a href={shop.socialLinks.whatsapp.startsWith('http') ? shop.socialLinks.whatsapp : `https://wa.me/${shop.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-emerald-600 text-white hover:scale-110 transition-transform" title="WhatsApp">
-                                                   <MessageCircle size={11} />
-                                                </a>
-                                             )}
-                                             {shop.socialLinks.website && (
-                                                <a href={shop.socialLinks.website.startsWith('http') ? shop.socialLinks.website : `https://${shop.socialLinks.website}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-slate-800 text-white hover:scale-110 transition-transform" title="Website">
-                                                   <Globe size={11} />
-                                                </a>
-                                             )}
-                                          </div>
-                                       )}
+                                       {(() => {
+                                          const shopSocials = resolveShopSocialLinks(shop, publicShopsData);
+                                          const hasSocials = shopSocials.instagram || shopSocials.facebook || shopSocials.youtube || shopSocials.whatsapp || shopSocials.website;
+                                          if (!hasSocials) return null;
+                                          return (
+                                             <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                                <span className="text-[10px] font-bold text-slate-400 font-headings">Socials:</span>
+                                                {shopSocials.instagram && (
+                                                   <a href={shopSocials.instagram.startsWith('http') ? shopSocials.instagram : `https://instagram.com/${shopSocials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white hover:scale-110 transition-transform" title="Instagram">
+                                                      <Instagram size={11} />
+                                                   </a>
+                                                )}
+                                                {shopSocials.facebook && (
+                                                   <a href={shopSocials.facebook.startsWith('http') ? shopSocials.facebook : `https://facebook.com/${shopSocials.facebook}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-blue-600 text-white hover:scale-110 transition-transform" title="Facebook">
+                                                      <Facebook size={11} />
+                                                   </a>
+                                                )}
+                                                {shopSocials.youtube && (
+                                                   <a href={shopSocials.youtube.startsWith('http') ? shopSocials.youtube : `https://youtube.com/${shopSocials.youtube}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-red-600 text-white hover:scale-110 transition-transform" title="YouTube">
+                                                      <Youtube size={11} />
+                                                   </a>
+                                                )}
+                                                {shopSocials.whatsapp && (
+                                                   <a href={shopSocials.whatsapp.startsWith('http') ? shopSocials.whatsapp : `https://wa.me/${shopSocials.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-emerald-600 text-white hover:scale-110 transition-transform" title="WhatsApp">
+                                                      <MessageCircle size={11} />
+                                                   </a>
+                                                )}
+                                                {shopSocials.website && (
+                                                   <a href={shopSocials.website.startsWith('http') ? shopSocials.website : `https://${shopSocials.website}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-slate-800 text-white hover:scale-110 transition-transform" title="Website">
+                                                      <Globe size={11} />
+                                                   </a>
+                                                )}
+                                             </div>
+                                          );
+                                       })()}
                                     </div>
 
                                     <button
