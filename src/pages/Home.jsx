@@ -1,12 +1,60 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, Leaf, ShieldCheck, Truck, Tag, Percent, Sprout, Box, MapPin, Star, Quote } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, Leaf, ShieldCheck, Truck, Tag, Percent, Sprout, Box, MapPin, Star, Quote, Flame, Sparkles, ShoppingBag, Eye, TrendingUp, ChevronRight } from 'lucide-react';
 import { ref, onValue } from 'firebase/database';
 import { realtimeDb } from '../firebase';
 import { useAuth } from '../context/AuthContext';
+import { useProducts } from '../context/ProductContext';
 
 export default function Home() {
+   const navigate = useNavigate();
    const { userProfile } = useAuth();
+   const { products = [] } = useProducts();
+   const [selectedCategory, setSelectedCategory] = useState('all');
+
+   const fallbackBestSellers = [
+      { id: 1, name: 'Organic Red Tomatoes', price: 4.99, mrp: 6.99, unit: 'kg', category: 'Tomatoes', type: 'veggies', image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500&q=80', vendor: 'Green Valley Farm', rating: 4.9 },
+      { id: 32, name: 'Fresh Strawberries', price: 5.00, mrp: 7.25, unit: 'box', category: 'Strawberries', type: 'fruits', image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=500&q=80', vendor: 'Orchard Farms', rating: 4.9 },
+      { id: 5, name: 'Sweet Potatoes', price: 3.20, mrp: 4.50, unit: 'kg', category: 'Potatoes', type: 'veggies', image: '/sweet_potatoes.png', vendor: 'Root Essentials', rating: 4.8 },
+      { id: 10, name: 'Farm Fresh Milk', price: 3.20, mrp: 4.20, unit: 'L', category: 'Milk', type: 'dairy', image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=500&q=80', vendor: 'Happy Cows Dairy', rating: 4.9 },
+      { id: 16, name: 'Fuji Apples', price: 4.00, mrp: 5.80, unit: 'kg', category: 'Apples', type: 'fruits', image: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6faa6?w=500&q=80', vendor: 'Orchard Farms', rating: 4.8 },
+      { id: 12, name: 'Organic Butter', price: 4.50, mrp: 6.00, unit: '250g', category: 'Butter', type: 'dairy', image: 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=500&q=80', vendor: 'Meadow Farms', rating: 4.9 },
+      { id: 18, name: 'Organic Bananas', price: 1.99, mrp: 2.99, unit: 'bunch', category: 'Bananas', type: 'fruits', image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=500&q=80', vendor: 'Sunshine Produce', rating: 4.8 },
+      { id: 20, name: 'Fresh Spinach', price: 2.00, mrp: 2.80, unit: 'bunch', category: 'Spinach', type: 'veggies', image: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=500&q=80', vendor: 'Green Valley Farm', rating: 4.9 }
+   ];
+
+   // Native IntersectionObserver to trigger scroll-reveal animations on scroll
+   useEffect(() => {
+      const observerCallback = (entries) => {
+         entries.forEach(entry => {
+            if (entry.isIntersecting) {
+               entry.target.classList.add('reveal-visible');
+            }
+         });
+      };
+
+      const observerOptions = {
+         threshold: 0.1,
+         rootMargin: '0px 0px -50px 0px'
+      };
+
+      const observer = new IntersectionObserver(observerCallback, observerOptions);
+      const elements = document.querySelectorAll('.reveal-on-scroll');
+      elements.forEach(el => observer.observe(el));
+
+      return () => observer.disconnect();
+   }, [selectedCategory, products]);
+
+   const availableProducts = (products && products.length > 0) ? products : fallbackBestSellers;
+
+   const displayedBestSellers = availableProducts.filter(p => {
+      if (selectedCategory === 'all') return true;
+      const catLower = (p.category || '').toLowerCase();
+      if (selectedCategory === 'veggies') return catLower.includes('tomato') || catLower.includes('potato') || catLower.includes('spinach') || catLower.includes('onion') || catLower.includes('brinjal') || catLower.includes('carrot') || catLower.includes('broccoli') || p.type === 'veggies';
+      if (selectedCategory === 'fruits') return catLower.includes('apple') || catLower.includes('banana') || catLower.includes('strawberry') || catLower.includes('orange') || p.type === 'fruits';
+      if (selectedCategory === 'dairy') return catLower.includes('milk') || catLower.includes('butter') || catLower.includes('cheese') || catLower.includes('yogurt') || catLower.includes('paneer') || p.type === 'dairy';
+      return true;
+   }).slice(0, 8);
    const [homeContent, setHomeContent] = useState({
       // Hero
       heroHeadline: "Fresh fruits & Vegetables Directly From Farms",
@@ -78,10 +126,11 @@ export default function Home() {
       <div className="flex flex-col min-h-screen">
 
          {/* Premium Hero Section */}
+         {!homeContent.hiddenSections?.hero && (
          <section className="relative overflow-hidden pt-12 pb-14 lg:pt-16 lg:pb-20 bg-gradient-to-b from-brand-light/30 to-transparent">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                <div className="grid lg:grid-cols-12 gap-12 items-center">
-                  <div className="lg:col-span-7 space-y-6 text-left">
+                  <div className="lg:col-span-7 space-y-6 text-left reveal-on-scroll reveal-left">
                      <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 px-4 py-2 rounded-full text-xs font-extrabold uppercase tracking-wider border border-emerald-500/20">
                         <Leaf size={12} className="text-brand" /> 100% Organic & Fresh
                      </span>
@@ -104,7 +153,7 @@ export default function Home() {
                         )}
                      </div>
                   </div>
-                  <div className="lg:col-span-5 relative flex justify-center">
+                  <div className="lg:col-span-5 relative flex justify-center reveal-on-scroll reveal-right">
                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-brand-light rounded-full blur-3xl opacity-60 z-0"></div>
                      <div className="relative z-10 animate-float bg-white/60 backdrop-blur-md p-5 rounded-3xl border border-white shadow-2xl max-w-sm sm:max-w-md overflow-hidden transition-all duration-500 hover:rotate-1">
                         <img src={homeContent.heroImage} alt="Fresh Organic Vegetables" className="rounded-2xl w-full h-80 object-cover shadow-inner" />
@@ -120,11 +169,13 @@ export default function Home() {
                </div>
             </div>
          </section>
+         )}
 
          {/* Premium Special Offers & Deals */}
+         {!homeContent.hiddenSections?.specialOffers && (
          <section className="py-8 sm:py-12 relative">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-               <div className="text-left mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
+               <div className="text-left mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 reveal-on-scroll">
                   <div>
                      <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2 font-headings">
                         Special Offers & Banners <span className="w-2 h-2 rounded-full bg-brand"></span>
@@ -136,7 +187,7 @@ export default function Home() {
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                   {/* Offer 1 */}
-                  <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-6 sm:p-8 text-left shadow-lg group hover:shadow-xl transition-all duration-300">
+                  <div className="relative rounded-3xl reveal-on-scroll reveal-left overflow-hidden bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-6 sm:p-8 text-left shadow-lg group hover:shadow-xl transition-all duration-300">
                      <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
                      <div className="relative z-10 space-y-4">
                         <span className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider font-mono">
@@ -158,7 +209,7 @@ export default function Home() {
                   </div>
 
                   {/* Offer 2 */}
-                  <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-amber-500 to-orange-600 text-white p-6 sm:p-8 text-left shadow-lg group hover:shadow-xl transition-all duration-300">
+                  <div className="relative rounded-3xl reveal-on-scroll reveal-right overflow-hidden bg-gradient-to-r from-amber-500 to-orange-600 text-white p-6 sm:p-8 text-left shadow-lg group hover:shadow-xl transition-all duration-300">
                      <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
                      <div className="relative z-10 space-y-4">
                         <span className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider font-mono">
@@ -181,15 +232,168 @@ export default function Home() {
 
                </div>
             </div>
-         </section>
+                   </section>
+         )}
 
-         {/* ── About FresVeg Section ────────────────── */}
+          {/* Best Selling Harvest & Marketplace Showcase Section */}
+         {!homeContent.hiddenSections?.bestSelling && userProfile?.role !== 'vendor' && userProfile?.role !== 'delivery_person' && userProfile?.role !== 'delivery_boy' && userProfile?.role !== 'admin' && (
+          <section className="py-16 sm:py-20 relative overflow-hidden bg-gradient-to-b from-slate-50/50 via-emerald-50/20 to-transparent">
+             {/* Ambient Background Glows */}
+             <div className="absolute top-1/3 left-10 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
+             <div className="absolute bottom-10 right-10 w-96 h-96 bg-teal-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
+             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                
+                {/* Header Row */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-10 text-left reveal-on-scroll">
+                   <div className="space-y-2">
+                      <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 px-3.5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider border border-emerald-500/20 font-mono">
+                         <Flame size={14} className="text-amber-500 animate-bounce" /> Hot Sellers & Trending Harvest
+                      </span>
+                      <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black font-headings text-gray-900 tracking-tight">
+                         Best Selling Organic Produce
+                      </h2>
+                      <p className="text-gray-500 text-xs sm:text-sm font-body max-w-lg">
+                         Directly harvested from local organic farms. Click any item to explore full product details & buy directly.
+                      </p>
+                   </div>
+
+                   {/* Explore Marketplace Link */}
+                   <Link
+                      to="/marketplace"
+                      className="group bg-white hover:bg-emerald-600 text-slate-800 hover:text-white border border-slate-200 hover:border-emerald-600 px-6 py-3 rounded-2xl font-bold text-xs shadow-sm hover:shadow-lg transition-all duration-300 flex items-center gap-2 font-headings shrink-0 active:scale-95"
+                   >
+                      <span>Explore Full Marketplace</span>
+                      <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                   </Link>
+                </div>
+
+                {/* Interactive Category Filter Pills */}
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-4 mb-8 text-left reveal-on-scroll">
+                   {[
+                      { id: 'all', label: '🔥 All Best Sellers' },
+                      { id: 'veggies', label: '🥬 Fresh Veggies' },
+                      { id: 'fruits', label: '🍎 Farm Fruits' },
+                      { id: 'dairy', label: '🥛 Dairy & Honey' }
+                   ].map(tab => (
+                      <button
+                         key={tab.id}
+                         type="button"
+                         onClick={() => setSelectedCategory(tab.id)}
+                         className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-300 whitespace-nowrap cursor-pointer font-headings ${
+                            selectedCategory === tab.id
+                               ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 scale-105'
+                               : 'bg-white/80 hover:bg-white text-slate-600 border border-slate-200/80 hover:border-emerald-200'
+                         }`}
+                      >
+                         {tab.label}
+                      </button>
+                   ))}
+                </div>
+
+                {/* Animated Products Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                   {displayedBestSellers.map((product) => (
+                      <div
+                         key={product.id}
+                         onClick={() => navigate(`/product/${product.id}`)}
+                         className="group bg-white/90 reveal-on-scroll reveal-scale backdrop-blur-md rounded-3xl border border-slate-100/90 hover:border-emerald-200/90 shadow-md hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:scale-[1.01] overflow-hidden flex flex-col justify-between cursor-pointer relative text-left"
+                      >
+                         {/* Product Image Container */}
+                         <div className="relative h-52 sm:h-56 bg-slate-50 overflow-hidden">
+                            <img
+                               src={product.image}
+                               alt={product.name}
+                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                            />
+                            
+                            {/* Badges Overlay */}
+                            <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+                               <span className="bg-amber-500/90 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-md uppercase tracking-wider flex items-center gap-1 font-mono">
+                                  <Flame size={10} /> Best Seller
+                               </span>
+                               {product.mrp && product.mrp > product.price && (
+                                  <span className="bg-emerald-600/90 backdrop-blur-md text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md font-mono">
+                                     {Math.round(((product.mrp - product.price) / product.mrp) * 100)}% OFF
+                                  </span>
+                               )}
+                            </div>
+
+                            {/* Rating Badge */}
+                            <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md text-slate-800 text-[10px] font-extrabold px-2.5 py-1 rounded-xl shadow-md flex items-center gap-1 font-mono">
+                               <Star size={11} className="fill-amber-400 text-amber-400" />
+                               {product.rating || '4.9'}
+                            </div>
+
+                            {/* Hover Quick View Overlay */}
+                            <div className="absolute inset-0 bg-emerald-950/20 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                               <span className="bg-white text-emerald-900 font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-1.5 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 font-headings">
+                                  <Eye size={14} /> Quick View
+                               </span>
+                            </div>
+                         </div>
+
+                         {/* Card Body */}
+                         <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                            <div>
+                               <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 font-headings">
+                                  <Sprout size={12} className="text-emerald-600" />
+                                  <span className="truncate">{product.vendor || 'Local Organic Farm'}</span>
+                               </div>
+                               <h3 className="font-extrabold text-slate-900 text-base font-headings line-clamp-1 group-hover:text-emerald-700 transition-colors">
+                                  {product.name}
+                               </h3>
+                               <p className="text-[11px] text-slate-400 font-medium font-body truncate mt-0.5">
+                                  Category: {product.category || 'Organic Harvest'}
+                               </p>
+                            </div>
+
+                            {/* Pricing & CTA */}
+                            <div className="pt-2 border-t border-slate-100/80 flex items-center justify-between">
+                               <div>
+                                  <div className="flex items-baseline gap-1.5">
+                                     <span className="text-lg font-black text-slate-900 font-sans">
+                                        ₹{parseFloat(product.price).toFixed(2)}
+                                     </span>
+                                     {product.mrp && product.mrp > product.price && (
+                                        <span className="text-xs text-slate-400 line-through font-body">
+                                           ₹{parseFloat(product.mrp).toFixed(2)}
+                                        </span>
+                                     )}
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 font-semibold font-body">per {product.unit || 'kg'}</span>
+                               </div>
+
+                               <button
+                                  type="button"
+                                  onClick={(e) => {
+                                     e.stopPropagation();
+                                     navigate(`/product/${product.id}`);
+                                  }}
+                                  className="bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-1 font-headings active:scale-95 shadow-xs"
+                               >
+                                  <span>Buy Now</span>
+                                  <ArrowRight size={12} />
+                               </button>
+                            </div>
+                         </div>
+
+                      </div>
+                   ))}
+                </div>
+
+             </div>
+          </section>
+         )}
+
+         {/* About FresVeg Section */}
+         {!homeContent.hiddenSections?.about && (
          <section className="py-16 sm:py-20 relative bg-emerald-500/5">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center text-left">
 
                   {/* Text Column on Left */}
-                  <div className="lg:col-span-7 space-y-6">
+                  <div className="lg:col-span-7 space-y-6 reveal-on-scroll reveal-left">
                      <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight font-headings flex items-center gap-2">
                         {homeContent.aboutHeadline || 'About FresVeg'} <span className="w-2.5 h-2.5 rounded-full bg-brand inline-block"></span>
                      </h2>
@@ -214,7 +418,7 @@ export default function Home() {
                   </div>
 
                   {/* Image Column on Right */}
-                  <div className="lg:col-span-5 relative flex justify-center">
+                  <div className="lg:col-span-5 relative flex justify-center reveal-on-scroll reveal-right">
                      <div className="w-full h-72 sm:h-80 lg:h-96 rounded-[2rem] overflow-hidden shadow-xl border-4 border-white bg-white">
                         <img
                            src="https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=800&q=80"
@@ -227,11 +431,13 @@ export default function Home() {
                </div>
             </div>
          </section>
+         )}
 
          {/* Our Farm-to-Table Process */}
+         {!homeContent.hiddenSections?.process && (
          <section className="py-20 bg-white">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-               <div className="text-center mb-16">
+               <div className="text-center mb-16 reveal-on-scroll">
                   <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">{homeContent.processTitle || "Our Farm-to-Table Process"}</h2>
                   <p className="text-gray-500 max-w-xl mx-auto text-sm">{homeContent.processSubtitle || "We maintain a clean, temperature-controlled, and highly efficient network to ship organic products from local soil directly to your shelf."}</p>
                </div>
@@ -239,7 +445,7 @@ export default function Home() {
                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative">
 
                   {/* Step 1 */}
-                  <div className="space-y-4 text-center group">
+                  <div className="space-y-4 text-center group reveal-on-scroll reveal-scale" style={{ transitionDelay: "0ms" }}>
                      <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
                         <Sprout size={28} />
                      </div>
@@ -250,7 +456,7 @@ export default function Home() {
                   </div>
 
                   {/* Step 2 */}
-                  <div className="space-y-4 text-center group">
+                  <div className="space-y-4 text-center group reveal-on-scroll reveal-scale" style={{ transitionDelay: "150ms" }}>
                      <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
                         <Box size={28} />
                      </div>
@@ -261,7 +467,7 @@ export default function Home() {
                   </div>
 
                   {/* Step 3 */}
-                  <div className="space-y-4 text-center group">
+                  <div className="space-y-4 text-center group reveal-on-scroll reveal-scale" style={{ transitionDelay: "300ms" }}>
                      <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
                         <Truck size={28} />
                      </div>
@@ -272,7 +478,7 @@ export default function Home() {
                   </div>
 
                   {/* Step 4 */}
-                  <div className="space-y-4 text-center group">
+                  <div className="space-y-4 text-center group reveal-on-scroll reveal-scale" style={{ transitionDelay: "450ms" }}>
                      <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
                         <MapPin size={28} />
                      </div>
@@ -285,15 +491,17 @@ export default function Home() {
                </div>
             </div>
          </section>
+         )}
 
          {/* Why Choose FresVeg? */}
+         {!homeContent.hiddenSections?.whyChoose && (
          <section className="py-20 relative bg-emerald-500/5">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                <div className="text-center mb-16">
-                  <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">{homeContent.whyTitle || "Why Choose FresVeg?"}</h2>
+                  <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight reveal-on-scroll">{homeContent.whyTitle || "Why Choose FresVeg?"}</h2>
                   <p className="text-gray-500 max-w-xl mx-auto text-sm">{homeContent.whySubtitle || "We bridge the gap between farmers and consumers, ensuring you get the freshest produce while supporting local vendors."}</p>
                </div>
-               <div className="grid md:grid-cols-3 gap-8">
+               <div className="grid md:grid-cols-3 gap-8 reveal-on-scroll">
                   <div className="p-8 rounded-3xl bg-white/60 backdrop-blur-sm border border-white shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group text-left">
                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand to-brand-dark shadow-md text-white flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                         <Leaf size={24} />
@@ -318,10 +526,12 @@ export default function Home() {
                </div>
             </div>
          </section>
+         )}
 
          {/* What Our Customers Say */}
+         {!homeContent.hiddenSections?.testimonials && (
          <section className="py-20 relative overflow-hidden bg-gradient-to-b from-transparent to-brand-light/20">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 reveal-on-scroll">
                <div className="text-center">
                   <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">{homeContent.testimonialsTitle || "What Our Customers Say"}</h2>
                   <p className="text-gray-500 max-w-xl mx-auto text-sm">{homeContent.testimonialsSubtitle || "Read verified feedback from home cooks, families, and chef partners who enjoy fresh farm deliveries weekly."}</p>
@@ -334,7 +544,7 @@ export default function Home() {
                <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-r from-[#f5f9f4] to-transparent z-20 pointer-events-none"></div>
                <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-l from-[#f5f9f4] to-transparent z-20 pointer-events-none"></div>
 
-               <div className="animate-scroll-marquee flex gap-6 px-4">
+               <div className="animate-scroll-marquee flex gap-6 px-4 reveal-on-scroll">
                   {[
                      {
                         name: homeContent.test1Name || "Sarah Jenkins",
@@ -358,23 +568,23 @@ export default function Home() {
                         rating: 5
                      },
                      {
-                        name: "Rajesh V. Patel",
-                        role: "Local Restaurant Owner",
-                        quote: "Ordering farm-fresh vegetables directly through FresVeg saved our kitchen over 20% on wholesale costs while improving our dish quality tremendously.",
+                        name: homeContent.test4Name || "Rajesh V. Patel",
+                        role: homeContent.test4Role || "Local Restaurant Owner",
+                        quote: homeContent.test4Quote || "Ordering farm-fresh vegetables directly through FresVeg saved our kitchen over 20% on wholesale costs while improving our dish quality tremendously.",
                         image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80",
                         rating: 5
                      },
                      {
-                        name: "Anita Roy",
-                        role: "Organic Living Advocate",
-                        quote: "Pure cow ghee and raw honey jars from local farms are unbeatable in quality. You can taste the genuine purity in every single spoonful!",
+                        name: homeContent.test5Name || "Anita Roy",
+                        role: homeContent.test5Role || "Organic Living Advocate",
+                        quote: homeContent.test5Quote || "Pure cow ghee and raw honey jars from local farms are unbeatable in quality. You can taste the genuine purity in every single spoonful!",
                         image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&q=80",
                         rating: 5
                      },
                      {
-                        name: "Michael Rodriguez",
-                        role: "Daily Shopper",
-                        quote: "The live order tracking map and rider contact details give me total peace of mind. Delivery always arrives right on time before breakfast!",
+                        name: homeContent.test6Name || "Michael Rodriguez",
+                        role: homeContent.test6Role || "Daily Shopper",
+                        quote: homeContent.test6Quote || "The live order tracking map and rider contact details give me total peace of mind. Delivery always arrives right on time before breakfast!",
                         image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80",
                         rating: 5
                      },
@@ -401,23 +611,23 @@ export default function Home() {
                         rating: 5
                      },
                      {
-                        name: "Rajesh V. Patel",
-                        role: "Local Restaurant Owner",
-                        quote: "Ordering farm-fresh vegetables directly through FresVeg saved our kitchen over 20% on wholesale costs while improving our dish quality tremendously.",
+                        name: homeContent.test4Name || "Rajesh V. Patel",
+                        role: homeContent.test4Role || "Local Restaurant Owner",
+                        quote: homeContent.test4Quote || "Ordering farm-fresh vegetables directly through FresVeg saved our kitchen over 20% on wholesale costs while improving our dish quality tremendously.",
                         image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80",
                         rating: 5
                      },
                      {
-                        name: "Anita Roy",
-                        role: "Organic Living Advocate",
-                        quote: "Pure cow ghee and raw honey jars from local farms are unbeatable in quality. You can taste the genuine purity in every single spoonful!",
+                        name: homeContent.test5Name || "Anita Roy",
+                        role: homeContent.test5Role || "Organic Living Advocate",
+                        quote: homeContent.test5Quote || "Pure cow ghee and raw honey jars from local farms are unbeatable in quality. You can taste the genuine purity in every single spoonful!",
                         image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&q=80",
                         rating: 5
                      },
                      {
-                        name: "Michael Rodriguez",
-                        role: "Daily Shopper",
-                        quote: "The live order tracking map and rider contact details give me total peace of mind. Delivery always arrives right on time before breakfast!",
+                        name: homeContent.test6Name || "Michael Rodriguez",
+                        role: homeContent.test6Role || "Daily Shopper",
+                        quote: homeContent.test6Quote || "The live order tracking map and rider contact details give me total peace of mind. Delivery always arrives right on time before breakfast!",
                         image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80",
                         rating: 5
                      }
@@ -447,6 +657,7 @@ export default function Home() {
                </div>
             </div>
          </section>
+         )}
       </div>
    );
 }

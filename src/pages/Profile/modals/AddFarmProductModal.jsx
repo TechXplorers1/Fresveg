@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import ImageUploadField from '../../../components/common/ImageUploadField';
 import { SUB_CATEGORIES_MAP, STANDARD_UNITS } from '../constants/profileConstants';
 
@@ -12,6 +12,7 @@ export default function AddFarmProductModal({
     newFarmProductForm,
     setNewFarmProductForm,
     handleSaveModalProduct,
+    isSubmitting = false,
     labelCls,
     inputCls
 }) {
@@ -165,9 +166,17 @@ export default function AddFarmProductModal({
                         </button>
                         <button
                             type="submit"
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer"
+                            disabled={isSubmitting}
+                            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
                         >
-                            {editingModalProductIndex !== null ? 'Update Product' : '+ Save Product'}
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 size={14} className="animate-spin" />
+                                    <span>Saving...</span>
+                                </>
+                            ) : (
+                                editingModalProductIndex !== null ? 'Update Product' : '+ Save Product'
+                            )}
                         </button>
                     </div>
                 </form>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ShoppingCart, Star, Search, Filter, Plus, Minus, X, ChevronLeft, ChevronRight, MapPin, Clock, Store, ArrowLeft, CheckCircle, Sprout, Compass, Navigation, ExternalLink } from 'lucide-react';
+import { Instagram, Facebook, Youtube, Globe, MessageCircle, ShoppingCart, Star, Search, Filter, Plus, Minus, X, ChevronLeft, ChevronRight, MapPin, Clock, Store, ArrowLeft, CheckCircle, Sprout, Compass, Navigation, ExternalLink } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
 import { realtimeDb } from '../firebase';
@@ -55,6 +55,15 @@ const MOCK_FARMS_LIST = [
    }
 ];
 
+const extractShops = (userObj) => {
+   if (!userObj) return [];
+   if (Array.isArray(userObj.shops)) return userObj.shops;
+   if (userObj.shops && typeof userObj.shops === 'object') {
+      return Object.values(userObj.shops);
+   }
+   return [];
+};
+
 const formatUpdatedTime = (isoString) => {
    if (!isoString) return null;
    try {
@@ -71,6 +80,32 @@ const formatUpdatedTime = (isoString) => {
    } catch {
       return null;
    }
+};
+
+const normalizeLookupText = (value) => {
+   return String(value || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '');
+};
+
+const buildSocialLinks = (source) => {
+   const raw = source?.socialLinks || source || {};
+   if (raw && typeof raw === 'object') {
+      const normalizeValue = (field) => {
+         const value = raw[field];
+         if (typeof value !== 'string') return '';
+         const trimmed = value.trim();
+         return trimmed;
+      };
+
+      return {
+         instagram: normalizeValue('instagram'),
+         facebook: normalizeValue('facebook'),
+         youtube: normalizeValue('youtube'),
+         whatsapp: normalizeValue('whatsapp'),
+         website: normalizeValue('website')
+      };
+   }
+
+   return { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' };
 };
 
 export default function Marketplace() {
@@ -204,6 +239,17 @@ export default function Marketplace() {
 
    // Marketplace Tabs State: 'markets' or 'farms'
    const [marketplaceTab, setMarketplaceTab] = useState('markets');
+   const [publicShopsData, setPublicShopsData] = useState({});
+
+   // Listen to publicShops — publicly readable, contains vendor shop info + socialLinks
+   useEffect(() => {
+      const publicShopsRef = ref(realtimeDb, 'publicShops');
+      const unsubscribe = onValue(publicShopsRef, (snapshot) => {
+         const data = snapshot.val();
+         setPublicShopsData(data || {});
+      });
+      return () => unsubscribe();
+   }, []);
    const [farmsList, setFarmsList] = useState([]);
    const [selectedFarmShop, setSelectedFarmShop] = useState(null);
    const [farmSearchQuery, setFarmSearchQuery] = useState('');
@@ -357,9 +403,47 @@ export default function Marketplace() {
    const shopsList = React.useMemo(() => {
       const shopMap = {};
 
+      // Load vendor shop profiles from publicShops (publicly readable node)
+      Object.values(publicShopsData || {}).forEach(vendorShopsArr => {
+         const shops = Array.isArray(vendorShopsArr)
+            ? vendorShopsArr
+            : Object.values(vendorShopsArr || {});
+         shops.forEach(s => {
+            if (s && s.shopName && s.shopName.trim()) {
+               const key = s.shopName.trim();
+               const normalizedKey = normalizeLookupText(key);
+               shopMap[normalizedKey] = {
+                  id: key.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                  name: key,
+                  image: s.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&q=80',
+                  location: s.location || 'Local Region, India',
+                  rating: 4.9,
+                  deliveryTime: '25-35 mins',
+                  gstNumber: s.gstNumber || '',
+                  socialLinks: s.socialLinks || { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' },
+                  updatedAt: s.updatedAt || null,
+                  categories: new Set(),
+                  products: []
+               };
+            }
+         });
+      });
+
       products.forEach(p => {
          const vendorName = p.vendor || p.shop || 'Local Farm Market';
-         if (!shopMap[vendorName]) {
+         const normalizedVendorName = normalizeLookupText(vendorName);
+         let targetShop = normalizedVendorName ? shopMap[normalizedVendorName] : null;
+
+         if (!targetShop) {
+            targetShop = Object.values(shopMap).find(shop => {
+               const normalizedShopName = normalizeLookupText(shop.name);
+               return normalizedShopName === normalizedVendorName ||
+                  normalizedShopName.includes(normalizedVendorName) ||
+                  normalizedVendorName.includes(normalizedShopName);
+            });
+         }
+
+         if (!targetShop) {
             let image = p.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&q=80';
             let location = p.shopLocation || 'Karjat, Maharashtra';
             let rating = p.rating || 4.8;
@@ -391,33 +475,58 @@ export default function Marketplace() {
                deliveryTime = '30-45 mins';
             }
 
-            shopMap[vendorName] = {
+            const nextKey = normalizedVendorName || vendorName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            shopMap[nextKey] = {
                id: vendorName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
                name: vendorName,
                image,
                location,
                rating,
                deliveryTime,
+               socialLinks: buildSocialLinks(p),
                updatedAt: p.updatedAt || p.createdAt || null,
                categories: new Set(),
                products: []
             };
+            targetShop = shopMap[nextKey];
          }
+
+         const fallbackSocialLinks = buildSocialLinks(p);
+         targetShop.socialLinks = {
+            instagram: targetShop.socialLinks?.instagram || fallbackSocialLinks.instagram || '',
+            facebook: targetShop.socialLinks?.facebook || fallbackSocialLinks.facebook || '',
+            youtube: targetShop.socialLinks?.youtube || fallbackSocialLinks.youtube || '',
+            whatsapp: targetShop.socialLinks?.whatsapp || fallbackSocialLinks.whatsapp || '',
+            website: targetShop.socialLinks?.website || fallbackSocialLinks.website || ''
+         };
 
          const pTime = p.updatedAt || p.createdAt;
-         if (pTime && (!shopMap[vendorName].updatedAt || new Date(pTime) > new Date(shopMap[vendorName].updatedAt))) {
-            shopMap[vendorName].updatedAt = pTime;
+         if (pTime && (!targetShop.updatedAt || new Date(pTime) > new Date(targetShop.updatedAt))) {
+            targetShop.updatedAt = pTime;
          }
 
-         shopMap[vendorName].products.push(p);
-         if (p.category) shopMap[vendorName].categories.add(p.category);
+         targetShop.products.push(p);
+         if (p.category) targetShop.categories.add(p.category);
       });
 
-      return Object.values(shopMap).map(s => ({
+      const result = Object.values(shopMap).map(s => ({
          ...s,
          categoryList: Array.from(s.categories)
       }));
-   }, [products]);
+      return result;
+   }, [products, publicShopsData]);
+
+   // Keep selectedShop in sync when shopsList updates (e.g. after publicShops loads socialLinks)
+   useEffect(() => {
+      if (selectedShop) {
+         const updated = shopsList.find(s => {
+            const normalizedCurrent = normalizeLookupText(selectedShop.name);
+            const normalizedCandidate = normalizeLookupText(s.name);
+            return normalizedCurrent && normalizedCandidate && normalizedCurrent === normalizedCandidate;
+         });
+         if (updated) setSelectedShop(updated);
+      }
+   }, [shopsList]);
 
    const [searchParams, setSearchParams] = useSearchParams();
 
@@ -434,13 +543,18 @@ export default function Marketplace() {
       }
 
       if (shopParam && shopsList.length > 0) {
-         const match = shopsList.find(s => 
-            String(s.id).toLowerCase() === shopParam.toLowerCase() || 
-            s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').includes(shopParam.toLowerCase())
-         );
+         const normalizedShopParam = normalizeLookupText(shopParam);
+         const match = shopsList.find(s => {
+            const normalizedShopName = normalizeLookupText(s.name);
+            return String(s.id).toLowerCase() === shopParam.toLowerCase() ||
+               normalizedShopName === normalizedShopParam ||
+               normalizedShopName.includes(normalizedShopParam) ||
+               normalizedShopParam.includes(normalizedShopName);
+         });
          if (match) {
             setSelectedShop(match);
             setSelectedFarmShop(null);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
          }
       } else {
@@ -455,6 +569,7 @@ export default function Marketplace() {
          if (match) {
             setSelectedFarmShop(match);
             setSelectedShop(null);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
          }
       } else {
@@ -929,6 +1044,7 @@ export default function Marketplace() {
                               if (window.history.length > 1) navigate(-1);
                               else setSearchParams({ tab: 'farms' });
                               setFarmSearchQuery('');
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
                            }}
                            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-all shadow-xs cursor-pointer"
                         >
@@ -1249,6 +1365,68 @@ export default function Marketplace() {
                                     <span>Page Updated: {formatUpdatedTime(selectedShop.updatedAt || selectedShop.createdAt) || 'Recently Updated'}</span>
                                  </span>
                               </div>
+
+                              {/* Customer Social Media Links Bar */}
+                              {selectedShop.socialLinks && (selectedShop.socialLinks.instagram || selectedShop.socialLinks.facebook || selectedShop.socialLinks.youtube || selectedShop.socialLinks.whatsapp || selectedShop.socialLinks.website) && (
+                                 <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/20 mt-2">
+                                    <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider font-headings mr-1">Social Links:</span>
+                                    {selectedShop.socialLinks.instagram && (
+                                       <a
+                                          href={selectedShop.socialLinks.instagram.startsWith('http') ? selectedShop.socialLinks.instagram : `https://instagram.com/${selectedShop.socialLinks.instagram.replace('@', '')}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                       >
+                                          <Instagram size={12} /> <span>Instagram</span>
+                                       </a>
+                                    )}
+                                    {selectedShop.socialLinks.facebook && (
+                                       <a
+                                          href={selectedShop.socialLinks.facebook.startsWith('http') ? selectedShop.socialLinks.facebook : `https://facebook.com/${selectedShop.socialLinks.facebook}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="px-2.5 py-1 rounded-xl bg-blue-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                       >
+                                          <Facebook size={12} /> <span>Facebook</span>
+                                       </a>
+                                    )}
+                                    {selectedShop.socialLinks.youtube && (
+                                       <a
+                                          href={selectedShop.socialLinks.youtube.startsWith('http') ? selectedShop.socialLinks.youtube : `https://youtube.com/${selectedShop.socialLinks.youtube}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="px-2.5 py-1 rounded-xl bg-red-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                       >
+                                          <Youtube size={12} /> <span>YouTube</span>
+                                       </a>
+                                    )}
+                                    {selectedShop.socialLinks.whatsapp && (
+                                       <a
+                                          href={selectedShop.socialLinks.whatsapp.startsWith('http') ? selectedShop.socialLinks.whatsapp : `https://wa.me/${selectedShop.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="px-2.5 py-1 rounded-xl bg-emerald-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                       >
+                                          <MessageCircle size={12} /> <span>WhatsApp</span>
+                                       </a>
+                                    )}
+                                    {selectedShop.socialLinks.website && (
+                                       <a
+                                          href={selectedShop.socialLinks.website.startsWith('http') ? selectedShop.socialLinks.website : `https://${selectedShop.socialLinks.website}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="px-2.5 py-1 rounded-xl bg-slate-800 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings border border-white/20"
+                                       >
+                                          <Globe size={12} /> <span>Website</span>
+                                       </a>
+                                    )}
+                                 </div>
+                              )}
                            </div>
                         </div>
 
@@ -1599,6 +1777,38 @@ export default function Marketplace() {
                                              <span className="text-[10px] font-bold text-slate-400 flex items-center">+{shop.categoryList.length - 4} more</span>
                                           )}
                                        </div>
+
+                                       {/* Social Media Links Icons on Shop Card */}
+                                       {shop.socialLinks && (shop.socialLinks.instagram || shop.socialLinks.facebook || shop.socialLinks.youtube || shop.socialLinks.whatsapp || shop.socialLinks.website) && (
+                                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                             <span className="text-[10px] font-bold text-slate-400 font-headings">Socials:</span>
+                                             {shop.socialLinks.instagram && (
+                                                <a href={shop.socialLinks.instagram.startsWith('http') ? shop.socialLinks.instagram : `https://instagram.com/${shop.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white hover:scale-110 transition-transform" title="Instagram">
+                                                   <Instagram size={11} />
+                                                </a>
+                                             )}
+                                             {shop.socialLinks.facebook && (
+                                                <a href={shop.socialLinks.facebook.startsWith('http') ? shop.socialLinks.facebook : `https://facebook.com/${shop.socialLinks.facebook}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-blue-600 text-white hover:scale-110 transition-transform" title="Facebook">
+                                                   <Facebook size={11} />
+                                                </a>
+                                             )}
+                                             {shop.socialLinks.youtube && (
+                                                <a href={shop.socialLinks.youtube.startsWith('http') ? shop.socialLinks.youtube : `https://youtube.com/${shop.socialLinks.youtube}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-red-600 text-white hover:scale-110 transition-transform" title="YouTube">
+                                                   <Youtube size={11} />
+                                                </a>
+                                             )}
+                                             {shop.socialLinks.whatsapp && (
+                                                <a href={shop.socialLinks.whatsapp.startsWith('http') ? shop.socialLinks.whatsapp : `https://wa.me/${shop.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-emerald-600 text-white hover:scale-110 transition-transform" title="WhatsApp">
+                                                   <MessageCircle size={11} />
+                                                </a>
+                                             )}
+                                             {shop.socialLinks.website && (
+                                                <a href={shop.socialLinks.website.startsWith('http') ? shop.socialLinks.website : `https://${shop.socialLinks.website}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-slate-800 text-white hover:scale-110 transition-transform" title="Website">
+                                                   <Globe size={11} />
+                                                </a>
+                                             )}
+                                          </div>
+                                       )}
                                     </div>
 
                                     <button

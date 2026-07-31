@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { X, Check } from 'lucide-react';
+import { X, Check, Loader2 } from 'lucide-react';
 import ImageUploadField from '../../../components/common/ImageUploadField';
 
 export default function AddStayModal({
@@ -11,6 +11,7 @@ export default function AddStayModal({
     newStayForm,
     setNewStayForm,
     handleSaveStay,
+    isSubmitting = false,
     labelCls,
     inputCls
 }) {
@@ -120,9 +121,17 @@ export default function AddStayModal({
                         </button>
                         <button
                             type="submit"
-                            className="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer"
+                            disabled={isSubmitting}
+                            className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
                         >
-                            {editingStayIndex !== null ? 'Update Stay' : '+ Save Stay'}
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 size={14} className="animate-spin" />
+                                    <span>Saving...</span>
+                                </>
+                            ) : (
+                                editingStayIndex !== null ? 'Update Stay' : '+ Save Stay'
+                            )}
                         </button>
                     </div>
                 </form>

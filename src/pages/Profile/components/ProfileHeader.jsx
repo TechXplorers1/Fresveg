@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, LogOut as LogOutIcon, Shield, Camera, Pencil, X, Check } from 'lucide-react';
+import { User, LogOut as LogOutIcon, Shield, Camera, Pencil, X, Check, Loader2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../../context/AuthContext';
 import ImageUploadField from '../../../components/common/ImageUploadField';
@@ -149,7 +149,17 @@ export default function ProfileHeader({
                                     disabled={isSaving}
                                     className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
                                 >
-                                    {isSaving ? 'Saving...' : <><Check size={14} /> Save Photo</>}
+                                    {isSaving ? (
+                                        <>
+                                            <Loader2 size={14} className="animate-spin" />
+                                            <span>Saving...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Check size={14} />
+                                            <span>Save Photo</span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </form>

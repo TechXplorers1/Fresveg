@@ -81,6 +81,15 @@ export default function Admin() {
     test3Quote: "We booked a farm tour weekend slots via 'Visit Farms' link, and our kids absolutely loved picking fruits and seeing cows. A perfect weekend refreshment setup!",
     test3Name: "Emma L.",
     test3Role: "Parent",
+    test4Quote: "Ordering farm-fresh vegetables directly through FresVeg saved our kitchen over 20% on wholesale costs while improving our dish quality tremendously.",
+    test4Name: "Rajesh V. Patel",
+    test4Role: "Local Restaurant Owner",
+    test5Quote: "Pure cow ghee and raw honey jars from local farms are unbeatable in quality. You can taste the genuine purity in every single spoonful!",
+    test5Name: "Anita Roy",
+    test5Role: "Organic Living Advocate",
+    test6Quote: "The live order tracking map and rider contact details give me total peace of mind. Delivery always arrives right on time before breakfast!",
+    test6Name: "Michael Rodriguez",
+    test6Role: "Daily Shopper",
 
     // About FresVeg
     aboutHeadline: "About FresVeg",
@@ -143,6 +152,31 @@ export default function Admin() {
   };
 
   // Home content save
+  const toggleSectionVisibility = async (sectionKey) => {
+    const currentHidden = homeContent.hiddenSections || {};
+    const isCurrentlyHidden = Boolean(currentHidden[sectionKey]);
+    const updatedHidden = { ...currentHidden, [sectionKey]: !isCurrentlyHidden };
+
+    const updatedContent = {
+      ...homeContent,
+      hiddenSections: updatedHidden
+    };
+
+    setHomeContent(updatedContent);
+
+    try {
+      await set(ref(realtimeDb, 'homeContent'), updatedContent);
+      if (!isCurrentlyHidden) {
+        showToast(`Section "${sectionKey}" has been deleted / hidden from Home page!`);
+      } else {
+        showToast(`Section "${sectionKey}" has been restored & enabled on Home page!`);
+      }
+    } catch (err) {
+      console.error('Failed to update section visibility:', err);
+      showToast('Failed to update section visibility.', 'error');
+    }
+  };
+
   const handleSaveHomeContent = async (e) => {
     if (e) e.preventDefault();
     setIsSaving(true);
@@ -266,21 +300,21 @@ export default function Admin() {
           {/* Tabs */}
           <div className="flex bg-slate-100 p-1.5 rounded-2xl shadow-inner gap-1 flex-wrap">
             <button
-              onClick={() => setActiveTab('home')}
+              onClick={() => { setActiveTab('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'home' ? 'bg-white text-brand shadow-md' : 'text-gray-500 hover:text-gray-800'
                 }`}
             >
               <Layout size={15} /> Home Content Editor
             </button>
             <button
-              onClick={() => setActiveTab('categories')}
+              onClick={() => { setActiveTab('categories'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'categories' ? 'bg-white text-brand shadow-md' : 'text-gray-500 hover:text-gray-800'
                 }`}
             >
               <Tag size={15} /> Category Management
             </button>
             <button
-              onClick={() => setActiveTab('users')}
+              onClick={() => { setActiveTab('users'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'users' ? 'bg-white text-brand shadow-md' : 'text-gray-500 hover:text-gray-800'
                 }`}
             >
@@ -304,22 +338,22 @@ export default function Admin() {
         {/* Tab Content Panels */}
         <div className="bg-white/70 backdrop-blur-md rounded-3xl p-6 md:p-8 border border-white shadow-xl shadow-slate-200/40 text-left">
 
-          {/* TAB 1: Home Page Content Editor */}
+                    {/* TAB 1: Home Page Content Editor */}
           {activeTab === 'home' && (
             <form onSubmit={handleSaveHomeContent} className="space-y-10 max-w-4xl">
 
               {/* Top Banner Save Header */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-emerald-50/70 border border-emerald-200/60 p-4 rounded-2xl gap-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-emerald-50/70 border border-emerald-200/60 p-4.5 rounded-2xl gap-4">
                 <div>
-                  <h3 className="text-sm font-extrabold text-emerald-950 flex items-center gap-2">
-                    <Sparkles size={16} className="text-emerald-600" /> Home Page Content Management
+                  <h3 className="text-sm font-extrabold text-emerald-950 flex items-center gap-2 font-headings">
+                    <Sparkles size={16} className="text-emerald-600" /> Home Page Content & Section Management
                   </h3>
-                  <p className="text-xs text-emerald-700 font-medium">Edit text content across all 6 sections on the home page below.</p>
+                  <p className="text-xs text-emerald-700 font-medium">Edit text, imagery, or delete/disable any of the 7 sections on the Home page below.</p>
                 </div>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="bg-brand hover:bg-brand-dark text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md shadow-brand/20 active:scale-95 flex items-center gap-2 shrink-0 disabled:opacity-60"
+                  className="bg-brand hover:bg-brand-dark text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md shadow-brand/20 active:scale-95 flex items-center gap-2 shrink-0 disabled:opacity-60 font-headings"
                 >
                   {isSaving ? (
                     <>
@@ -335,11 +369,37 @@ export default function Admin() {
                 </button>
               </div>
 
-              {/* SECTION 1: Hero Banner */}
-              <div className="space-y-4 border-b border-slate-100 pb-8">
-                <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
-                  <ImageIcon size={18} className="text-brand" /> 1. Hero Landing Section
-                </h3>
+              {/* SECTION 1: Fresh fruits & Vegetables Directly From Farms (Hero Landing) */}
+              <div className={`space-y-4 border-b border-slate-100 pb-8 p-5 rounded-3xl transition-all ${homeContent.hiddenSections?.hero ? 'bg-red-50/40 border border-red-200/60' : 'bg-white'}`}>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon size={20} className="text-brand" />
+                    <h3 className="text-base font-extrabold text-gray-900 font-headings">
+                      1. "Fresh fruits & Vegetables Directly From Farms" Section
+                    </h3>
+                    {homeContent.hiddenSections?.hero ? (
+                      <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-red-200">🔴 Hidden / Deleted</span>
+                    ) : (
+                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">🟢 Active</span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleSectionVisibility('hero')}
+                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 font-headings ${
+                      homeContent.hiddenSections?.hero
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
+                    }`}
+                  >
+                    {homeContent.hiddenSections?.hero ? (
+                      <><CheckCircle size={14} /> Restore Section</>
+                    ) : (
+                      <><Trash2 size={14} /> Delete / Hide Section</>
+                    )}
+                  </button>
+                </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Hero Headline Title</label>
@@ -376,10 +436,36 @@ export default function Admin() {
               </div>
 
               {/* SECTION 2: Special Offers & Banners */}
-              <div className="space-y-6 border-b border-slate-100 pb-8">
-                <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
-                  <Tag size={18} className="text-brand" /> 2. Special Offers & Banners
-                </h3>
+              <div className={`space-y-6 border-b border-slate-100 pb-8 p-5 rounded-3xl transition-all ${homeContent.hiddenSections?.specialOffers ? 'bg-red-50/40 border border-red-200/60' : 'bg-white'}`}>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <Tag size={20} className="text-brand" />
+                    <h3 className="text-base font-extrabold text-gray-900 font-headings">
+                      2. "Special Offers & Banners" Section
+                    </h3>
+                    {homeContent.hiddenSections?.specialOffers ? (
+                      <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-red-200">🔴 Hidden / Deleted</span>
+                    ) : (
+                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">🟢 Active</span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleSectionVisibility('specialOffers')}
+                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 font-headings ${
+                      homeContent.hiddenSections?.specialOffers
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
+                    }`}
+                  >
+                    {homeContent.hiddenSections?.specialOffers ? (
+                      <><CheckCircle size={14} /> Restore Section</>
+                    ) : (
+                      <><Trash2 size={14} /> Delete / Hide Section</>
+                    )}
+                  </button>
+                </div>
 
                 <div className="grid md:grid-cols-2 gap-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
                   {/* Promo Banner 1 */}
@@ -448,19 +534,45 @@ export default function Admin() {
                 </div>
               </div>
 
-              {/* SECTION 3: Why Choose FresVeg? */}
-              <div className="space-y-6 border-b border-slate-100 pb-8">
-                <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
-                  <ShieldCheck size={18} className="text-brand" /> 3. Why Choose FresVeg?
-                </h3>
+              {/* SECTION 3: Best Selling Organic Produce */}
+              <div className={`space-y-4 border-b border-slate-100 pb-8 p-5 rounded-3xl transition-all ${homeContent.hiddenSections?.bestSelling ? 'bg-red-50/40 border border-red-200/60' : 'bg-white'}`}>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={20} className="text-brand" />
+                    <h3 className="text-base font-extrabold text-gray-900 font-headings">
+                      3. "Best Selling Organic Produce" Section
+                    </h3>
+                    {homeContent.hiddenSections?.bestSelling ? (
+                      <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-red-200">🔴 Hidden / Deleted</span>
+                    ) : (
+                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">🟢 Active</span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleSectionVisibility('bestSelling')}
+                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 font-headings ${
+                      homeContent.hiddenSections?.bestSelling
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
+                    }`}
+                  >
+                    {homeContent.hiddenSections?.bestSelling ? (
+                      <><CheckCircle size={14} /> Restore Section</>
+                    ) : (
+                      <><Trash2 size={14} /> Delete / Hide Section</>
+                    )}
+                  </button>
+                </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Section Main Title</label>
                     <input
                       type="text"
-                      value={homeContent.whyTitle || ''}
-                      onChange={(e) => setHomeContent({ ...homeContent, whyTitle: e.target.value })}
+                      value={homeContent.bestSellingTitle || 'Best Selling Organic Produce'}
+                      onChange={(e) => setHomeContent({ ...homeContent, bestSellingTitle: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 px-4 py-2 rounded-2xl focus:border-brand focus:bg-white outline-none text-xs font-bold"
                     />
                   </div>
@@ -468,90 +580,122 @@ export default function Admin() {
                     <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Section Subtitle Paragraph</label>
                     <input
                       type="text"
-                      value={homeContent.whySubtitle || ''}
-                      onChange={(e) => setHomeContent({ ...homeContent, whySubtitle: e.target.value })}
+                      value={homeContent.bestSellingSubtitle || 'Directly harvested from local organic farms. Click any item to explore full product details & buy directly.'}
+                      onChange={(e) => setHomeContent({ ...homeContent, bestSellingSubtitle: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 px-4 py-2 rounded-2xl focus:border-brand focus:bg-white outline-none text-xs"
                     />
                   </div>
                 </div>
+              </div>
 
-                <div className="grid md:grid-cols-3 gap-4 pt-2">
-                  {/* Feature 1 */}
-                  <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-200/70 space-y-2">
-                    <span className="text-[10px] font-black text-brand uppercase tracking-wider">Feature 1</span>
-                    <div>
-                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Title</label>
-                      <input
-                        type="text"
-                        value={homeContent.why1Title || ''}
-                        onChange={(e) => setHomeContent({ ...homeContent, why1Title: e.target.value })}
-                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand font-bold"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Description</label>
-                      <textarea
-                        rows="2"
-                        value={homeContent.why1Desc || ''}
-                        onChange={(e) => setHomeContent({ ...homeContent, why1Desc: e.target.value })}
-                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand"
-                      />
-                    </div>
+              {/* SECTION 4: About FresVeg Section */}
+              <div className={`space-y-4 border-b border-slate-100 pb-8 p-5 rounded-3xl transition-all ${homeContent.hiddenSections?.about ? 'bg-red-50/40 border border-red-200/60' : 'bg-white'}`}>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={20} className="text-brand" />
+                    <h3 className="text-base font-extrabold text-gray-900 font-headings">
+                      4. "About FresVeg" Section
+                    </h3>
+                    {homeContent.hiddenSections?.about ? (
+                      <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-red-200">🔴 Hidden / Deleted</span>
+                    ) : (
+                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">🟢 Active</span>
+                    )}
                   </div>
 
-                  {/* Feature 2 */}
-                  <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-200/70 space-y-2">
-                    <span className="text-[10px] font-black text-brand uppercase tracking-wider">Feature 2</span>
-                    <div>
-                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Title</label>
-                      <input
-                        type="text"
-                        value={homeContent.why2Title || ''}
-                        onChange={(e) => setHomeContent({ ...homeContent, why2Title: e.target.value })}
-                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand font-bold"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Description</label>
-                      <textarea
-                        rows="2"
-                        value={homeContent.why2Desc || ''}
-                        onChange={(e) => setHomeContent({ ...homeContent, why2Desc: e.target.value })}
-                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand"
-                      />
-                    </div>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleSectionVisibility('about')}
+                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 font-headings ${
+                      homeContent.hiddenSections?.about
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
+                    }`}
+                  >
+                    {homeContent.hiddenSections?.about ? (
+                      <><CheckCircle size={14} /> Restore Section</>
+                    ) : (
+                      <><Trash2 size={14} /> Delete / Hide Section</>
+                    )}
+                  </button>
+                </div>
 
-                  {/* Feature 3 */}
-                  <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-200/70 space-y-2">
-                    <span className="text-[10px] font-black text-brand uppercase tracking-wider">Feature 3</span>
-                    <div>
-                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Title</label>
-                      <input
-                        type="text"
-                        value={homeContent.why3Title || ''}
-                        onChange={(e) => setHomeContent({ ...homeContent, why3Title: e.target.value })}
-                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand font-bold"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Description</label>
-                      <textarea
-                        rows="2"
-                        value={homeContent.why3Desc || ''}
-                        onChange={(e) => setHomeContent({ ...homeContent, why3Desc: e.target.value })}
-                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand"
-                      />
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">About Headline Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={homeContent.aboutHeadline}
+                    onChange={(e) => setHomeContent({ ...homeContent, aboutHeadline: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200/80 px-4 py-2.5 rounded-2xl focus:border-brand focus:bg-white outline-none text-sm font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">About Paragraph 1</label>
+                  <textarea
+                    rows="3"
+                    required
+                    value={homeContent.aboutText1}
+                    onChange={(e) => setHomeContent({ ...homeContent, aboutText1: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200/80 px-4 py-2.5 rounded-2xl focus:border-brand focus:bg-white outline-none text-xs leading-relaxed"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">About Paragraph 2</label>
+                  <textarea
+                    rows="3"
+                    required
+                    value={homeContent.aboutText2}
+                    onChange={(e) => setHomeContent({ ...homeContent, aboutText2: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200/80 px-4 py-2.5 rounded-2xl focus:border-brand focus:bg-white outline-none text-xs leading-relaxed"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">About Section Feature Image URL</label>
+                  <input
+                    type="url"
+                    required
+                    value={homeContent.aboutImage}
+                    onChange={(e) => setHomeContent({ ...homeContent, aboutImage: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200/80 px-4 py-2.5 rounded-2xl focus:border-brand focus:bg-white outline-none text-2xs"
+                  />
                 </div>
               </div>
 
-              {/* SECTION 4: Our Farm-to-Table Process */}
-              <div className="space-y-6 border-b border-slate-100 pb-8">
-                <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
-                  <Sprout size={18} className="text-brand" /> 4. Our Farm-to-Table Process
-                </h3>
+              {/* SECTION 5: Our Farm-to-Table Process */}
+              <div className={`space-y-6 border-b border-slate-100 pb-8 p-5 rounded-3xl transition-all ${homeContent.hiddenSections?.process ? 'bg-red-50/40 border border-red-200/60' : 'bg-white'}`}>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <Sprout size={20} className="text-brand" />
+                    <h3 className="text-base font-extrabold text-gray-900 font-headings">
+                      5. "Our Farm-to-Table Process" Section
+                    </h3>
+                    {homeContent.hiddenSections?.process ? (
+                      <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-red-200">🔴 Hidden / Deleted</span>
+                    ) : (
+                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">🟢 Active</span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleSectionVisibility('process')}
+                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 font-headings ${
+                      homeContent.hiddenSections?.process
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
+                    }`}
+                  >
+                    {homeContent.hiddenSections?.process ? (
+                      <><CheckCircle size={14} /> Restore Section</>
+                    ) : (
+                      <><Trash2 size={14} /> Delete / Hide Section</>
+                    )}
+                  </button>
+                </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
@@ -669,11 +813,162 @@ export default function Admin() {
                 </div>
               </div>
 
-              {/* SECTION 5: What Our Customers Say (Testimonials) */}
-              <div className="space-y-6 border-b border-slate-100 pb-8">
-                <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
-                  <MessageSquare size={18} className="text-brand" /> 5. What Our Customers Say (Testimonials)
-                </h3>
+              {/* SECTION 6: Why Choose FresVeg? */}
+              <div className={`space-y-6 border-b border-slate-100 pb-8 p-5 rounded-3xl transition-all ${homeContent.hiddenSections?.whyChoose ? 'bg-red-50/40 border border-red-200/60' : 'bg-white'}`}>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={20} className="text-brand" />
+                    <h3 className="text-base font-extrabold text-gray-900 font-headings">
+                      6. "Why Choose FresVeg?" Section
+                    </h3>
+                    {homeContent.hiddenSections?.whyChoose ? (
+                      <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-red-200">🔴 Hidden / Deleted</span>
+                    ) : (
+                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">🟢 Active</span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleSectionVisibility('whyChoose')}
+                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 font-headings ${
+                      homeContent.hiddenSections?.whyChoose
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
+                    }`}
+                  >
+                    {homeContent.hiddenSections?.whyChoose ? (
+                      <><CheckCircle size={14} /> Restore Section</>
+                    ) : (
+                      <><Trash2 size={14} /> Delete / Hide Section</>
+                    )}
+                  </button>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Section Main Title</label>
+                    <input
+                      type="text"
+                      value={homeContent.whyTitle || ''}
+                      onChange={(e) => setHomeContent({ ...homeContent, whyTitle: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2 rounded-2xl focus:border-brand focus:bg-white outline-none text-xs font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Section Subtitle Paragraph</label>
+                    <input
+                      type="text"
+                      value={homeContent.whySubtitle || ''}
+                      onChange={(e) => setHomeContent({ ...homeContent, whySubtitle: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2 rounded-2xl focus:border-brand focus:bg-white outline-none text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-4 pt-2">
+                  {/* Feature 1 */}
+                  <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-200/70 space-y-2">
+                    <span className="text-[10px] font-black text-brand uppercase tracking-wider">Feature 1</span>
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={homeContent.why1Title || ''}
+                        onChange={(e) => setHomeContent({ ...homeContent, why1Title: e.target.value })}
+                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Description</label>
+                      <textarea
+                        rows="2"
+                        value={homeContent.why1Desc || ''}
+                        onChange={(e) => setHomeContent({ ...homeContent, why1Desc: e.target.value })}
+                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Feature 2 */}
+                  <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-200/70 space-y-2">
+                    <span className="text-[10px] font-black text-brand uppercase tracking-wider">Feature 2</span>
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={homeContent.why2Title || ''}
+                        onChange={(e) => setHomeContent({ ...homeContent, why2Title: e.target.value })}
+                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Description</label>
+                      <textarea
+                        rows="2"
+                        value={homeContent.why2Desc || ''}
+                        onChange={(e) => setHomeContent({ ...homeContent, why2Desc: e.target.value })}
+                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Feature 3 */}
+                  <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-200/70 space-y-2">
+                    <span className="text-[10px] font-black text-brand uppercase tracking-wider">Feature 3</span>
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={homeContent.why3Title || ''}
+                        onChange={(e) => setHomeContent({ ...homeContent, why3Title: e.target.value })}
+                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Description</label>
+                      <textarea
+                        rows="2"
+                        value={homeContent.why3Desc || ''}
+                        onChange={(e) => setHomeContent({ ...homeContent, why3Desc: e.target.value })}
+                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 7: What Our Customers Say (Testimonials) */}
+              <div className={`space-y-6 pb-4 p-5 rounded-3xl transition-all ${homeContent.hiddenSections?.testimonials ? 'bg-red-50/40 border border-red-200/60' : 'bg-white'}`}>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare size={20} className="text-brand" />
+                    <h3 className="text-base font-extrabold text-gray-900 font-headings">
+                      7. "What Our Customers Say" Section
+                    </h3>
+                    {homeContent.hiddenSections?.testimonials ? (
+                      <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-red-200">🔴 Hidden / Deleted</span>
+                    ) : (
+                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">🟢 Active</span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleSectionVisibility('testimonials')}
+                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 font-headings ${
+                      homeContent.hiddenSections?.testimonials
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
+                    }`}
+                  >
+                    {homeContent.hiddenSections?.testimonials ? (
+                      <><CheckCircle size={14} /> Restore Section</>
+                    ) : (
+                      <><Trash2 size={14} /> Delete / Hide Section</>
+                    )}
+                  </button>
+                </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
@@ -798,69 +1093,120 @@ export default function Admin() {
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* SECTION 6: About Section */}
-              <div className="space-y-4 pb-4">
-                <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
-                  <ShieldCheck size={18} className="text-brand" /> 6. About FresVeg Section
-                </h3>
+                  {/* Testimonial 4 (Rajesh V. Patel) */}
+                  <div className="p-4 bg-slate-50/70 rounded-2xl border border-slate-200 space-y-2">
+                    <span className="text-[10px] font-black text-amber-600 uppercase tracking-wider">Testimonial 4</span>
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Customer Quote</label>
+                      <textarea
+                        rows="3"
+                        value={homeContent.test4Quote || ''}
+                        onChange={(e) => setHomeContent({ ...homeContent, test4Quote: e.target.value })}
+                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand leading-relaxed"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Name</label>
+                        <input
+                          type="text"
+                          value={homeContent.test4Name || ''}
+                          onChange={(e) => setHomeContent({ ...homeContent, test4Name: e.target.value })}
+                          className="w-full bg-white border px-2.5 py-1 text-xs rounded-lg outline-none focus:border-brand font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Role / Tag</label>
+                        <input
+                          type="text"
+                          value={homeContent.test4Role || ''}
+                          onChange={(e) => setHomeContent({ ...homeContent, test4Role: e.target.value })}
+                          className="w-full bg-white border px-2.5 py-1 text-xs rounded-lg outline-none focus:border-brand"
+                        />
+                      </div>
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">About Headline Title</label>
-                  <input
-                    type="text"
-                    required
-                    value={homeContent.aboutHeadline}
-                    onChange={(e) => setHomeContent({ ...homeContent, aboutHeadline: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200/80 px-4 py-2.5 rounded-2xl focus:border-brand focus:bg-white outline-none text-sm font-bold"
-                  />
-                </div>
+                  {/* Testimonial 5 (Anita Roy) */}
+                  <div className="p-4 bg-slate-50/70 rounded-2xl border border-slate-200 space-y-2">
+                    <span className="text-[10px] font-black text-amber-600 uppercase tracking-wider">Testimonial 5</span>
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Customer Quote</label>
+                      <textarea
+                        rows="3"
+                        value={homeContent.test5Quote || ''}
+                        onChange={(e) => setHomeContent({ ...homeContent, test5Quote: e.target.value })}
+                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand leading-relaxed"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Name</label>
+                        <input
+                          type="text"
+                          value={homeContent.test5Name || ''}
+                          onChange={(e) => setHomeContent({ ...homeContent, test5Name: e.target.value })}
+                          className="w-full bg-white border px-2.5 py-1 text-xs rounded-lg outline-none focus:border-brand font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Role / Tag</label>
+                        <input
+                          type="text"
+                          value={homeContent.test5Role || ''}
+                          onChange={(e) => setHomeContent({ ...homeContent, test5Role: e.target.value })}
+                          className="w-full bg-white border px-2.5 py-1 text-xs rounded-lg outline-none focus:border-brand"
+                        />
+                      </div>
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">About Paragraph 1</label>
-                  <textarea
-                    rows="3"
-                    required
-                    value={homeContent.aboutText1}
-                    onChange={(e) => setHomeContent({ ...homeContent, aboutText1: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200/80 px-4 py-2.5 rounded-2xl focus:border-brand focus:bg-white outline-none text-xs leading-relaxed"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">About Paragraph 2</label>
-                  <textarea
-                    rows="3"
-                    required
-                    value={homeContent.aboutText2}
-                    onChange={(e) => setHomeContent({ ...homeContent, aboutText2: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200/80 px-4 py-2.5 rounded-2xl focus:border-brand focus:bg-white outline-none text-xs leading-relaxed"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">About Section Feature Image URL</label>
-                  <input
-                    type="url"
-                    required
-                    value={homeContent.aboutImage}
-                    onChange={(e) => setHomeContent({ ...homeContent, aboutImage: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200/80 px-4 py-2.5 rounded-2xl focus:border-brand focus:bg-white outline-none text-2xs"
-                  />
+                  {/* Testimonial 6 (Michael Rodriguez) */}
+                  <div className="p-4 bg-slate-50/70 rounded-2xl border border-slate-200 space-y-2">
+                    <span className="text-[10px] font-black text-amber-600 uppercase tracking-wider">Testimonial 6</span>
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Customer Quote</label>
+                      <textarea
+                        rows="3"
+                        value={homeContent.test6Quote || ''}
+                        onChange={(e) => setHomeContent({ ...homeContent, test6Quote: e.target.value })}
+                        className="w-full bg-white border px-3 py-1.5 text-xs rounded-xl outline-none focus:border-brand leading-relaxed"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Name</label>
+                        <input
+                          type="text"
+                          value={homeContent.test6Name || ''}
+                          onChange={(e) => setHomeContent({ ...homeContent, test6Name: e.target.value })}
+                          className="w-full bg-white border px-2.5 py-1 text-xs rounded-lg outline-none focus:border-brand font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Role / Tag</label>
+                        <input
+                          type="text"
+                          value={homeContent.test6Role || ''}
+                          onChange={(e) => setHomeContent({ ...homeContent, test6Role: e.target.value })}
+                          className="w-full bg-white border px-2.5 py-1 text-xs rounded-lg outline-none focus:border-brand"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Submit Save Floating Bar */}
-              <div className="sticky bottom-6 z-40 bg-gray-900/90 backdrop-blur-md text-white p-4 rounded-3xl shadow-2xl flex items-center justify-between border border-gray-800">
+              <div className="sticky bottom-6 z-40 bg-gray-900/90 backdrop-blur-md text-white p-4 rounded-3xl shadow-2xl flex items-center justify-between border border-gray-800 font-headings">
                 <span className="text-xs font-bold text-gray-300 pl-2">
                   Done making updates? Save to publish changes live.
                 </span>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="bg-brand hover:bg-brand-dark text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-brand/30 active:scale-95 flex items-center gap-2 disabled:opacity-60"
+                  className="bg-brand hover:bg-brand-dark text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-brand/30 active:scale-95 flex items-center gap-2 disabled:opacity-60 font-headings"
                 >
                   {isSaving ? (
                     <>
@@ -878,6 +1224,7 @@ export default function Admin() {
 
             </form>
           )}
+
 
           {/* TAB 2: User Roles Panel */}
           {activeTab === 'users' && (

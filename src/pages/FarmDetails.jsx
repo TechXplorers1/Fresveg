@@ -5,9 +5,10 @@ import { realtimeDb } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { 
+  Instagram, Facebook, Youtube, Globe, MessageCircle,
   MapPin, Calendar, Users, Compass, ArrowLeft, Sparkles, CheckCircle, 
   Clock, ShieldCheck, Store, ShoppingCart, Info, Star, Navigation, Home as HomeIcon,
-  Tent, Sun, Sprout, Heart, Check, Plus, Minus, Tag, Zap, Pencil, Trash2, Save, X, Edit3, Image as ImageIcon, Maximize2, ChevronDown, DollarSign
+  Tent, Sun, Sprout, Heart, Check, Plus, Minus, Tag, Zap, Pencil, Trash2, Save, X, Edit3, Image as ImageIcon, Maximize2, ChevronDown, DollarSign, Loader2
 } from 'lucide-react';
 import ModernDatePicker from '../components/common/ModernDatePicker';
 
@@ -130,6 +131,20 @@ const MOCK_FARM_DATA = {
   }
 };
 
+
+function sanitizeForFirebase(obj) {
+  if (obj === undefined) return null;
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(sanitizeForFirebase);
+  const sanitized = {};
+  for (const key of Object.keys(obj)) {
+    if (obj[key] !== undefined) {
+      sanitized[key] = sanitizeForFirebase(obj[key]);
+    }
+  }
+  return sanitized;
+}
+
 export function getFarmSlug(farm) {
   if (!farm) return '';
   if (!farm.farmName) return farm.id || '';
@@ -192,7 +207,7 @@ export default function FarmDetails() {
   // Add Accommodation Modal in Edit Mode
   const [showAddAccModal, setShowAddAccModal] = useState(false);
   const [editingAccId, setEditingAccId] = useState(null);
-  const [newAcc, setNewAcc] = useState({ title: '', price: 'Included', desc: '', icon: 'house' });
+  const [newAcc, setNewAcc] = useState({ title: '', price: '', desc: '', icon: 'house' });
 
   // Add Photo Modal in Edit Mode
   const [showAddPhotoModal, setShowAddPhotoModal] = useState(false);
@@ -276,6 +291,7 @@ export default function FarmDetails() {
           livestockPhotos: matchedFarm.livestockPhotos || [],
           accommodations: matchedFarm.accommodations || [],
           accommodationPhotos: matchedFarm.accommodationPhotos || [],
+          kidsActivities: matchedFarm.kidsActivities || [],
           farmProducts: matchedFarm.farmProducts || [],
           gallery: matchedFarm.gallery || [],
           amenities: matchedFarm.amenities || []
@@ -285,6 +301,7 @@ export default function FarmDetails() {
           farmName: fullFarm.farmName || '',
           location: fullFarm.location || '',
           description: fullFarm.description || '',
+          socialLinks: fullFarm.socialLinks || { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' },
           costPerPerson: fullFarm.costPerPerson || 0,
           costType: (!fullFarm.costPerPerson || Number(fullFarm.costPerPerson) === 0) ? 'free' : 'payable',
           image: fullFarm.image || '',
@@ -293,8 +310,9 @@ export default function FarmDetails() {
           fruits: [...fullFarm.fruits],
           livestock: [...fullFarm.livestock],
           livestockPhotos: [...fullFarm.livestockPhotos],
-          accommodations: [...fullFarm.accommodations],
-          accommodationPhotos: [...fullFarm.accommodationPhotos],
+          accommodations: [...(fullFarm.accommodations || [])],
+          accommodationPhotos: [...(fullFarm.accommodationPhotos || [])],
+          kidsActivities: [...(fullFarm.kidsActivities || [])],
           farmProducts: [...fullFarm.farmProducts],
           gallery: [...fullFarm.gallery],
           amenities: [...fullFarm.amenities]
@@ -579,19 +597,24 @@ export default function FarmDetails() {
         description: editForm.description.trim(),
         costPerPerson: finalCost,
         image: editForm.image.trim() || farm.image,
-        crops: editForm.crops,
-        fruits: editForm.fruits,
-        livestock: editForm.livestock,
-        kidsActivities: editForm.kidsActivities,
-        accommodations: editForm.accommodations,
-        farmProducts: editForm.farmProducts,
-        gallery: editForm.gallery,
-        amenities: editForm.amenities,
+        socialLinks: editForm.socialLinks || { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' },
+        crops: editForm.crops || [],
+        fruits: editForm.fruits || [],
+        livestock: editForm.livestock || [],
+        kidsActivities: editForm.kidsActivities || [],
+        accommodations: editForm.accommodations || [],
+        cropPhotos: editForm.cropPhotos || [],
+        livestockPhotos: editForm.livestockPhotos || [],
+        accommodationPhotos: editForm.accommodationPhotos || [],
+        farmProducts: editForm.farmProducts || [],
+        gallery: editForm.gallery || [],
+        amenities: editForm.amenities || [],
         updatedAt: new Date().toISOString()
       };
 
+      const sanitizedData = sanitizeForFirebase(updatedFarmData);
       const farmRef = ref(realtimeDb, `farms/${farm.id}`);
-      await set(farmRef, updatedFarmData);
+      await set(farmRef, sanitizedData);
       setFarm(updatedFarmData);
       setIsEditing(false);
       setShowSaveSuccessModal(true);
@@ -809,7 +832,7 @@ export default function FarmDetails() {
     setEditingAccId(acc.id || `acc-${Date.now()}`);
     setNewAcc({
       title: acc.title || '',
-      price: acc.price || 'Included',
+      price: acc.price || '',
       desc: acc.desc || '',
       icon: acc.icon || 'house'
     });
@@ -825,7 +848,7 @@ export default function FarmDetails() {
         ...prev,
         accommodations: prev.accommodations.map(a =>
           (a.id === editingAccId)
-            ? { ...a, title: newAcc.title.trim(), price: newAcc.price.trim() || 'Included', desc: newAcc.desc.trim() }
+            ? { ...a, title: newAcc.title.trim(), price: newAcc.price.trim() || '', desc: newAcc.desc.trim() }
             : a
         )
       }));
@@ -833,7 +856,7 @@ export default function FarmDetails() {
       const accObj = {
         id: `acc-${Date.now()}`,
         title: newAcc.title.trim(),
-        price: newAcc.price.trim() || 'Included',
+        price: newAcc.price.trim() || '',
         desc: newAcc.desc.trim() || 'Comfortable stay experience at the farm.',
         icon: newAcc.icon
       };
@@ -842,7 +865,7 @@ export default function FarmDetails() {
 
     setShowAddAccModal(false);
     setEditingAccId(null);
-    setNewAcc({ title: '', price: 'Included', desc: '', icon: 'house' });
+    setNewAcc({ title: '', price: '', desc: '', icon: 'house' });
   };
 
   const handleRemoveAccItem = (accId) => {
@@ -1101,6 +1124,63 @@ export default function FarmDetails() {
             </span>
           </div>
 
+          {/* Customer Social Media Links Bar */}
+          {!isEditing && farm.socialLinks && (farm.socialLinks.instagram || farm.socialLinks.facebook || farm.socialLinks.youtube || farm.socialLinks.whatsapp || farm.socialLinks.website) && (
+            <div className="flex flex-wrap items-center gap-2 pt-1.5">
+              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider font-headings mr-1">Socials:</span>
+              {farm.socialLinks.instagram && (
+                <a
+                  href={farm.socialLinks.instagram.startsWith('http') ? farm.socialLinks.instagram : `https://instagram.com/${farm.socialLinks.instagram.replace('@', '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                >
+                  <Instagram size={12} /> <span>Instagram</span>
+                </a>
+              )}
+              {farm.socialLinks.facebook && (
+                <a
+                  href={farm.socialLinks.facebook.startsWith('http') ? farm.socialLinks.facebook : `https://facebook.com/${farm.socialLinks.facebook}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1 rounded-xl bg-blue-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                >
+                  <Facebook size={12} /> <span>Facebook</span>
+                </a>
+              )}
+              {farm.socialLinks.youtube && (
+                <a
+                  href={farm.socialLinks.youtube.startsWith('http') ? farm.socialLinks.youtube : `https://youtube.com/${farm.socialLinks.youtube}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1 rounded-xl bg-red-600 text-white shadow-sm hover:scale-105 transition-all flex items-center gap-1 text-[11px] font-bold font-headings"
+                >
+                  <Youtube size={12} /> <span>YouTube</span>
+                </a>
+              )}
+              {farm.socialLinks.whatsapp && (
+                <a
+                  href={farm.socialLinks.whatsapp.startsWith('http') ? farm.socialLinks.whatsapp : `https://wa.me/${farm.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1 rounded-xl bg-emerald-600 text-white shadow-sm hover:scale-105 transition-all flex items-center gap-1 text-[11px] font-bold font-headings"
+                >
+                  <MessageCircle size={12} /> <span>WhatsApp</span>
+                </a>
+              )}
+              {farm.socialLinks.website && (
+                <a
+                  href={farm.socialLinks.website.startsWith('http') ? farm.socialLinks.website : `https://${farm.socialLinks.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1 rounded-xl bg-slate-800 text-white shadow-sm hover:scale-105 transition-all flex items-center gap-1 text-[11px] font-bold font-headings border border-white/20"
+                >
+                  <Globe size={12} /> <span>Website</span>
+                </a>
+              )}
+            </div>
+          )}
+
           {/* Editable Description or Display */}
           {isEditing ? (
             <div className="bg-black/60 backdrop-blur-md p-3 rounded-2xl border border-white/20">
@@ -1272,7 +1352,7 @@ export default function FarmDetails() {
                   <button
                     onClick={() => {
                       setEditingAccId(null);
-                      setNewAcc({ title: '', price: 'Included', desc: '', icon: 'house' });
+                      setNewAcc({ title: '', price: '', desc: '', icon: 'house' });
                       setShowAddAccModal(true);
                     }}
                     className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold font-headings flex items-center gap-1 shadow-md hover:bg-emerald-700 cursor-pointer"
@@ -1285,7 +1365,7 @@ export default function FarmDetails() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {activeAccommodations.map((acc, index) => {
                   const accTitle = typeof acc === 'string' ? acc : (acc.title || 'Accommodation');
-                  const accPrice = typeof acc === 'object' && acc.price ? acc.price : 'Included';
+                  const accPrice = typeof acc === 'object' && acc.price ? acc.price : '';
                   const accDesc = typeof acc === 'object' && acc.desc ? acc.desc : 'Comfortable farm stay choice';
                   const accPhotos = typeof acc === 'object' && Array.isArray(acc.photos) ? acc.photos : [];
 
@@ -1961,6 +2041,85 @@ export default function FarmDetails() {
                   </div>
                 )}
               </div>
+
+              {/* 🌐 Social Media & Web Contact Links */}
+              <div className="border-t border-slate-100 pt-4 space-y-3">
+                <label className="text-[11px] font-bold text-slate-700 uppercase flex items-center gap-1.5 font-headings">
+                  <Globe size={14} className="text-emerald-600" /> Social Media & Contact Links
+                </label>
+                
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5 font-headings">Instagram URL / Handle</label>
+                    <input
+                      type="text"
+                      value={editForm.socialLinks?.instagram || ''}
+                      onChange={(e) => setEditForm(prev => ({
+                        ...prev,
+                        socialLinks: { ...(prev.socialLinks || {}), instagram: e.target.value }
+                      }))}
+                      placeholder="https://instagram.com/yourfarm"
+                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5 font-headings">Facebook Page URL</label>
+                    <input
+                      type="text"
+                      value={editForm.socialLinks?.facebook || ''}
+                      onChange={(e) => setEditForm(prev => ({
+                        ...prev,
+                        socialLinks: { ...(prev.socialLinks || {}), facebook: e.target.value }
+                      }))}
+                      placeholder="https://facebook.com/yourfarm"
+                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5 font-headings">YouTube Channel URL</label>
+                    <input
+                      type="text"
+                      value={editForm.socialLinks?.youtube || ''}
+                      onChange={(e) => setEditForm(prev => ({
+                        ...prev,
+                        socialLinks: { ...(prev.socialLinks || {}), youtube: e.target.value }
+                      }))}
+                      placeholder="https://youtube.com/@yourfarm"
+                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5 font-headings">WhatsApp Phone / Link</label>
+                    <input
+                      type="text"
+                      value={editForm.socialLinks?.whatsapp || ''}
+                      onChange={(e) => setEditForm(prev => ({
+                        ...prev,
+                        socialLinks: { ...(prev.socialLinks || {}), whatsapp: e.target.value }
+                      }))}
+                      placeholder="E.g. +91 9876543210 or https://wa.me/..."
+                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5 font-headings">Official Website URL</label>
+                    <input
+                      type="text"
+                      value={editForm.socialLinks?.website || ''}
+                      onChange={(e) => setEditForm(prev => ({
+                        ...prev,
+                        socialLinks: { ...(prev.socialLinks || {}), website: e.target.value }
+                      }))}
+                      placeholder="https://yourfarm.com"
+                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             /* ── Standard Customer Admission Ticket & Booking Card ── */
@@ -2134,9 +2293,10 @@ export default function FarmDetails() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-indigo-700"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
                 >
-                  Add Photo
+                  <Plus size={14} />
+                  <span>Add Photo</span>
                 </button>
               </div>
             </form>
@@ -2304,7 +2464,7 @@ export default function FarmDetails() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-700 cursor-pointer"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
                 >
                   {editingProductId ? 'Update Product' : 'Add Product'}
                 </button>
@@ -2393,14 +2553,14 @@ export default function FarmDetails() {
                     type="text"
                     value={newAcc.price}
                     onChange={(e) => setNewAcc({ ...newAcc, price: e.target.value })}
-                    placeholder="E.g. 1500 / night (or Included / Free)"
+                    placeholder="E.g. 1500 or Free"
                     className="w-full pl-8 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-semibold"
                   />
                 </div>
                 {/* Price preset chips */}
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   <span className="text-[10px] font-bold text-slate-400 self-center font-headings">Presets:</span>
-                  {['Included / Free', '₹500 / night', '₹1,000 / night', '₹1,500 / night', '₹2,000 / night'].map((preset) => (
+                  {['Free', '₹500 / night', '₹1,000 / night', '₹1,500 / night', '₹2,000 / night'].map((preset) => (
                     <button
                       key={preset}
                       type="button"
@@ -2438,7 +2598,7 @@ export default function FarmDetails() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-700 cursor-pointer"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
                 >
                   {editingAccId ? 'Update Stay Option' : 'Add Stay Option'}
                 </button>
@@ -2672,9 +2832,18 @@ export default function FarmDetails() {
                   <button
                     type="submit"
                     disabled={submittingBooking || isFullyBooked || (bookingDate && Number(visitorsCount) > availableSlotsForDate)}
-                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer"
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
                   >
-                    {submittingBooking ? 'Confirming...' : isFullyBooked ? 'Fully Booked' : 'Confirm Booking'}
+                    {submittingBooking ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        <span>Confirming...</span>
+                      </>
+                    ) : isFullyBooked ? (
+                      'Fully Booked'
+                    ) : (
+                      'Confirm Booking'
+                    )}
                   </button>
                 </div>
               )}
@@ -2747,7 +2916,7 @@ export default function FarmDetails() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-700 cursor-pointer"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
                 >
                   Submit Review
                 </button>

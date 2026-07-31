@@ -198,6 +198,25 @@ export const AuthProvider = ({ children }) => {
 
       const userRef = ref(realtimeDb, `users/${user.uid}`);
       await update(userRef, newData);
+
+      // Mirror public shop info to publicShops/{uid} so Marketplace can read it
+      // without being blocked by the restricted users/ node permissions
+      if (newData.shops) {
+        const shopsArray = Array.isArray(newData.shops)
+          ? newData.shops
+          : Object.values(newData.shops);
+        const publicShopData = shopsArray.map(s => ({
+          shopName: s.shopName || '',
+          image: s.image || '',
+          location: s.location || '',
+          gstNumber: s.gstNumber || '',
+          socialLinks: s.socialLinks || { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' },
+          updatedAt: s.updatedAt || s.createdAt || new Date().toISOString()
+        }));
+        const publicRef = ref(realtimeDb, `publicShops/${user.uid}`);
+        await set(publicRef, publicShopData);
+      }
+
       await loadUserProfile(user);
     } catch (error) {
       console.error('Error updating profile:', error);

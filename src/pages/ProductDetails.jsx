@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
-import { ShoppingCart, Target, ShieldCheck, Truck, Star, Info, Tag, ArrowLeft, ArrowRight, Store, RefreshCw, BadgePercent, Leaf, Zap, Minus, Plus } from 'lucide-react';
+import { realtimeDb } from '../firebase';
+import { ref, onValue } from 'firebase/database';
+import { Instagram, Facebook, Youtube, Globe, MessageCircle, ShoppingCart, Target, ShieldCheck, Truck, Star, Info, Tag, ArrowLeft, ArrowRight, Store, RefreshCw, BadgePercent, Leaf, Zap, Minus, Plus } from 'lucide-react';
 
 export default function ProductDetails() {
   const { id } = useParams();
@@ -10,6 +12,26 @@ export default function ProductDetails() {
   const { addToCart, cartItems, updateQuantity } = useCart();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
+  const [vendorSocialLinks, setVendorSocialLinks] = useState(null);
+
+  useEffect(() => {
+    if (!product?.vendor) return;
+    const usersRef = ref(realtimeDb, 'users');
+    const unsubscribe = onValue(usersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        Object.values(data).forEach(u => {
+          if (u.shops && Array.isArray(u.shops)) {
+            const foundShop = u.shops.find(s => s.shopName?.trim().toLowerCase() === product.vendor?.trim().toLowerCase());
+            if (foundShop && foundShop.socialLinks) {
+              setVendorSocialLinks(foundShop.socialLinks);
+            }
+          }
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, [product]);
 
   useEffect(() => {
     window.scrollTo(0, 0);

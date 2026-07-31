@@ -3,7 +3,7 @@ import { ref, onValue, push, set, remove } from 'firebase/database';
 import { realtimeDb } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, Users, Compass, Search, Sparkles, CheckCircle, Clock, Trash2, ShieldAlert, ArrowRight, BookOpen, X, Minus, Plus } from 'lucide-react';
+import { Instagram, Facebook, Youtube, Globe, MessageCircle, MapPin, Calendar, Users, Compass, Search, Sparkles, CheckCircle, Clock, Trash2, ShieldAlert, ArrowRight, BookOpen, X, Minus, Plus } from 'lucide-react';
 import ModernDatePicker from '../components/common/ModernDatePicker';
 
 const formatUpdatedTime = (isoString) => {
@@ -452,6 +452,38 @@ export default function VisitFarms() {
                       )}
 
                       {/* Footer Row */}
+                      {/* Social Media Links Bar on Farm Card */}
+                      {farm.socialLinks && (farm.socialLinks.instagram || farm.socialLinks.facebook || farm.socialLinks.youtube || farm.socialLinks.whatsapp || farm.socialLinks.website) && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <span className="text-[10px] font-bold text-slate-400 font-headings">Socials:</span>
+                          {farm.socialLinks.instagram && (
+                            <a href={farm.socialLinks.instagram.startsWith('http') ? farm.socialLinks.instagram : `https://instagram.com/${farm.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white hover:scale-110 transition-transform" title="Instagram">
+                              <Instagram size={11} />
+                            </a>
+                          )}
+                          {farm.socialLinks.facebook && (
+                            <a href={farm.socialLinks.facebook.startsWith('http') ? farm.socialLinks.facebook : `https://facebook.com/${farm.socialLinks.facebook}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-blue-600 text-white hover:scale-110 transition-transform" title="Facebook">
+                              <Facebook size={11} />
+                            </a>
+                          )}
+                          {farm.socialLinks.youtube && (
+                            <a href={farm.socialLinks.youtube.startsWith('http') ? farm.socialLinks.youtube : `https://youtube.com/${farm.socialLinks.youtube}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-red-600 text-white hover:scale-110 transition-transform" title="YouTube">
+                              <Youtube size={11} />
+                            </a>
+                          )}
+                          {farm.socialLinks.whatsapp && (
+                            <a href={farm.socialLinks.whatsapp.startsWith('http') ? farm.socialLinks.whatsapp : `https://wa.me/${farm.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-emerald-600 text-white hover:scale-110 transition-transform" title="WhatsApp">
+                              <MessageCircle size={11} />
+                            </a>
+                          )}
+                          {farm.socialLinks.website && (
+                            <a href={farm.socialLinks.website.startsWith('http') ? farm.socialLinks.website : `https://${farm.socialLinks.website}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-slate-800 text-white hover:scale-110 transition-transform" title="Website">
+                              <Globe size={11} />
+                            </a>
+                          )}
+                        </div>
+                      )}
+
                       <div className="border-t border-slate-100 pt-3 mt-auto flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider font-headings">Host / Owner</p>

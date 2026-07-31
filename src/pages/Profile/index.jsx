@@ -6,7 +6,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { realtimeDb } from '../../firebase';
 import OrderTrackingMap from '../../components/OrderTrackingMap';
 import { ref, onValue, update, set, push, remove } from 'firebase/database';
-import { Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power, Compass, CheckCircle, Users, BarChart2, TrendingUp, PieChart, ChevronDown } from 'lucide-react';
+import { Instagram, Facebook, Youtube, Globe, MessageCircle, Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power, Compass, CheckCircle, Users, BarChart2, TrendingUp, PieChart, ChevronDown, Loader2 } from 'lucide-react';
 import ImageUploadField from '../../components/common/ImageUploadField';
 import AddStayModal from './modals/AddStayModal';
 import AddFarmProductModal from './modals/AddFarmProductModal';
@@ -101,13 +101,15 @@ export default function Profile() {
         netWeight: '', returnPolicy: '', offers: '', features: '', harvestDate: '', organicCert: '', storageInfo: ''
     });
 
+    const EMPTY_SOCIAL_LINKS = { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' };
+
     // ─── Add Shop States ────────────────────────────────────────────────────────
-    const [shopSetup, setShopSetup] = useState({ shopName: '', location: '', gstNumber: '', image: '' });
-    const [newShop, setNewShop] = useState({ shopName: '', location: '', gstNumber: '', image: '' });
+    const [shopSetup, setShopSetup] = useState({ shopName: '', location: '', gstNumber: '', image: '', socialLinks: EMPTY_SOCIAL_LINKS });
+    const [newShop, setNewShop] = useState({ shopName: '', location: '', gstNumber: '', image: '', socialLinks: EMPTY_SOCIAL_LINKS });
 
     // ─── Edit Shop State ────────────────────────────────────────────────────────
     const [editingShopIndex, setEditingShopIndex] = useState(null);
-    const [editShopForm, setEditShopForm] = useState({ shopName: '', location: '', gstNumber: '', image: '' });
+    const [editShopForm, setEditShopForm] = useState({ shopName: '', location: '', gstNumber: '', image: '', socialLinks: { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' } });
 
     // ─── Edit / Delete Product State ────────────────────────────────────────────
     const [editingProductId, setEditingProductId] = useState(null);
@@ -121,6 +123,17 @@ export default function Profile() {
     const [detectingShopLocation, setDetectingShopLocation] = useState(false);
     const [deletingShopIndex, setDeletingShopIndex] = useState(null);
     const [viewingShopIndex, setViewingShopIndex] = useState(null);
+
+    // Submitting / Loading states for buttons
+    const [isSubmittingShop, setIsSubmittingShop] = useState(false);
+    const [isAddingShop, setIsAddingShop] = useState(false);
+    const [isUpdatingShop, setIsUpdatingShop] = useState(false);
+    const [isSavingAddress, setIsSavingAddress] = useState(false);
+    const [isAddingProductState, setIsAddingProductState] = useState(false);
+    const [isUpdatingProductState, setIsUpdatingProductState] = useState(false);
+    const [isSavingGallery, setIsSavingGallery] = useState(false);
+    const [isSavingModalProduct, setIsSavingModalProduct] = useState(false);
+    const [isSavingStayState, setIsSavingStayState] = useState(false);
 
     const handleGetCurrentLocation = (setter, formState) => {
         if (!navigator.geolocation) {
@@ -158,38 +171,54 @@ export default function Profile() {
 
 
     // ─── Shop Handlers ──────────────────────────────────────────────────────────
-    const handleShopSetup = (e) => {
+    const handleShopSetup = async (e) => {
         e.preventDefault();
         if (shopSetup.shopName.trim() && shopSetup.location.trim() && shopSetup.gstNumber.trim()) {
-            const now = new Date().toISOString();
-            const shop = {
-                shopName: shopSetup.shopName.trim(),
-                location: shopSetup.location.trim(),
-                gstNumber: shopSetup.gstNumber.trim(),
-                image: shopSetup.image.trim(),
-                createdAt: now,
-                updatedAt: now
-            };
-            updateProfile({ shops: [...vendorShops, shop] });
-            setShopSetup({ shopName: '', location: '', gstNumber: '', image: '' });
+            setIsSubmittingShop(true);
+            try {
+                const now = new Date().toISOString();
+                const shop = {
+                    shopName: shopSetup.shopName.trim(),
+                    location: shopSetup.location.trim(),
+                    gstNumber: shopSetup.gstNumber.trim(),
+                    image: shopSetup.image.trim(),
+                    socialLinks: shopSetup.socialLinks || EMPTY_SOCIAL_LINKS,
+                    createdAt: now,
+                    updatedAt: now
+                };
+                await updateProfile({ shops: [...vendorShops, shop] });
+                setShopSetup({ shopName: '', location: '', gstNumber: '', image: '', socialLinks: EMPTY_SOCIAL_LINKS });
+            } catch (err) {
+                console.error('Error during shop setup:', err);
+            } finally {
+                setIsSubmittingShop(false);
+            }
         }
     };
 
-    const handleAddAdditionalShop = (e) => {
+    const handleAddAdditionalShop = async (e) => {
         e.preventDefault();
         if (newShop.shopName.trim() && newShop.location.trim() && newShop.gstNumber.trim()) {
-            const now = new Date().toISOString();
-            const shopToAdd = {
-                shopName: newShop.shopName.trim(),
-                location: newShop.location.trim(),
-                gstNumber: newShop.gstNumber.trim(),
-                image: newShop.image.trim(),
-                createdAt: now,
-                updatedAt: now
-            };
-            updateProfile({ shops: [...vendorShops, shopToAdd] });
-            setNewShop({ shopName: '', location: '', gstNumber: '', image: '' });
-            setShowAddShopForm(false);
+            setIsAddingShop(true);
+            try {
+                const now = new Date().toISOString();
+                const shopToAdd = {
+                    shopName: newShop.shopName.trim(),
+                    location: newShop.location.trim(),
+                    gstNumber: newShop.gstNumber.trim(),
+                    image: newShop.image.trim(),
+                    socialLinks: newShop.socialLinks || { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' },
+                    createdAt: now,
+                    updatedAt: now
+                };
+                await updateProfile({ shops: [...vendorShops, shopToAdd] });
+                setNewShop({ shopName: '', location: '', gstNumber: '', image: '', socialLinks: EMPTY_SOCIAL_LINKS });
+                setShowAddShopForm(false);
+            } catch (err) {
+                console.error('Error adding shop:', err);
+            } finally {
+                setIsAddingShop(false);
+            }
         }
     };
 
@@ -199,41 +228,51 @@ export default function Profile() {
             shopName: shop.shopName,
             location: shop.location,
             gstNumber: shop.gstNumber,
-            image: shop.image || ''
+            image: shop.image || '',
+            socialLinks: shop.socialLinks || { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' }
         });
     };
 
-    const handleUpdateShop = (e) => {
+    const handleUpdateShop = async (e) => {
         e.preventDefault();
         const oldShopName = vendorShops[editingShopIndex].shopName;
         const newShopName = editShopForm.shopName.trim();
         const now = new Date().toISOString();
-        const updatedShops = vendorShops.map((shop, i) =>
-            i === editingShopIndex
-                ? {
-                    ...shop,
-                    shopName: newShopName,
-                    location: editShopForm.location.trim(),
-                    gstNumber: editShopForm.gstNumber.trim(),
-                    image: editShopForm.image.trim()
+        setIsUpdatingShop(true);
+        try {
+            const updatedShops = vendorShops.map((shop, i) =>
+                i === editingShopIndex
+                    ? {
+                        ...shop,
+                        shopName: newShopName,
+                        location: editShopForm.location.trim(),
+                        gstNumber: editShopForm.gstNumber.trim(),
+                        image: editShopForm.image.trim(),
+                        socialLinks: editShopForm.socialLinks || { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' },
+                        updatedAt: now
+                    }
+                    : shop
+            );
+
+            // If shopName changed, update all products belonging to the old shop name
+            if (oldShopName !== newShopName) {
+                const shopProducts = allProducts.filter(p => p.vendor === oldShopName);
+                shopProducts.forEach(product => {
+                    updateProduct(product.id, { vendor: newShopName });
+                });
+                // Update selected shop filter if it was active
+                if (selectedShopFilter === oldShopName) {
+                    setSelectedShopFilter(newShopName);
                 }
-                : shop
-        );
-
-        // If shopName changed, update all products belonging to the old shop name
-        if (oldShopName !== newShopName) {
-            const shopProducts = allProducts.filter(p => p.vendor === oldShopName);
-            shopProducts.forEach(product => {
-                updateProduct(product.id, { vendor: newShopName });
-            });
-            // Update selected shop filter if it was active
-            if (selectedShopFilter === oldShopName) {
-                setSelectedShopFilter(newShopName);
             }
-        }
 
-        updateProfile({ shops: updatedShops });
-        setEditingShopIndex(null);
+            await updateProfile({ shops: updatedShops });
+            setEditingShopIndex(null);
+        } catch (err) {
+            console.error('Error updating shop:', err);
+        } finally {
+            setIsUpdatingShop(false);
+        }
     };
 
     const handleDeleteShop = (index) => {
@@ -691,7 +730,7 @@ export default function Profile() {
         }
 
         const priceNum = newStayForm.price ? Number(newStayForm.price) : 0;
-        const priceStr = priceNum > 0 ? '₹' + priceNum + '/night' : 'Included';
+        const priceStr = priceNum > 0 ? '₹' + priceNum + '/night' : 'Free';
         const stayTitle = newStayForm.name.trim();
 
         const stayObj = {
@@ -1051,7 +1090,7 @@ export default function Profile() {
                         id: `acc-${idx + 1}`,
                         title: titleStr,
                         desc: `Comfortable ${titleStr.toLowerCase()} experience at the farm`,
-                        price: 'Included',
+                        price: '',
                         icon: titleStr.toLowerCase().includes('tent') ? 'tent' : titleStr.toLowerCase().includes('hut') ? 'hut' : 'house'
                     };
                 });
@@ -2226,8 +2265,19 @@ export default function Profile() {
                                                 </div>
                                             </div>
 
-                                            <button type="submit" className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-2.5 rounded-xl font-bold hover:shadow-lg transition-all duration-300 active:scale-[0.98]">
-                                                {editingAddressId ? 'Update Address' : 'Save Address'}
+                                            <button
+                                                type="submit"
+                                                disabled={isSavingAddress}
+                                                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold hover:shadow-lg transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2"
+                                            >
+                                                {isSavingAddress ? (
+                                                    <>
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                        <span>Saving...</span>
+                                                    </>
+                                                ) : (
+                                                    editingAddressId ? 'Update Address' : 'Save Address'
+                                                )}
                                             </button>
                                         </div>
 
@@ -2383,7 +2433,7 @@ export default function Profile() {
                                                             <MapPin size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
                                                             <div>
                                                                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider font-headings">Shipping Destination</p>
-                                                                <p className="text-xs text-slate-650 leading-relaxed italic line-clamp-3">
+                                                                <p className="text-xs text-slate-600 leading-relaxed italic line-clamp-3">
                                                                     {order.address}
                                                                 </p>
                                                             </div>
@@ -2546,7 +2596,7 @@ export default function Profile() {
                                                     <p className="text-xs font-black text-slate-405 uppercase mb-2 tracking-wider font-headings">Package Items ({order.items.length})</p>
                                                     <div className="flex flex-wrap gap-2">
                                                         {order.items.map((item, idx) => (
-                                                            <span key={idx} className="bg-slate-50 text-slate-650 text-xs px-3 py-1 rounded-full border border-slate-150 font-semibold font-body">
+                                                            <span key={idx} className="bg-slate-50 text-slate-600 text-xs px-3 py-1 rounded-full border border-slate-200 font-semibold font-body">
                                                                 {item.name} x {item.quantity}
                                                             </span>
                                                         ))}
@@ -4330,7 +4380,7 @@ export default function Profile() {
                                         ) : (
                                             <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                                                 {incomingFarmBookings.map(booking => (
-                                                    <div key={booking.id} className="bg-slate-50/50 border border-slate-150 rounded-2xl p-4 flex flex-col space-y-3 shadow-inner hover:bg-white hover:border-emerald-100 transition-all duration-300">
+                                                    <div key={booking.id} className="bg-slate-50/50 border border-slate-200 rounded-2xl p-4 flex flex-col space-y-3 shadow-inner hover:bg-white hover:border-emerald-100 transition-all duration-300">
                                                         <div className="flex justify-between items-start gap-1">
                                                             <div className="min-w-0 text-left">
                                                                 <h4 className="font-extrabold text-slate-800 text-xs truncate font-headings">{booking.customerName}</h4>
@@ -4451,11 +4501,44 @@ export default function Profile() {
                                                 id="shop-setup-image"
                                             />
                                         </div>
+                                        <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                                            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 font-headings">Social Media Links (Optional)</label>
+                                            <div className="grid gap-3 sm:grid-cols-2">
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Instagram</label>
+                                                    <input type="text" value={shopSetup.socialLinks?.instagram || ''} onChange={(e) => setShopSetup(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || EMPTY_SOCIAL_LINKS), instagram: e.target.value } }))} placeholder="https://instagram.com/yourshop" className={inputCls} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Facebook</label>
+                                                    <input type="text" value={shopSetup.socialLinks?.facebook || ''} onChange={(e) => setShopSetup(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || EMPTY_SOCIAL_LINKS), facebook: e.target.value } }))} placeholder="https://facebook.com/yourshop" className={inputCls} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">YouTube</label>
+                                                    <input type="text" value={shopSetup.socialLinks?.youtube || ''} onChange={(e) => setShopSetup(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || EMPTY_SOCIAL_LINKS), youtube: e.target.value } }))} placeholder="https://youtube.com/@yourshop" className={inputCls} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">WhatsApp</label>
+                                                    <input type="text" value={shopSetup.socialLinks?.whatsapp || ''} onChange={(e) => setShopSetup(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || EMPTY_SOCIAL_LINKS), whatsapp: e.target.value } }))} placeholder="+91 9876543210" className={inputCls} />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Official Website</label>
+                                                <input type="text" value={shopSetup.socialLinks?.website || ''} onChange={(e) => setShopSetup(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || EMPTY_SOCIAL_LINKS), website: e.target.value } }))} placeholder="https://yourshop.com" className={inputCls} />
+                                            </div>
+                                        </div>
                                         <button
                                             type="submit"
-                                            className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-3.5 rounded-xl font-bold hover:shadow-lg transition-all duration-300 active:scale-[0.98] font-headings shadow-md shadow-emerald-900/10"
+                                            disabled={isSubmittingShop}
+                                            className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white py-3.5 rounded-xl font-bold hover:shadow-lg transition-all duration-300 active:scale-[0.98] font-headings shadow-md shadow-emerald-900/10 flex items-center justify-center gap-2"
                                         >
-                                            Complete Setup
+                                            {isSubmittingShop ? (
+                                                <>
+                                                    <Loader2 size={18} className="animate-spin" />
+                                                    <span>Completing Setup...</span>
+                                                </>
+                                            ) : (
+                                                "Complete Setup"
+                                            )}
                                         </button>
                                     </form>
                                 </div>
@@ -4520,7 +4603,7 @@ export default function Profile() {
                                                                                 className="absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-50 hover:bg-emerald-100 disabled:bg-slate-100 disabled:text-slate-400 text-emerald-600 text-xs font-bold px-2 py-1 rounded-md transition-colors border border-emerald-100/50 flex items-center gap-1"
                                                                             >
                                                                                 {detectingShopLocation ? (
-                                                                                    <span className="w-2.5 h-2.5 border-2 border-emerald-650 border-t-transparent rounded-full animate-spin"></span>
+                                                                                    <span className="w-2.5 h-2.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></span>
                                                                                 ) : (
                                                                                     <Navigation size={10} />
                                                                                 )}
@@ -4546,9 +4629,40 @@ export default function Profile() {
                                                                             id="edit-shop-inline-image"
                                                                         />
                                                                     </div>
-                                                                    <div className="flex gap-2 pt-2">
-                                                                        <button type="submit" className="flex items-center gap-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-900/10"><Check size={14} /> Save Changes</button>
-                                                                        <button type="button" onClick={() => setEditingShopIndex(null)} className="flex items-center gap-1 bg-slate-100 text-slate-650 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"><X size={14} /> Cancel</button>
+                                                                    {/* Social Media Links - Edit Shop / Photo inline form */}
+                                                                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                                                                        <label className="text-[11px] font-bold text-slate-700 uppercase flex items-center gap-1.5 font-headings">
+                                                                            <Globe size={13} className="text-emerald-600" /> Social Media Links (Optional)
+                                                                        </label>
+                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                            <div>
+                                                                                <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Instagram</label>
+                                                                                <input type="text" value={editShopForm.socialLinks?.instagram || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), instagram: e.target.value } }))} placeholder="https://instagram.com/..." className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Facebook</label>
+                                                                                <input type="text" value={editShopForm.socialLinks?.facebook || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), facebook: e.target.value } }))} placeholder="https://facebook.com/..." className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">YouTube</label>
+                                                                                <input type="text" value={editShopForm.socialLinks?.youtube || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), youtube: e.target.value } }))} placeholder="https://youtube.com/@..." className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">WhatsApp</label>
+                                                                                <input type="text" value={editShopForm.socialLinks?.whatsapp || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), whatsapp: e.target.value } }))} placeholder="+91 9876543210" className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                                                            </div>
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Official Website</label>
+                                                                            <input type="text" value={editShopForm.socialLinks?.website || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), website: e.target.value } }))} placeholder="https://yourshop.com" className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex gap-2 pt-1">
+                                                                        <button type="submit" disabled={isUpdatingShop} className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-xs font-black font-headings shadow-md active:scale-95 cursor-pointer">
+                                                                            {isUpdatingShop ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                                                                            <span>{isUpdatingShop ? 'Saving...' : 'Save Shop Changes'}</span>
+                                                                        </button>
+                                                                        <button type="button" onClick={() => setEditingShopIndex(null)} className="flex items-center gap-1 bg-slate-100 text-slate-600 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"><X size={14} /> Cancel</button>
                                                                     </div>
                                                                 </form>
                                                             ) : deletingShopIndex === viewingShopIndex ? (
@@ -4591,6 +4705,37 @@ export default function Profile() {
                                                                                 </span>
                                                                             )}
                                                                         </div>
+                                                                        {/* Social Media Links - View Shop detail */}
+                                                                        {shop.socialLinks && (shop.socialLinks.instagram || shop.socialLinks.facebook || shop.socialLinks.youtube || shop.socialLinks.whatsapp || shop.socialLinks.website) && (
+                                                                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                                                                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-headings mr-1">Socials:</span>
+                                                                                {shop.socialLinks.instagram && (
+                                                                                    <a href={shop.socialLinks.instagram.startsWith('http') ? shop.socialLinks.instagram : `https://instagram.com/${shop.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white hover:scale-110 transition-transform shadow-sm" title="Instagram">
+                                                                                        <Instagram size={14} />
+                                                                                    </a>
+                                                                                )}
+                                                                                {shop.socialLinks.facebook && (
+                                                                                    <a href={shop.socialLinks.facebook.startsWith('http') ? shop.socialLinks.facebook : `https://facebook.com/${shop.socialLinks.facebook}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl bg-blue-600 text-white hover:scale-110 transition-transform shadow-sm" title="Facebook">
+                                                                                        <Facebook size={14} />
+                                                                                    </a>
+                                                                                )}
+                                                                                {shop.socialLinks.youtube && (
+                                                                                    <a href={shop.socialLinks.youtube.startsWith('http') ? shop.socialLinks.youtube : `https://youtube.com/${shop.socialLinks.youtube}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl bg-red-600 text-white hover:scale-110 transition-transform shadow-sm" title="YouTube">
+                                                                                        <Youtube size={14} />
+                                                                                    </a>
+                                                                                )}
+                                                                                {shop.socialLinks.whatsapp && (
+                                                                                    <a href={shop.socialLinks.whatsapp.startsWith('http') ? shop.socialLinks.whatsapp : `https://wa.me/${shop.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl bg-emerald-600 text-white hover:scale-110 transition-transform shadow-sm" title="WhatsApp">
+                                                                                        <MessageCircle size={14} />
+                                                                                    </a>
+                                                                                )}
+                                                                                {shop.socialLinks.website && (
+                                                                                    <a href={shop.socialLinks.website.startsWith('http') ? shop.socialLinks.website : `https://${shop.socialLinks.website}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl bg-slate-800 text-white hover:scale-110 transition-transform shadow-sm" title="Website">
+                                                                                        <Globe size={14} />
+                                                                                    </a>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
 
                                                                     <div className="flex items-center gap-3">
@@ -4638,7 +4783,7 @@ export default function Profile() {
                                                                     </div>
                                                                 </div>
                                                                 <div>
-                                                                    <label className={labelCls}>Location <span className="text-emerald-650 font-bold">*</span></label>
+                                                                    <label className={labelCls}>Location <span className="text-emerald-600 font-bold">*</span></label>
                                                                     <div className="relative">
                                                                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                                                         <input required type="text" value={editShopForm.location} onChange={(e) => setEditShopForm({ ...editShopForm, location: e.target.value })} className={inputCls} style={{ paddingRight: '150px' }} placeholder="E.g. Andheri West, Mumbai, Maharashtra" />
@@ -4678,9 +4823,41 @@ export default function Profile() {
                                                                         id="edit-shop-modal-image"
                                                                     />
                                                                 </div>
+
+                                                                {/* Social Media Links */}
+                                                                <div className="space-y-2 pt-2 border-t border-slate-100">
+                                                                    <label className="text-[11px] font-bold text-slate-700 uppercase flex items-center gap-1.5 font-headings">
+                                                                        <Globe size={13} className="text-emerald-600" /> Social Media Links (Optional)
+                                                                    </label>
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                        <div>
+                                                                            <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Instagram</label>
+                                                                            <input type="text" value={editShopForm.socialLinks?.instagram || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), instagram: e.target.value } }))} placeholder="https://instagram.com/..." className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Facebook</label>
+                                                                            <input type="text" value={editShopForm.socialLinks?.facebook || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), facebook: e.target.value } }))} placeholder="https://facebook.com/..." className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">YouTube</label>
+                                                                            <input type="text" value={editShopForm.socialLinks?.youtube || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), youtube: e.target.value } }))} placeholder="https://youtube.com/@..." className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">WhatsApp</label>
+                                                                            <input type="text" value={editShopForm.socialLinks?.whatsapp || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), whatsapp: e.target.value } }))} placeholder="+91 9876543210" className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Official Website</label>
+                                                                        <input type="text" value={editShopForm.socialLinks?.website || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), website: e.target.value } }))} placeholder="https://yourshop.com" className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                                                    </div>
+                                                                </div>
                                                                 <div className="flex gap-2 pt-1">
-                                                                    <button type="submit" className="flex items-center gap-1 bg-emerald-650 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all"><Check size={14} /> Save</button>
-                                                                    <button type="button" onClick={() => setEditingShopIndex(null)} className="flex items-center gap-1 bg-slate-105 text-slate-600 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"><X size={14} /> Cancel</button>
+                                                                    <button type="submit" disabled={isUpdatingShop} className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-xs font-black font-headings shadow-md active:scale-95 cursor-pointer">
+                                                                        {isUpdatingShop ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                                                                        <span>{isUpdatingShop ? 'Saving...' : 'Save Shop Changes'}</span>
+                                                                    </button>
+                                                                    <button type="button" onClick={() => setEditingShopIndex(null)} className="flex items-center gap-1 bg-slate-100 text-slate-600 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"><X size={14} /> Cancel</button>
                                                                 </div>
                                                             </form>
                                                         ) : deletingShopIndex === i ? (
@@ -4691,7 +4868,7 @@ export default function Profile() {
                                                                 <p className="text-[10px] text-slate-400 font-body">Deleting this shop will also hide its products. This cannot be undone.</p>
                                                                 <div className="flex gap-2 mt-2">
                                                                     <button type="button" onClick={() => handleDeleteShop(i)} className="bg-gradient-to-r from-rose-500 to-red-650 hover:from-rose-600 hover:to-red-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-900/10">Yes, Delete</button>
-                                                                    <button type="button" onClick={() => setDeletingShopIndex(null)} className="bg-slate-100 text-slate-650 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all">Cancel</button>
+                                                                    <button type="button" onClick={() => setDeletingShopIndex(null)} className="bg-slate-100 text-slate-600 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all">Cancel</button>
                                                                 </div>
                                                             </div>
                                                         ) : (
@@ -4735,7 +4912,7 @@ export default function Profile() {
 
                                                                 {/* Google Maps Embed Preview */}
                                                                 {shop.location ? (
-                                                                    <div className="rounded-2xl overflow-hidden border border-slate-150 shadow-inner mb-3" style={{ height: '160px' }}>
+                                                                    <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner mb-3" style={{ height: '160px' }}>
                                                                         <iframe
                                                                             title={`Map for ${shop.shopName}`}
                                                                             src={`https://maps.google.com/maps?q=${encodeURIComponent(shop.location + (shop.shopName ? ' ' + shop.shopName : ''))}&output=embed&z=14`}
@@ -4755,7 +4932,39 @@ export default function Profile() {
                                                                 )}
 
                                                                 {/* GST & Last Updated */}
-                                                                <div className="flex items-center justify-between gap-2 text-xs text-slate-400 border-b border-slate-100 pb-3 font-body">
+                                                                {/* Shop Social Media Links */}
+                                                                 {shop.socialLinks && (shop.socialLinks.instagram || shop.socialLinks.facebook || shop.socialLinks.youtube || shop.socialLinks.whatsapp || shop.socialLinks.website) && (
+                                                                    <div className="flex flex-wrap items-center gap-1.5 mb-3 pt-1">
+                                                                        <span className="text-[10px] font-bold text-slate-400 font-headings">Socials:</span>
+                                                                        {shop.socialLinks.instagram && (
+                                                                            <a href={shop.socialLinks.instagram.startsWith('http') ? shop.socialLinks.instagram : `https://instagram.com/${shop.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white hover:scale-110 transition-transform" title="Instagram">
+                                                                                <Instagram size={12} />
+                                                                            </a>
+                                                                        )}
+                                                                        {shop.socialLinks.facebook && (
+                                                                            <a href={shop.socialLinks.facebook.startsWith('http') ? shop.socialLinks.facebook : `https://facebook.com/${shop.socialLinks.facebook}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-blue-600 text-white hover:scale-110 transition-transform" title="Facebook">
+                                                                                <Facebook size={12} />
+                                                                            </a>
+                                                                        )}
+                                                                        {shop.socialLinks.youtube && (
+                                                                            <a href={shop.socialLinks.youtube.startsWith('http') ? shop.socialLinks.youtube : `https://youtube.com/${shop.socialLinks.youtube}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-red-600 text-white hover:scale-110 transition-transform" title="YouTube">
+                                                                                <Youtube size={12} />
+                                                                            </a>
+                                                                        )}
+                                                                        {shop.socialLinks.whatsapp && (
+                                                                            <a href={shop.socialLinks.whatsapp.startsWith('http') ? shop.socialLinks.whatsapp : `https://wa.me/${shop.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-emerald-600 text-white hover:scale-110 transition-transform" title="WhatsApp">
+                                                                                <MessageCircle size={12} />
+                                                                            </a>
+                                                                        )}
+                                                                        {shop.socialLinks.website && (
+                                                                            <a href={shop.socialLinks.website.startsWith('http') ? shop.socialLinks.website : `https://${shop.socialLinks.website}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-slate-800 text-white hover:scale-110 transition-transform" title="Website">
+                                                                                <Globe size={12} />
+                                                                            </a>
+                                                                        )}
+                                                                    </div>
+                                                                 )}
+
+                                                                 <div className="flex items-center justify-between gap-2 text-xs text-slate-400 border-b border-slate-100 pb-3 font-body">
                                                                     <div className="flex items-center gap-1.5">
                                                                         <FileText size={12} />
                                                                         <span>GST: {shop.gstNumber}</span>
@@ -4866,7 +5075,7 @@ export default function Profile() {
                                                             <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-305">
                                                                 <button
                                                                     onClick={() => handleEditProductClick(product)}
-                                                                    className="bg-white/90 backdrop-blur-sm text-emerald-600 hover:bg-emerald-650 hover:text-white p-2 rounded-xl shadow-md border border-slate-100 transition-colors"
+                                                                    className="bg-white/90 backdrop-blur-sm text-emerald-600 hover:bg-emerald-600 hover:text-white p-2 rounded-xl shadow-md border border-slate-100 transition-colors"
                                                                     title="Edit Product"
                                                                 >
                                                                     <Pencil size={14} />
@@ -4881,7 +5090,7 @@ export default function Profile() {
                                                             </div>
                                                         </div>
                                                         <div className="p-4">
-                                                            <div className="text-[10px] font-black text-emerald-650 mb-1.5 uppercase tracking-wider font-headings">{product.category}</div>
+                                                            <div className="text-[10px] font-black text-emerald-600 mb-1.5 uppercase tracking-wider font-headings">{product.category}</div>
                                                             <h3 className="font-bold text-slate-800 mb-1 truncate font-headings text-sm">{product.name}</h3>
                                                             <div className="flex items-center justify-between mt-3">
                                                                 <div className="font-extrabold text-slate-900 text-base font-body">₹{parseFloat(product.price).toFixed(2)}</div>
@@ -4960,7 +5169,7 @@ export default function Profile() {
                                                 {detectingShopLocation ? 'Detecting...' : 'Add current location'}
                                             </button>
                                         </div>
-                                        <p className="text-[10px] text-emerald-650 mt-1.5 flex items-start gap-1 font-body">
+                                        <p className="text-[10px] text-emerald-600 mt-1.5 flex items-start gap-1 font-body">
                                             <Navigation size={11} className="mt-0.5 flex-shrink-0" /> Use a specific address — customers see this on Google Maps when tracking their order.
                                         </p>
                                     </div>
@@ -4994,11 +5203,19 @@ export default function Profile() {
                                         Cancel
                                     </button>
                                     <button
-                                        type="submit"
-                                        className="bg-brand hover:bg-brand-dark text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98] text-sm"
-                                    >
-                                        Create Shop
-                                    </button>
+                                         type="submit"
+                                         disabled={isAddingShop}
+                                         className="bg-brand hover:bg-brand-dark disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98] text-sm flex items-center justify-center gap-2"
+                                     >
+                                         {isAddingShop ? (
+                                             <>
+                                                 <Loader2 size={16} className="animate-spin" />
+                                                 <span>Creating...</span>
+                                             </>
+                                         ) : (
+                                             "Create Shop"
+                                         )}
+                                     </button>
                                 </div>
 
                             </form>
@@ -5032,7 +5249,7 @@ export default function Profile() {
                                     <button
                                         type="button"
                                         onClick={() => setShowAddForm(false)}
-                                        className="text-slate-400 hover:text-slate-650 hover:bg-slate-100 p-2 rounded-full transition-all duration-200"
+                                        className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-all duration-200"
                                     >
                                         <X size={20} />
                                     </button>
@@ -5826,9 +6043,17 @@ export default function Profile() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer"
+                                    disabled={isSavingGallery}
+                                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
                                 >
-                                    + Add to Gallery
+                                    {isSavingGallery ? (
+                                        <>
+                                            <Loader2 size={14} className="animate-spin" />
+                                            <span>Saving...</span>
+                                        </>
+                                    ) : (
+                                        '+ Add to Gallery'
+                                    )}
                                 </button>
                             </div>
                         </form>
@@ -5997,9 +6222,17 @@ export default function Profile() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer"
+                                    disabled={isSavingModalProduct}
+                                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
                                 >
-                                    {editingModalProductIndex !== null ? 'Update Product' : '+ Save Product'}
+                                    {isSavingModalProduct ? (
+                                        <>
+                                            <Loader2 size={14} className="animate-spin" />
+                                            <span>Saving...</span>
+                                        </>
+                                    ) : (
+                                        editingModalProductIndex !== null ? 'Update Product' : '+ Save Product'
+                                    )}
                                 </button>
                             </div>
                         </form>
@@ -6113,9 +6346,17 @@ export default function Profile() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer"
+                                    disabled={isSavingStayState}
+                                    className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
                                 >
-                                    {editingStayIndex !== null ? 'Update Stay' : '+ Save Stay'}
+                                    {isSavingStayState ? (
+                                        <>
+                                            <Loader2 size={14} className="animate-spin" />
+                                            <span>Saving...</span>
+                                        </>
+                                    ) : (
+                                        editingStayIndex !== null ? 'Update Stay' : '+ Save Stay'
+                                    )}
                                 </button>
                             </div>
                         </form>

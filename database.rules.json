@@ -7,6 +7,12 @@
         ".write": "auth != null && (auth.uid === $userId || root.child('users/' + auth.uid + '/role').val() === 'admin')"
       }
     },
+    "publicShops": {
+      ".read": "true",
+      "$vendorId": {
+        ".write": "auth != null && auth.uid === $vendorId"
+      }
+    },
     "homeContent": {
       ".read": "true",
       ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'admin'"
