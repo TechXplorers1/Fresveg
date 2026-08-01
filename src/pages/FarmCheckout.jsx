@@ -12,19 +12,19 @@ import {
 const RAZORPAY_KEY_ID = 'rzp_test_SYC9m4DXT1gjeY';
 
 const RAZORPAY_METHODS = [
-  { label: 'Cards',       color: '#1a73e8', abbr: 'CARD' },
-  { label: 'UPI',         color: '#22c55e', abbr: 'UPI'  },
-  { label: 'Net Banking', color: '#f59e0b', abbr: 'NB'   },
-  { label: 'Wallets',     color: '#8b5cf6', abbr: 'PAY'  },
+  { label: 'Cards', color: '#1a73e8', abbr: 'CARD' },
+  { label: 'UPI', color: '#22c55e', abbr: 'UPI' },
+  { label: 'Net Banking', color: '#f59e0b', abbr: 'NB' },
+  { label: 'Wallets', color: '#8b5cf6', abbr: 'PAY' },
 ];
 
 function loadRazorpayScript() {
   return new Promise((resolve) => {
     if (window.Razorpay) { resolve(true); return; }
     const script = document.createElement('script');
-    script.src   = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
-    script.onload  = () => resolve(true);
+    script.onload = () => resolve(true);
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
@@ -37,10 +37,10 @@ export default function FarmCheckout() {
 
   const [booking, setBooking] = React.useState(null);
   const [selectedPayment, setSelectedPayment] = React.useState('Cash on Delivery');
-  const [isProcessing,    setIsProcessing]    = React.useState(false);
-  const [rzpLoading,      setRzpLoading]      = React.useState(false);
-  const [rzpError,        setRzpError]        = React.useState('');
-  const [bookingSuccess,  setBookingSuccess]  = React.useState(false);
+  const [isProcessing, setIsProcessing] = React.useState(false);
+  const [rzpLoading, setRzpLoading] = React.useState(false);
+  const [rzpError, setRzpError] = React.useState('');
+  const [bookingSuccess, setBookingSuccess] = React.useState(false);
 
   React.useEffect(() => {
     if (!loading && !user) {
@@ -73,13 +73,13 @@ export default function FarmCheckout() {
 
   const PAYMENT_METHODS = [
     {
-      id:   'cod',
+      id: 'cod',
       name: 'Cash on Delivery',
       icon: Banknote,
       desc: 'Pay cash at the farm on your visit day',
     },
     {
-      id:   'razorpay',
+      id: 'razorpay',
       name: 'Pay Online',
       icon: CreditCard,
       desc: 'Cards · UPI · Net Banking · Wallets via Razorpay',
@@ -133,21 +133,21 @@ export default function FarmCheckout() {
     const amountPaise = Math.round(booking.totalAmount * 100);
 
     const options = {
-      key:         RAZORPAY_KEY_ID,
-      amount:      amountPaise,
-      currency:    'INR',
-      name:        'FresVeg',
+      key: RAZORPAY_KEY_ID,
+      amount: amountPaise,
+      currency: 'INR',
+      name: 'FresVeg',
       description: `Farm Visit — ${booking.farmName} · ${booking.visitorsCount} visitor(s)`,
       prefill: {
-        name:    userProfile?.displayName || user?.displayName || '',
-        email:   userProfile?.email       || user?.email       || '',
+        name: userProfile?.displayName || user?.displayName || '',
+        email: userProfile?.email || user?.email || '',
         contact: '',
       },
       notes: {
-        farm_name:  booking.farmName,
+        farm_name: booking.farmName,
         visit_date: booking.date,
-        visitors:   booking.visitorsCount,
-        booked_by:  user?.uid || '',
+        visitors: booking.visitorsCount,
+        booked_by: user?.uid || '',
       },
       theme: { color: '#16a34a' },
       handler: async function (response) {
@@ -269,13 +269,12 @@ export default function FarmCheckout() {
             return (
               <div key={idx} className="flex-1 w-full flex items-center gap-4 relative">
                 <div className="relative flex items-center">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm transition-all duration-300 ${
-                    isCompleted
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm transition-all duration-300 ${isCompleted
                       ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
                       : isActive
-                      ? 'bg-emerald-800 text-white shadow-lg shadow-emerald-800/20'
-                      : 'bg-slate-100 text-slate-400'
-                  }`}>
+                        ? 'bg-emerald-800 text-white shadow-lg shadow-emerald-800/20'
+                        : 'bg-slate-100 text-slate-400'
+                    }`}>
                     {isCompleted ? <Check size={18} /> : stepNum}
                   </div>
                   {idx < 2 && (
@@ -350,7 +349,7 @@ export default function FarmCheckout() {
             </div>
 
             <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-              <span>Visit Admission ({booking.visitorsCount || 1} Guests)</span>
+              <span>Visit Farm Entry ({booking.visitorsCount || 1} Guests)</span>
               <span className="font-bold text-slate-700">&#x20B9;{(Number(booking.costPerPerson) || 0) * (Number(booking.visitorsCount) || 1)}</span>
             </div>
             {booking.includeStay && Number(booking.accommodationPrice) > 0 && (
@@ -428,15 +427,13 @@ export default function FarmCheckout() {
                   <div key={method.id}>
                     <button
                       onClick={() => { setSelectedPayment(method.name); setRzpError(''); }}
-                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-300 text-left ${
-                        isSelected
+                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-300 text-left ${isSelected
                           ? 'border-emerald-500 bg-emerald-500/[0.02] shadow-md shadow-emerald-950/[0.01]'
                           : 'border-slate-100 hover:border-slate-200 bg-white/40 hover:bg-white/80'
-                      }`}
+                        }`}
                     >
-                      <div className={`p-3 rounded-xl transition-all duration-300 ${
-                        isSelected ? 'bg-emerald-600 text-white' : 'bg-slate-50 text-slate-400'
-                      }`}>
+                      <div className={`p-3 rounded-xl transition-all duration-300 ${isSelected ? 'bg-emerald-600 text-white' : 'bg-slate-50 text-slate-400'
+                        }`}>
                         <method.icon size={20} />
                       </div>
                       <div className="flex-grow">
@@ -519,13 +516,12 @@ export default function FarmCheckout() {
             <button
               onClick={handleConfirm}
               disabled={!canConfirm}
-              className={`w-full py-4 px-4 rounded-2xl font-bold transition-all duration-300 mt-6 active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 ${
-                canConfirm
+              className={`w-full py-4 px-4 rounded-2xl font-bold transition-all duration-300 mt-6 active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 ${canConfirm
                   ? isRazorpay
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-900/10 hover:shadow-emerald-900/20'
                     : 'bg-gradient-to-r from-emerald-700 to-emerald-800 hover:from-emerald-800 hover:to-emerald-900 text-white shadow-emerald-950/10 hover:shadow-emerald-950/20'
                   : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200/50 shadow-none'
-              }`}
+                }`}
             >
               {isProcessing || rzpLoading ? (
                 <>

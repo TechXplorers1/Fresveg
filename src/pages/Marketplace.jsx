@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Instagram, Facebook, Youtube, Globe, MessageCircle, ShoppingCart, Star, Search, Filter, Plus, Minus, X, ChevronLeft, ChevronRight, MapPin, Clock, Store, ArrowLeft, CheckCircle, Sprout, Compass, Navigation, ExternalLink } from 'lucide-react';
+import { Instagram, Facebook, Youtube, Globe, MessageCircle, ShoppingCart, Star, Search, Filter, Plus, Minus, X, ChevronLeft, ChevronRight, MapPin, Clock, Store, ArrowLeft, CheckCircle, Sprout, Compass, Navigation, ExternalLink, Target, Loader2, Sparkles } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
 import { realtimeDb } from '../firebase';
 import { ref, onValue } from 'firebase/database';
+import { getFarmSlug } from './FarmDetails';
+import { ensureFarmsInFirebase } from '../services/farmSeeder';
 
 const MOCK_FARMS_LIST = [
    {
@@ -291,6 +293,115 @@ export default function Marketplace() {
    // Marketplace Tabs State: 'markets' or 'farms'
    const [marketplaceTab, setMarketplaceTab] = useState('markets');
    const [publicShopsData, setPublicShopsData] = useState({});
+   const [selectedRadius, setSelectedRadius] = useState('all'); // 'all', '5', '10', '25', '50'
+
+   // Live GPS Location Detection & Haversine Distance Calculator
+   const [userGpsCoords, setUserGpsCoords] = useState(null); // { lat, lng, label }
+   const [isFetchingGps, setIsFetchingGps] = useState(false);
+   const [gpsMessage, setGpsMessage] = useState('');
+
+   // Known City Coordinates Map for Haversine Distance Calculation
+   const CITY_COORDINATES = React.useMemo(() => ({
+      karjat: { lat: 18.9107, lng: 73.3282, name: 'Karjat' },
+      mahabaleshwar: { lat: 17.9237, lng: 73.6586, name: 'Mahabaleshwar' },
+      anantapur: { lat: 14.6819, lng: 77.6006, name: 'Anantapur' },
+      'maruthi nagar': { lat: 14.6750, lng: 77.6050, name: 'Maruthi Nagar' },
+      pune: { lat: 18.5204, lng: 73.8567, name: 'Pune' },
+      nashik: { lat: 19.9975, lng: 73.7898, name: 'Nashik' },
+      satara: { lat: 17.6805, lng: 74.0183, name: 'Satara' },
+      ratnagiri: { lat: 16.9902, lng: 73.3120, name: 'Ratnagiri' },
+      mumbai: { lat: 19.0760, lng: 72.8777, name: 'Mumbai' }
+   }), []);
+
+   // Haversine Formula: calculates exact geodesic distance in km between 2 GPS coordinates
+   const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
+      const R = 6371; // Earth's radius in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a =
+         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+         Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+         Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+   };
+
+   // Helper to extract coordinates for a given location string
+   const getLocationCoords = React.useCallback((locationStr) => {
+      if (!locationStr) return CITY_COORDINATES.karjat;
+      const locLower = locationStr.toLowerCase();
+      for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
+         if (locLower.includes(key)) return coords;
+      }
+      let hash = 0;
+      for (let i = 0; i < locLower.length; i++) {
+         hash = ((hash << 5) - hash) + locLower.charCodeAt(i);
+         hash |= 0;
+      }
+      const latOffset = (Math.abs(hash % 100) / 1000);
+      const lngOffset = (Math.abs((hash >> 2) % 100) / 1000);
+      return { lat: 18.9107 + latOffset, lng: 73.3282 + lngOffset, name: locationStr };
+   }, [CITY_COORDINATES]);
+
+   // Helper to calculate distance in km from current user location (GPS or reference city) to shop/farm address
+   const getShopDistanceKm = React.useCallback((locationStr) => {
+      const targetCoords = getLocationCoords(locationStr);
+      
+      // If user enabled Live GPS
+      if (userGpsCoords && userGpsCoords.lat && userGpsCoords.lng) {
+         const dist = calculateHaversineDistance(
+            userGpsCoords.lat,
+            userGpsCoords.lng,
+            targetCoords.lat,
+            targetCoords.lng
+         );
+         return Math.max(0.8, Number(dist.toFixed(1)));
+      }
+
+      // Default reference city distance (relative to Karjat center)
+      const refCoords = CITY_COORDINATES.karjat;
+      const dist = calculateHaversineDistance(
+         refCoords.lat,
+         refCoords.lng,
+         targetCoords.lat,
+         targetCoords.lng
+      );
+      return Math.max(1.2, Number(dist.toFixed(1)));
+   }, [userGpsCoords, getLocationCoords, CITY_COORDINATES]);
+
+   // Handler to trigger browser GPS location fetch
+   const handleDetectUserLocation = () => {
+      if (!navigator.geolocation) {
+         setGpsMessage('Geolocation is not supported by your browser.');
+         return;
+      }
+      setIsFetchingGps(true);
+      setGpsMessage('');
+      navigator.geolocation.getCurrentPosition(
+         (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            setUserGpsCoords({
+               lat,
+               lng,
+               label: `Live GPS (${lat.toFixed(2)}°, ${lng.toFixed(2)}°)`
+            });
+            setIsFetchingGps(false);
+            setGpsMessage('📍 Precise GPS position detected! Distances recalculated live.');
+         },
+         (err) => {
+            console.warn('GPS location fetch error:', err.message);
+            setUserGpsCoords({
+               lat: 18.9107,
+               lng: 73.3282,
+               label: 'Default Base Location (Karjat)'
+            });
+            setIsFetchingGps(false);
+            setGpsMessage('📍 Using base reference location (Karjat, Maharashtra).');
+         },
+         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+   };
 
    // Listen to publicShops — publicly readable, contains vendor shop info + socialLinks
    useEffect(() => {
@@ -306,32 +417,22 @@ export default function Marketplace() {
    const [farmSearchQuery, setFarmSearchQuery] = useState('');
    const [farmActiveCategory, setFarmActiveCategory] = useState('All');
 
-   // Fetch Farms from Firebase Realtime DB & merge with default farms
+   // Fetch Farms 100% directly from Firebase Realtime Database (Single Source of Truth)
    useEffect(() => {
+      ensureFarmsInFirebase();
       const farmsRef = ref(realtimeDb, 'farms');
       const unsubscribe = onValue(farmsRef, (snapshot) => {
          const data = snapshot.val();
-         let rtdbFarms = [];
          if (data) {
-            rtdbFarms = Object.keys(data).map(key => ({
+            const dbFarms = Object.keys(data).map(key => ({
                ...data[key],
                id: key,
                farmProducts: data[key].farmProducts || []
             }));
+            setFarmsList(dbFarms);
+         } else {
+            setFarmsList([]);
          }
-
-         const mergedMap = {};
-         rtdbFarms.forEach(f => {
-            if (f.farmName) mergedMap[f.id || f.farmName] = f;
-         });
-         MOCK_FARMS_LIST.forEach(f => {
-            const key = f.id;
-            if (!mergedMap[key] && !Object.values(mergedMap).some(existing => existing.farmName?.toLowerCase() === f.farmName.toLowerCase())) {
-               mergedMap[key] = f;
-            }
-         });
-
-         setFarmsList(Object.values(mergedMap));
       });
       return () => unsubscribe();
    }, []);
@@ -628,13 +729,18 @@ export default function Marketplace() {
       }
    }, [searchParams, shopsList, farmsList]);
 
-   // Filter Shops based on Category selection, Search Query, and Rating
+   // Filter Shops based on Category selection, Search Query (name/address), Distance Radius, and Rating
    const filteredShops = shopsList.filter(shop => {
       const matchesCategory = activeCategory === 'All' || shop.categoryList.some(cat => cat.toLowerCase() === activeCategory.toLowerCase());
-      const matchesSearch = searchQuery === '' ||
-         shop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         shop.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         shop.products.some(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const query = searchQuery.trim().toLowerCase();
+      const matchesSearch = query === '' ||
+         shop.name.toLowerCase().includes(query) ||
+         shop.location.toLowerCase().includes(query) ||
+         shop.products.some(p => p.name.toLowerCase().includes(query));
+
+      const dist = shop.distanceKm || getShopDistanceKm(shop.location);
+      const matchesRadius = selectedRadius === 'all' || dist <= Number(selectedRadius);
 
       const matchesRating = ratingFilters.length === 0 || ratingFilters.some(rating => {
          switch (rating) {
@@ -647,10 +753,30 @@ export default function Marketplace() {
 
       const matchesBrand = selectedBrands.length === 0 || selectedBrands.includes(shop.name);
 
-      return matchesCategory && matchesSearch && matchesRating && matchesBrand;
+      return matchesCategory && matchesSearch && matchesRadius && matchesRating && matchesBrand;
    }).sort((a, b) => {
       if (sortBy === 'rating') return b.rating - a.rating;
       return 0;
+   });
+
+   // Filter Farms based on Search Query (name/address), Distance Radius, and Rating
+   const filteredFarms = farmsList.filter(farm => {
+      const query = searchQuery.trim().toLowerCase();
+      const matchesSearch = query === '' ||
+         (farm.farmName && farm.farmName.toLowerCase().includes(query)) ||
+         (farm.location && farm.location.toLowerCase().includes(query)) ||
+         (farm.vendorName && farm.vendorName.toLowerCase().includes(query)) ||
+         (Array.isArray(farm.crops) && farm.crops.some(c => String(c).toLowerCase().includes(query)));
+
+      const dist = farm.distanceKm || getShopDistanceKm(farm.location);
+      const matchesRadius = selectedRadius === 'all' || dist <= Number(selectedRadius);
+
+      const matchesRating = ratingFilters.length === 0 || ratingFilters.some(rating => {
+         const fRating = farm.rating || 4.9;
+         return fRating >= Number(rating);
+      });
+
+      return matchesSearch && matchesRadius && matchesRating;
    });
 
    // Filter products when inside a Selected Shop Storefront using active filters
@@ -704,7 +830,7 @@ export default function Marketplace() {
                   >
                      Hide
                   </button>
-                  {(activeCategory !== 'All' || farmActiveCategory !== 'All' || shopActiveCategory !== 'All' || sortBy !== 'none' || searchQuery !== '' || farmSearchQuery !== '' || shopSearchQuery !== '' || priceRanges.length > 0 || ratingFilters.length > 0 || selectedBrands.length > 0 || discountFilters.length > 0) && (
+                  {(activeCategory !== 'All' || farmActiveCategory !== 'All' || shopActiveCategory !== 'All' || sortBy !== 'none' || searchQuery !== '' || farmSearchQuery !== '' || shopSearchQuery !== '' || priceRanges.length > 0 || ratingFilters.length > 0 || selectedBrands.length > 0 || discountFilters.length > 0 || selectedRadius !== 'all') && (
                      <button
                         type="button"
                         onClick={() => {
@@ -719,12 +845,40 @@ export default function Marketplace() {
                            setActiveCategory('All');
                            setShopActiveCategory('All');
                            setFarmActiveCategory('All');
+                           setSelectedRadius('all');
                         }}
                         className="px-3 py-1.5 text-[11px] font-extrabold border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-600 hover:text-white transition-all cursor-pointer font-headings"
                      >
                         Clear All
                      </button>
                   )}
+               </div>
+            </div>
+
+            {/* Distance Radius Filter Section in Sidebar */}
+            <div className="mb-6 border-b border-gray-100 pb-5 text-left">
+               <label className="block text-xs font-extrabold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-1.5 font-headings">
+                  <MapPin size={14} className="text-emerald-600" /> Distance Radius
+               </label>
+               <div className="space-y-2">
+                  {[
+                     { label: 'All Locations', value: 'all' },
+                     { label: 'Within 5 km radius', value: '5' },
+                     { label: 'Within 10 km radius', value: '10' },
+                     { label: 'Within 25 km radius', value: '25' },
+                     { label: 'Within 50 km radius', value: '50' }
+                  ].map(r => (
+                     <label key={r.value} className="flex items-center gap-2.5 text-xs font-bold text-slate-700 hover:text-emerald-800 cursor-pointer transition-colors">
+                        <input
+                           type="radio"
+                           name="radiusFilter"
+                           checked={selectedRadius === r.value}
+                           onChange={() => setSelectedRadius(r.value)}
+                           className="accent-emerald-600 w-4 h-4 cursor-pointer"
+                        />
+                        <span>{r.label}</span>
+                     </label>
+                  ))}
                </div>
             </div>
 
@@ -1065,7 +1219,7 @@ export default function Marketplace() {
                                  : 'text-slate-600 hover:bg-slate-100'
                            }`}
                         >
-                           <Store size={15} /> Markets ({shopsList.length})
+                           <Store size={15} /> Markets ({filteredShops.length})
                         </button>
                         <button
                            type="button"
@@ -1078,9 +1232,143 @@ export default function Marketplace() {
                                  : 'text-slate-600 hover:bg-slate-100'
                            }`}
                         >
-                           <Sprout size={15} /> Farms ({farmsList.length})
+                           <Sprout size={15} /> Farms ({filteredFarms.length})
                         </button>
                      </div>
+                  </div>
+               )}
+
+               {/* ── Search & Distance Radius Filter Bar ── */}
+               {!selectedShop && !selectedFarmShop && (
+                  <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-5 sm:p-6 border border-emerald-100 shadow-xl shadow-emerald-950/[0.03] space-y-4 text-left">
+                     <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
+                        {/* Search Input for Markets & Farms by Name or Location Address */}
+                        <div className="relative flex-1 group">
+                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 group-focus-within:text-emerald-700 transition-colors" size={18} />
+                           <input
+                              type="text"
+                              placeholder="Search markets & farms by name or location address (e.g. Karjat, Mahabaleshwar, Pune)..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="w-full pl-11 pr-32 py-3 bg-slate-50 border-2 border-emerald-500/20 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-inner font-body"
+                           />
+                           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                              {searchQuery && (
+                                 <button
+                                    type="button"
+                                    onClick={() => setSearchQuery('')}
+                                    className="p-1 text-slate-400 hover:text-rose-600 rounded-full hover:bg-slate-100 transition-all cursor-pointer mr-1"
+                                    title="Clear search"
+                                 >
+                                    <X size={16} />
+                                 </button>
+                              )}
+                              {/* Detect GPS Location Button */}
+                              <button
+                                 type="button"
+                                 onClick={handleDetectUserLocation}
+                                 disabled={isFetchingGps}
+                                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer font-headings shrink-0 ${
+                                    userGpsCoords
+                                       ? 'bg-emerald-600 text-white shadow-emerald-600/30'
+                                       : 'bg-emerald-100/80 text-emerald-800 hover:bg-emerald-600 hover:text-white'
+                                 }`}
+                                 title="Detect your precise GPS coordinates for live distance calculation"
+                              >
+                                 {isFetchingGps ? (
+                                    <Loader2 size={13} className="animate-spin text-emerald-600" />
+                                 ) : (
+                                    <Target size={13} />
+                                 )}
+                                 <span className="hidden sm:inline">{userGpsCoords ? 'GPS Active' : 'Use GPS'}</span>
+                              </button>
+                           </div>
+                        </div>
+
+                        {/* Distance Radius Filter Buttons */}
+                        <div className="flex flex-wrap items-center gap-2">
+                           <span className="text-xs font-black text-slate-700 font-headings uppercase tracking-wider flex items-center gap-1 shrink-0 mr-1">
+                              <MapPin size={14} className="text-emerald-600" /> DISTANCE RADIUS:
+                           </span>
+                           {[
+                              { label: 'All Distances', value: 'all' },
+                              { label: 'Within 5 km', value: '5' },
+                              { label: 'Within 10 km', value: '10' },
+                              { label: 'Within 25 km', value: '25' },
+                              { label: 'Within 50 km', value: '50' }
+                           ].map(r => (
+                              <button
+                                 key={r.value}
+                                 type="button"
+                                 onClick={() => setSelectedRadius(r.value)}
+                                 className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer font-headings flex items-center gap-1.5 ${
+                                    selectedRadius === r.value
+                                       ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-102 border border-emerald-500'
+                                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80'
+                                 }`}
+                              >
+                                 {r.value !== 'all' && <Compass size={13} className={selectedRadius === r.value ? 'text-white' : 'text-emerald-600'} />}
+                                 {r.label}
+                              </button>
+                           ))}
+                        </div>
+                     </div>
+
+                     {/* Popular Location Address Quick-Chips Bar */}
+                     <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 text-xs">
+                        <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider font-headings mr-1 flex items-center gap-1">
+                           <Sparkles size={12} className="text-amber-500" /> Popular Regions:
+                        </span>
+                        {['Karjat', 'Mahabaleshwar', 'Pune', 'Nashik', 'Satara', 'Ratnagiri', 'Anantapur'].map(city => (
+                           <button
+                              key={city}
+                              type="button"
+                              onClick={() => setSearchQuery(city)}
+                              className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer font-headings ${
+                                 searchQuery.toLowerCase().includes(city.toLowerCase())
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200/60 hover:bg-emerald-100'
+                              }`}
+                           >
+                              📍 {city}
+                           </button>
+                        ))}
+                     </div>
+
+                     {/* GPS Status Message & Active Filter Indicators */}
+                     {(gpsMessage || searchQuery || selectedRadius !== 'all' || userGpsCoords) && (
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+                           <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-extrabold text-slate-500 text-[11px] uppercase tracking-wider font-headings">Active Filters:</span>
+                              {userGpsCoords && (
+                                 <span className="bg-emerald-600 text-white px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 text-[11px] shadow-xs">
+                                    <Target size={12} /> {userGpsCoords.label}
+                                    <X size={12} className="cursor-pointer hover:text-rose-200 transition-colors" onClick={() => setUserGpsCoords(null)} />
+                                 </span>
+                              )}
+                              {searchQuery && (
+                                 <span className="bg-emerald-100 text-emerald-900 border border-emerald-200 px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 text-[11px]">
+                                    🔍 Search: "{searchQuery}"
+                                    <X size={12} className="cursor-pointer hover:text-rose-600 transition-colors" onClick={() => setSearchQuery('')} />
+                                 </span>
+                              )}
+                              {selectedRadius !== 'all' && (
+                                 <span className="bg-emerald-100 text-emerald-900 border border-emerald-200 px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 text-[11px]">
+                                    📍 Radius: Within {selectedRadius} km
+                                    <X size={12} className="cursor-pointer hover:text-rose-600 transition-colors" onClick={() => setSelectedRadius('all')} />
+                                 </span>
+                              )}
+                           </div>
+
+                           <button
+                              type="button"
+                              onClick={() => { setSearchQuery(''); setSelectedRadius('all'); setUserGpsCoords(null); setGpsMessage(''); }}
+                              className="text-rose-600 hover:underline font-bold text-xs cursor-pointer ml-auto"
+                           >
+                              Reset All Filters
+                           </button>
+                        </div>
+                     )}
                   </div>
                )}
 
@@ -1698,20 +1986,30 @@ export default function Marketplace() {
                 ) : marketplaceTab === 'farms' ? (
                   /* ── CASE 3: FARMS DIRECTORY TAB (SHOW ALL REGISTERED FARMS AS SHOPS) ── */
                   <div className="space-y-6 text-left">
-                     {farmsList.length === 0 ? (
-                        <div className="text-center py-16 bg-white/70 backdrop-blur-md rounded-3xl border border-white shadow-md max-w-lg mx-auto">
-                           <Sprout size={40} className="mx-auto text-emerald-600 mb-3" />
-                           <h3 className="text-base font-extrabold text-gray-900 mb-1 font-headings">No Registered Farms Found</h3>
-                           <p className="text-gray-500 text-xs mb-4">Vendors have not registered any agritourism farms yet.</p>
+                     {filteredFarms.length === 0 ? (
+                        <div className="text-center py-16 bg-white/70 backdrop-blur-md rounded-3xl border border-white shadow-md max-w-lg mx-auto space-y-3">
+                           <Sprout size={40} className="mx-auto text-emerald-600 mb-1" />
+                           <h3 className="text-base font-extrabold text-gray-900 font-headings">No Registered Farms Matching Filters</h3>
+                           <p className="text-gray-500 text-xs">Try clearing search terms or expanding your distance radius filter.</p>
+                           <button
+                              onClick={() => {
+                                 setSearchQuery('');
+                                 setSelectedRadius('all');
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md cursor-pointer transition-all"
+                           >
+                              Reset Filters
+                           </button>
                         </div>
                      ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                           {farmsList.map((farm) => {
+                           {filteredFarms.map((farm) => {
                               const directItemCount = Array.isArray(farm.farmProducts) 
                                  ? farm.farmProducts.length 
                                  : (typeof farm.farmProducts === 'string' && farm.farmProducts.trim() !== '') 
                                     ? farm.farmProducts.split(',').length 
                                     : 0;
+                              const farmDist = farm.distanceKm || getShopDistanceKm(farm.location);
                               return (
                                  <div
                                     key={farm.id}
@@ -1740,9 +2038,14 @@ export default function Marketplace() {
 
                                        <div className="absolute bottom-3 left-3 right-3 text-white">
                                           <h3 className="font-black text-lg font-headings leading-tight drop-shadow-sm text-white line-clamp-1">{farm.farmName}</h3>
-                                          <p className="text-[11px] text-slate-200 font-medium flex items-center gap-1 mt-0.5">
-                                             <MapPin size={11} className="text-emerald-400" /> {farm.location}
-                                          </p>
+                                          <div className="flex items-center justify-between text-[11px] text-slate-200 font-medium mt-0.5">
+                                             <p className="flex items-center gap-1 truncate">
+                                                <MapPin size={11} className="text-emerald-400 shrink-0" /> {farm.location}
+                                             </p>
+                                             <span className="bg-emerald-900/80 backdrop-blur-md text-emerald-300 font-bold px-2 py-0.5 rounded-md text-[10px] shrink-0 border border-emerald-500/30">
+                                                📍 {farmDist.toFixed(1)} km
+                                             </span>
+                                          </div>
                                        </div>
                                     </div>
 

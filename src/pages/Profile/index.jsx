@@ -1147,7 +1147,8 @@ export default function Profile() {
 
             if (editingFarmId) {
                 const farmRef = ref(realtimeDb, `farms/${editingFarmId}`);
-                await update(farmRef, farmData);
+                const farmDataWithId = { ...farmData, id: editingFarmId };
+                await set(farmRef, farmDataWithId);
                 setSuccessModalData({
                     title: 'Farm Updated Successfully! 🎉',
                     message: `Your farm listing "${farmData.farmName}" has been updated live on FresVeg!`
@@ -1155,7 +1156,8 @@ export default function Profile() {
             } else {
                 const farmsRef = ref(realtimeDb, 'farms');
                 const newFarmRef = push(farmsRef);
-                await set(newFarmRef, farmData);
+                const farmDataWithId = { ...farmData, id: newFarmRef.key };
+                await set(newFarmRef, farmDataWithId);
                 setSuccessModalData({
                     title: 'Farm Successfully Listed! 🎉',
                     message: `Congratulations! Your farm listing "${farmData.farmName}" is now active and published on FresVeg!`
@@ -2992,9 +2994,9 @@ export default function Profile() {
                                                     </div>
                                                 </div>
 
-                                                {/* Admission Entry Type */}
+                                                {/* Entry Type */}
                                                 <div className="text-left space-y-2">
-                                                    <label className={labelCls}>Admission Entry Type <span className="text-emerald-600 font-bold">*</span></label>
+                                                    <label className={labelCls}>Farm Entry Type <span className="text-emerald-600 font-bold">*</span></label>
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                         <button
                                                             type="button"
@@ -3039,10 +3041,10 @@ export default function Profile() {
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                     {/* Cost Input */}
                                                     <div className="text-left">
-                                                        <label className={labelCls}>Admission Fee per Visitor (₹)</label>
+                                                        <label className={labelCls}>Entry Fee per Visitor (₹)</label>
                                                         {newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0' ? (
                                                             <div className="px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 text-emerald-700 text-xs font-bold flex items-center gap-1.5">
-                                                                <span>✨ Free Admission (₹0 Entry Fee)</span>
+                                                                <span>✨ Free Entry (₹0 Entry Fee)</span>
                                                             </div>
                                                         ) : (
                                                             <div className="relative">
@@ -3743,11 +3745,10 @@ export default function Profile() {
                                                                                     if (isSelected) handleRemoveKidsChip(chip);
                                                                                     else handleAddKidsChip(chip);
                                                                                 }}
-                                                                                className={`px-3 py-1.5 rounded-full text-xs font-extrabold transition-all border cursor-pointer active:scale-95 flex items-center gap-1.5 ${
-                                                                                    isSelected
-                                                                                        ? 'bg-rose-600 text-white border-rose-700 shadow-xs'
-                                                                                        : 'bg-white text-slate-700 border-slate-200 hover:border-rose-300 hover:bg-rose-50/50'
-                                                                                }`}
+                                                                                className={`px-3 py-1.5 rounded-full text-xs font-extrabold transition-all border cursor-pointer active:scale-95 flex items-center gap-1.5 ${isSelected
+                                                                                    ? 'bg-rose-600 text-white border-rose-700 shadow-xs'
+                                                                                    : 'bg-white text-slate-700 border-slate-200 hover:border-rose-300 hover:bg-rose-50/50'
+                                                                                    }`}
                                                                             >
                                                                                 <span>{chip}</span>
                                                                                 {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
@@ -4117,7 +4118,7 @@ export default function Profile() {
                                                     <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-1.5">
                                                         <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">📍 Step 1: Basic Info</span>
                                                         <p className="font-extrabold text-sm text-white truncate">{newFarmForm.farmName || 'Unnamed Farm'}</p>
-                                                        <p className="text-slate-400">Ticket Fee: <span className="text-emerald-400 font-bold">{newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0' ? 'Free Admission (₹0)' : `₹${newFarmForm.costPerPerson} per visitor`}</span></p>
+                                                        <p className="text-slate-400">Ticket Fee: <span className="text-emerald-400 font-bold">{newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0' ? 'Free Entry (₹0)' : `₹${newFarmForm.costPerPerson} per visitor`}</span></p>
                                                         <p className="text-slate-400">Gallery: <span className="text-emerald-400 font-bold">{farmGalleryList.length} Photos Added</span></p>
                                                         {newFarmForm.visitDays && (
                                                             <p className="text-slate-400">📅 Days: <span className="text-teal-300 font-bold">{newFarmForm.visitDays}</span></p>
@@ -4933,7 +4934,7 @@ export default function Profile() {
 
                                                                 {/* GST & Last Updated */}
                                                                 {/* Shop Social Media Links */}
-                                                                 {shop.socialLinks && (shop.socialLinks.instagram || shop.socialLinks.facebook || shop.socialLinks.youtube || shop.socialLinks.whatsapp || shop.socialLinks.website) && (
+                                                                {shop.socialLinks && (shop.socialLinks.instagram || shop.socialLinks.facebook || shop.socialLinks.youtube || shop.socialLinks.whatsapp || shop.socialLinks.website) && (
                                                                     <div className="flex flex-wrap items-center gap-1.5 mb-3 pt-1">
                                                                         <span className="text-[10px] font-bold text-slate-400 font-headings">Socials:</span>
                                                                         {shop.socialLinks.instagram && (
@@ -4962,9 +4963,9 @@ export default function Profile() {
                                                                             </a>
                                                                         )}
                                                                     </div>
-                                                                 )}
+                                                                )}
 
-                                                                 <div className="flex items-center justify-between gap-2 text-xs text-slate-400 border-b border-slate-100 pb-3 font-body">
+                                                                <div className="flex items-center justify-between gap-2 text-xs text-slate-400 border-b border-slate-100 pb-3 font-body">
                                                                     <div className="flex items-center gap-1.5">
                                                                         <FileText size={12} />
                                                                         <span>GST: {shop.gstNumber}</span>
@@ -5203,19 +5204,19 @@ export default function Profile() {
                                         Cancel
                                     </button>
                                     <button
-                                         type="submit"
-                                         disabled={isAddingShop}
-                                         className="bg-brand hover:bg-brand-dark disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98] text-sm flex items-center justify-center gap-2"
-                                     >
-                                         {isAddingShop ? (
-                                             <>
-                                                 <Loader2 size={16} className="animate-spin" />
-                                                 <span>Creating...</span>
-                                             </>
-                                         ) : (
-                                             "Create Shop"
-                                         )}
-                                     </button>
+                                        type="submit"
+                                        disabled={isAddingShop}
+                                        className="bg-brand hover:bg-brand-dark disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98] text-sm flex items-center justify-center gap-2"
+                                    >
+                                        {isAddingShop ? (
+                                            <>
+                                                <Loader2 size={16} className="animate-spin" />
+                                                <span>Creating...</span>
+                                            </>
+                                        ) : (
+                                            "Create Shop"
+                                        )}
+                                    </button>
                                 </div>
 
                             </form>
@@ -6242,128 +6243,18 @@ export default function Profile() {
             )}
 
             {/* Add Stay Accommodation Popup Modal */}
-            {showAddStayModal && createPortal(
-                <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 text-left animate-scale-up" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold text-base">
-                                    🛖
-                                </div>
-                                <div>
-                                    <h3 className="text-base font-extrabold text-slate-900 font-headings">
-                                        {editingStayIndex !== null ? 'Edit Stay Accommodation' : 'Add Stay Accommodation'}
-                                    </h3>
-                                    <p className="text-[11px] text-slate-400 font-medium">Add stay options like rooms, mud huts, tents, or cottages</p>
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => { setShowAddStayModal(false); setEditingStayIndex(null); }}
-                                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors cursor-pointer"
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSaveStay} className="space-y-4 text-left">
-                            {/* Stay Name */}
-                            <div>
-                                <label className={labelCls}>Stay Option / Room Name <span className="text-amber-600 font-bold">*</span></label>
-                                <input
-                                    required
-                                    type="text"
-                                    value={newStayForm.name}
-                                    onChange={(e) => setNewStayForm({ ...newStayForm, name: e.target.value })}
-                                    className={inputCls.replace('pl-10', 'px-4')}
-                                    placeholder="E.g. Farmhouse Guest Room, Eco Mud Hut, Glamping Tent"
-                                />
-                                {/* Quick Presets */}
-                                <div className="flex flex-wrap gap-1.5 pt-2">
-                                    {['Farmhouse Room', 'Rustic Mud Hut', 'Camping Tent', 'Treehouse Stay', 'Luxury Villa', 'Glamping Pod'].map((preset, i) => (
-                                        <button
-                                            key={i}
-                                            type="button"
-                                            onClick={() => setNewStayForm(prev => ({ ...prev, name: preset }))}
-                                            className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
-                                        >
-                                            + {preset}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Stay Price per Night */}
-                            <div>
-                                <label className={labelCls}>Stay Price per Night (₹) <span className="text-slate-400 font-normal text-[11px]">(Leave blank if free)</span></label>
-                                <div className="relative">
-                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₹</span>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="1"
-                                        value={newStayForm.price}
-                                        onChange={(e) => setNewStayForm({ ...newStayForm, price: e.target.value })}
-                                        className={inputCls}
-                                        placeholder="E.g. 1500"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Stay Photo (ImageUploadField) */}
-                            <div>
-                                <label className={labelCls}>Stay Photo</label>
-                                <ImageUploadField
-                                    value={newStayForm.image}
-                                    onChange={(val) => setNewStayForm({ ...newStayForm, image: val })}
-                                    inputClassName={inputCls.replace('pl-10', 'px-4')}
-                                    placeholder="https://images.unsplash.com/photo-..."
-                                    accentColor="amber"
-                                    id="stay-photo-modal-input"
-                                />
-                            </div>
-
-                            {/* Short Description */}
-                            <div>
-                                <label className={labelCls}>Description / Amenities <span className="text-slate-400 font-normal text-[11px]">(Optional)</span></label>
-                                <textarea
-                                    rows="2"
-                                    value={newStayForm.description}
-                                    onChange={(e) => setNewStayForm({ ...newStayForm, description: e.target.value })}
-                                    className={inputCls.replace('pl-10', 'px-4') + ' py-2 resize-none'}
-                                    placeholder="E.g. Cozy air-conditioned room with private veranda facing organic fields..."
-                                />
-                            </div>
-
-                            {/* Modal Buttons */}
-                            <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
-                                <button
-                                    type="button"
-                                    onClick={() => { setShowAddStayModal(false); setEditingStayIndex(null); }}
-                                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSavingStayState}
-                                    className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-xs font-bold font-headings shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
-                                >
-                                    {isSavingStayState ? (
-                                        <>
-                                            <Loader2 size={14} className="animate-spin" />
-                                            <span>Saving...</span>
-                                        </>
-                                    ) : (
-                                        editingStayIndex !== null ? 'Update Stay' : '+ Save Stay'
-                                    )}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>,
-                document.body
-            )}
+            <AddStayModal
+                showAddStayModal={showAddStayModal}
+                setShowAddStayModal={setShowAddStayModal}
+                editingStayIndex={editingStayIndex}
+                setEditingStayIndex={setEditingStayIndex}
+                newStayForm={newStayForm}
+                setNewStayForm={setNewStayForm}
+                handleSaveStay={handleSaveStay}
+                isSubmitting={isSavingStayState}
+                labelCls={labelCls}
+                inputCls={inputCls}
+            />
 
             {/* Signout Confirmation Popup Modal */}
             {showSignoutConfirm && createPortal(

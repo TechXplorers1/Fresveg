@@ -4,28 +4,29 @@ import { ref, onValue, push, set } from 'firebase/database';
 import { realtimeDb } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { 
+import {
   Instagram, Facebook, Youtube, Globe, MessageCircle,
-  MapPin, Calendar, Users, Compass, ArrowLeft, Sparkles, CheckCircle, 
+  MapPin, Calendar, Users, Compass, ArrowLeft, Sparkles, CheckCircle,
   Clock, ShieldCheck, Store, ShoppingCart, Info, Star, Navigation, Home as HomeIcon,
   Tent, Sun, Sprout, Heart, Check, Plus, Minus, Tag, Zap, Pencil, Trash2, Save, X, Edit3, Image as ImageIcon, Maximize2, ChevronDown, DollarSign, Loader2
 } from 'lucide-react';
 import ModernDatePicker from '../components/common/ModernDatePicker';
+import { ensureFarmsInFirebase } from '../services/farmSeeder';
 
 // Sub-Category Options Map for Farm Direct Products
 export const SUB_CATEGORIES_MAP = {
   Vegetables: [
-    'Organic Spinach', 'Cherry Tomatoes', 'Fresh Tomatoes', 'Capsicum / Bell Peppers', 
-    'Broccoli', 'Cauliflower', 'Carrots', 'Potatoes', 'Red Onions', 'Cabbage', 
+    'Organic Spinach', 'Cherry Tomatoes', 'Fresh Tomatoes', 'Capsicum / Bell Peppers',
+    'Broccoli', 'Cauliflower', 'Carrots', 'Potatoes', 'Red Onions', 'Cabbage',
     'Cucumber', 'Brinjal (Eggplant)', 'Lady Finger (Okra)', 'Green Peas', 'Bottle Gourd', 'Other Vegetable'
   ],
   Fruits: [
-    'Alphonso Mangoes', 'Mahabaleshwar Strawberries', 'Guava', 'Papaya', 
-    'Chiku (Sapodilla)', 'Oranges / Citrus', 'Apples', 'Bananas', 'Pomegranates', 
+    'Alphonso Mangoes', 'Mahabaleshwar Strawberries', 'Guava', 'Papaya',
+    'Chiku (Sapodilla)', 'Oranges / Citrus', 'Apples', 'Bananas', 'Pomegranates',
     'Watermelon', 'Grapes', 'Pineapple', 'Dragon Fruit', 'Other Fruit'
   ],
   Dairy: [
-    'Pure Cow Milk', 'Buffalo Milk', 'A2 Cow Milk', 'Fresh Paneer', 
+    'Pure Cow Milk', 'Buffalo Milk', 'A2 Cow Milk', 'Fresh Paneer',
     'Organic Ghee', 'Curd / Yogurt', 'Fresh Butter', 'Butter Milk (Chaas)'
   ],
   'Honey & Bee Products': [
@@ -46,7 +47,7 @@ export const SUB_CATEGORIES_MAP = {
 };
 
 // Default enriched mock farm data
-const MOCK_FARM_DATA = {
+export const MOCK_FARM_DATA = {
   'mock-farm-1': {
     id: 'mock-farm-1',
     farmName: 'Strawberry Fields & Orchards',
@@ -62,10 +63,10 @@ const MOCK_FARM_DATA = {
     livestock: ['Poultry & Free-Range Ducks', 'Sheep & Goats Flock', 'Apiculture Honey Bees'],
     kidsActivities: ['🎈 Kids Playground & Swings', '🐰 Bunny & Petting Corner', '🎨 Pottery & Clay Crafts', '🚜 Mini Tractor Rides', '🐟 Fish Feeding Pond'],
     accommodations: [
-      { id: 'acc-1', title: 'Farmhouse Guest Rooms', desc: 'Cozy, air-cooled rooms with private veranda facing strawberry fields.', price: 'Included', icon: 'house' },
-      { id: 'acc-2', title: 'Traditional Clay Huts', desc: 'Cool eco-huts built with natural mud & thatched roofs.', price: 'Included', icon: 'hut' },
-      { id: 'acc-3', title: 'Camping Tents under Stars', desc: 'High-quality waterproof tents with nighttime campfire setup.', price: '+ ₹200/tent', icon: 'tent' },
-      { id: 'acc-4', title: 'Hammocks Under Banyan Trees', desc: 'Relaxing shaded hammocks for afternoon naps.', price: 'Free Access', icon: 'tree' }
+      { id: 'acc-1', title: 'Farmhouse Guest Rooms', desc: 'Cozy, air-cooled rooms with private veranda facing strawberry fields.', price: 'Included', icon: 'house', roomQuantity: '4 Rooms', roomCapacity: '2 Persons' },
+      { id: 'acc-2', title: 'Traditional Clay Huts', desc: 'Cool eco-huts built with natural mud & thatched roofs.', price: 'Included', icon: 'hut', roomQuantity: '2 Huts', roomCapacity: '3 Persons' },
+      { id: 'acc-3', title: 'Camping Tents under Stars', desc: 'High-quality waterproof tents with nighttime campfire setup.', price: '+ ₹200/tent', icon: 'tent', roomQuantity: '5 Tents', roomCapacity: '2 Persons' },
+      { id: 'acc-4', title: 'Hammocks Under Banyan Trees', desc: 'Relaxing shaded hammocks for afternoon naps.', price: 'Free Access', icon: 'tree', roomQuantity: '6 Hammocks', roomCapacity: '1 Person' }
     ],
     farmProducts: [
       { id: 'fp-1', name: 'Fresh Mahabaleshwar Strawberries (500g)', price: 180, unit: 'box', image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80', vendor: 'Orchard Farms', category: 'Strawberries' },
@@ -106,9 +107,9 @@ const MOCK_FARM_DATA = {
     fruits: ['Guava Orchards', 'Papaya Groves', 'Chiku (Sapodilla)'],
     livestock: ['Pure Gir Cows', 'Desi Hens & Roosters', 'Freshwater Fish Pond'],
     accommodations: [
-      { id: 'acc-1', title: 'Eco Farmhouse Rooms', desc: 'Spacious solar-powered rooms surrounded by lush greenery.', price: 'Free Entry', icon: 'house' },
-      { id: 'acc-2', title: 'Open Air Tents', desc: 'Eco camping tents along river stream.', price: 'Free Entry', icon: 'tent' },
-      { id: 'acc-3', title: 'Tree Deck & Hammocks', desc: 'Rest under mango trees on woven hammocks.', price: 'Free Entry', icon: 'tree' }
+      { id: 'acc-1', title: 'Eco Farmhouse Rooms', desc: 'Spacious solar-powered rooms surrounded by lush greenery.', price: 'Free Entry', icon: 'house', roomQuantity: '3 Rooms', roomCapacity: '4 Persons' },
+      { id: 'acc-2', title: 'Open Air Tents', desc: 'Eco camping tents along river stream.', price: 'Free Entry', icon: 'tent', roomQuantity: '4 Tents', roomCapacity: '2 Persons' },
+      { id: 'acc-3', title: 'Tree Deck & Hammocks', desc: 'Rest under mango trees on woven hammocks.', price: 'Free Entry', icon: 'tree', roomQuantity: '5 Hammocks', roomCapacity: '1 Person' }
     ],
     farmProducts: [
       { id: 'fp-4', name: 'Fresh Organic Spinach (250g)', price: 35, unit: 'bunch', image: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=400&q=80', vendor: 'Green Valley Farm', category: 'Spinach' },
@@ -207,7 +208,8 @@ export default function FarmDetails() {
   // Add Accommodation Modal in Edit Mode
   const [showAddAccModal, setShowAddAccModal] = useState(false);
   const [editingAccId, setEditingAccId] = useState(null);
-  const [newAcc, setNewAcc] = useState({ title: '', price: '', desc: '', icon: 'house' });
+  const [newAcc, setNewAcc] = useState({ title: '', price: '', desc: '', icon: 'house', roomQuantity: '1 Room', roomCapacity: '2 Persons' });
+  const [manualStayTitleInput, setManualStayTitleInput] = useState('');
 
   // Add Photo Modal in Edit Mode
   const [showAddPhotoModal, setShowAddPhotoModal] = useState(false);
@@ -232,6 +234,7 @@ export default function FarmDetails() {
   const [visitorsCount, setVisitorsCount] = useState(1);
   const [includeStay, setIncludeStay] = useState(false);
   const [selectedAccommodation, setSelectedAccommodation] = useState('');
+  const [selectedRoomsCount, setSelectedRoomsCount] = useState(1);
   const [submittingBooking, setSubmittingBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
@@ -250,9 +253,10 @@ export default function FarmDetails() {
 
   const isOwner = user && farm && (user.uid === farm.vendorId || userProfile?.role === 'vendor');
 
-  // Fetch Farm data from Firebase or fallback to mock (matches by ID or name slug)
+  // Fetch Farm data 100% directly from Firebase Realtime Database
   useEffect(() => {
     window.scrollTo(0, 0);
+    ensureFarmsInFirebase();
     const farmsRef = ref(realtimeDb, 'farms');
     const unsubscribe = onValue(farmsRef, (snapshot) => {
       const data = snapshot.val();
@@ -262,22 +266,12 @@ export default function FarmDetails() {
       if (data) {
         const farmKey = Object.keys(data).find(key => {
           const item = data[key];
-          if (key === id) return true;
-          return getFarmSlug(item) === id;
+          const slug = getFarmSlug(item);
+          return key === id || item.id === id || slug === id || id.includes(slug) || slug.includes(id);
         });
         if (farmKey) {
           matchedFarm = { ...data[farmKey], id: farmKey };
           matchedId = farmKey;
-        }
-      }
-
-      if (!matchedFarm) {
-        const mockKey = Object.keys(MOCK_FARM_DATA).find(key => {
-          const mock = MOCK_FARM_DATA[key];
-          return key === id || getFarmSlug(mock) === id || id.startsWith(getFarmSlug(mock));
-        });
-        if (mockKey) {
-          matchedFarm = MOCK_FARM_DATA[mockKey];
         }
       }
 
@@ -613,7 +607,8 @@ export default function FarmDetails() {
       };
 
       const sanitizedData = sanitizeForFirebase(updatedFarmData);
-      const farmRef = ref(realtimeDb, `farms/${farm.id}`);
+      const farmKeyToSave = farm.id || getFarmSlug(farm) || 'farm-' + Date.now();
+      const farmRef = ref(realtimeDb, `farms/${farmKeyToSave}`);
       await set(farmRef, sanitizedData);
       setFarm(updatedFarmData);
       setIsEditing(false);
@@ -626,8 +621,8 @@ export default function FarmDetails() {
     }
   };
 
-  // Add Photo to Gallery
-  const handleSaveNewPhoto = (e) => {
+  // Add Photo to Gallery with immediate Firebase RTDB persistence
+  const handleSaveNewPhoto = async (e) => {
     e.preventDefault();
     if (!newPhoto.url.trim()) {
       alert('Please enter a photo URL.');
@@ -638,17 +633,57 @@ export default function FarmDetails() {
       url: newPhoto.url.trim(),
       caption: newPhoto.caption.trim() || 'Farm View'
     };
-    setEditForm(prev => ({ ...prev, gallery: [...prev.gallery, photoObj] }));
+    const currentGallery = editForm?.gallery || farm?.gallery || [];
+    const updatedGallery = [...currentGallery, photoObj];
+
+    setEditForm(prev => ({ ...prev, gallery: updatedGallery }));
+    setFarm(prev => prev ? ({ ...prev, gallery: updatedGallery }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        const galRef = ref(realtimeDb, `farms/${farmKeyToSave}/gallery`);
+        await set(galRef, sanitizeForFirebase(updatedGallery));
+      } catch (err) {
+        console.error('Failed to save gallery photo to Firebase RTDB:', err);
+      }
+    }
+
     setShowAddPhotoModal(false);
     setNewPhoto({ url: '', caption: '' });
   };
 
-  const handleRemoveGalleryPhoto = (photoId) => {
-    setEditForm(prev => ({ ...prev, gallery: prev.gallery.filter((p, i) => p.id !== photoId && i !== photoId) }));
+  const handleRemoveGalleryPhoto = async (photoId) => {
+    const currentGallery = editForm?.gallery || farm?.gallery || [];
+    const updatedGallery = currentGallery.filter((p, i) => p.id !== photoId && i !== photoId);
+
+    setEditForm(prev => ({ ...prev, gallery: updatedGallery }));
+    setFarm(prev => prev ? ({ ...prev, gallery: updatedGallery }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        const galRef = ref(realtimeDb, `farms/${farmKeyToSave}/gallery`);
+        await set(galRef, sanitizeForFirebase(updatedGallery));
+      } catch (err) {
+        console.error('Failed to remove gallery photo from Firebase RTDB:', err);
+      }
+    }
   };
 
-  const handleSetCoverPhoto = (photoUrl) => {
+  const handleSetCoverPhoto = async (photoUrl) => {
     setEditForm(prev => ({ ...prev, image: photoUrl }));
+    setFarm(prev => prev ? ({ ...prev, image: photoUrl }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        const imgRef = ref(realtimeDb, `farms/${farmKeyToSave}/image`);
+        await set(imgRef, photoUrl);
+      } catch (err) {
+        console.error('Failed to save cover photo to Firebase RTDB:', err);
+      }
+    }
     alert('Photo set as main banner cover!');
   };
 
@@ -690,36 +725,69 @@ export default function FarmDetails() {
   const [showMoreLivestock, setShowMoreLivestock] = useState(false);
   const [showMoreAccommodations, setShowMoreAccommodations] = useState(false);
 
-  const handleToggleCropChip = (cropName) => {
+  const handleToggleCropChip = async (cropName) => {
     if (!editForm) return;
     const current = editForm.crops || [];
     const exists = current.some(c => c.toLowerCase() === cropName.toLowerCase());
-    if (exists) {
-      setEditForm(prev => ({ ...prev, crops: prev.crops.filter(c => c.toLowerCase() !== cropName.toLowerCase()) }));
-    } else {
-      setEditForm(prev => ({ ...prev, crops: [...prev.crops, cropName] }));
+    const updated = exists
+      ? current.filter(c => c.toLowerCase() !== cropName.toLowerCase())
+      : [...current, cropName];
+
+    setEditForm(prev => ({ ...prev, crops: updated }));
+    setFarm(prev => prev ? ({ ...prev, crops: updated }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        const cropsRef = ref(realtimeDb, `farms/${farmKeyToSave}/crops`);
+        await set(cropsRef, sanitizeForFirebase(updated));
+      } catch (err) {
+        console.error('Failed to toggle crop chip in Firebase RTDB:', err);
+      }
     }
   };
 
-  const handleToggleFruitChip = (fruitName) => {
+  const handleToggleFruitChip = async (fruitName) => {
     if (!editForm) return;
     const current = editForm.fruits || [];
     const exists = current.some(f => f.toLowerCase() === fruitName.toLowerCase());
-    if (exists) {
-      setEditForm(prev => ({ ...prev, fruits: prev.fruits.filter(f => f.toLowerCase() !== fruitName.toLowerCase()) }));
-    } else {
-      setEditForm(prev => ({ ...prev, fruits: [...prev.fruits, fruitName] }));
+    const updated = exists
+      ? current.filter(f => f.toLowerCase() !== fruitName.toLowerCase())
+      : [...current, fruitName];
+
+    setEditForm(prev => ({ ...prev, fruits: updated }));
+    setFarm(prev => prev ? ({ ...prev, fruits: updated }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        const fruitsRef = ref(realtimeDb, `farms/${farmKeyToSave}/fruits`);
+        await set(fruitsRef, sanitizeForFirebase(updated));
+      } catch (err) {
+        console.error('Failed to toggle fruit chip in Firebase RTDB:', err);
+      }
     }
   };
 
-  const handleToggleAnimalChip = (animalName) => {
+  const handleToggleAnimalChip = async (animalName) => {
     if (!editForm) return;
     const current = editForm.livestock || [];
     const exists = current.some(a => a.toLowerCase() === animalName.toLowerCase());
-    if (exists) {
-      setEditForm(prev => ({ ...prev, livestock: prev.livestock.filter(a => a.toLowerCase() !== animalName.toLowerCase()) }));
-    } else {
-      setEditForm(prev => ({ ...prev, livestock: [...prev.livestock, animalName] }));
+    const updated = exists
+      ? current.filter(a => a.toLowerCase() !== animalName.toLowerCase())
+      : [...current, animalName];
+
+    setEditForm(prev => ({ ...prev, livestock: updated }));
+    setFarm(prev => prev ? ({ ...prev, livestock: updated }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        const livestockRef = ref(realtimeDb, `farms/${farmKeyToSave}/livestock`);
+        await set(livestockRef, sanitizeForFirebase(updated));
+      } catch (err) {
+        console.error('Failed to toggle animal chip in Firebase RTDB:', err);
+      }
     }
   };
 
@@ -763,19 +831,19 @@ export default function FarmDetails() {
     const displayUnit = qtyStr ? `${qtyStr} ${unitStr}` : unitStr;
 
     if (editingProductId) {
-      updatedProducts = currentProducts.map(p => 
-        p.id === editingProductId 
+      updatedProducts = currentProducts.map(p =>
+        p.id === editingProductId
           ? {
-              ...p,
-              name: newProduct.name.trim(),
-              category: newProduct.category.trim() || 'Vegetables',
-              subCategory: newProduct.subCategory?.trim() || '',
-              price: Number(newProduct.price) || 0,
-              quantity: qtyStr || '1',
-              unit: displayUnit,
-              rawUnit: unitStr,
-              image: newProduct.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80'
-            }
+            ...p,
+            name: newProduct.name.trim(),
+            category: newProduct.category.trim() || 'Vegetables',
+            subCategory: newProduct.subCategory?.trim() || '',
+            price: Number(newProduct.price) || 0,
+            quantity: qtyStr || '1',
+            unit: displayUnit,
+            rawUnit: unitStr,
+            image: newProduct.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80'
+          }
           : p
       );
       setEditingProductId(null);
@@ -814,7 +882,7 @@ export default function FarmDetails() {
   const handleRemoveProductItem = async (prodId) => {
     const currentProducts = editForm?.farmProducts || farm?.farmProducts || [];
     const updatedProducts = currentProducts.filter(p => p.id !== prodId);
-    
+
     setEditForm(prev => ({ ...prev, farmProducts: updatedProducts }));
     setFarm(prev => prev ? ({ ...prev, farmProducts: updatedProducts }) : prev);
 
@@ -834,42 +902,82 @@ export default function FarmDetails() {
       title: acc.title || '',
       price: acc.price || '',
       desc: acc.desc || '',
-      icon: acc.icon || 'house'
+      icon: acc.icon || 'house',
+      roomQuantity: acc.roomQuantity || '1 Room',
+      roomCapacity: acc.roomCapacity || '2 Persons'
     });
+    setManualStayTitleInput('');
     setShowAddAccModal(true);
   };
 
-  const handleSaveNewAcc = (e) => {
+  const handleSaveNewAcc = async (e) => {
     e.preventDefault();
     if (!newAcc.title.trim()) return;
 
+    let updatedAccs = [];
+    const currentAccs = editForm?.accommodations || farm?.accommodations || [];
+
     if (editingAccId) {
-      setEditForm(prev => ({
-        ...prev,
-        accommodations: prev.accommodations.map(a =>
-          (a.id === editingAccId)
-            ? { ...a, title: newAcc.title.trim(), price: newAcc.price.trim() || '', desc: newAcc.desc.trim() }
-            : a
-        )
-      }));
+      updatedAccs = currentAccs.map(a =>
+        (a.id === editingAccId)
+          ? {
+              ...a,
+              title: newAcc.title.trim(),
+              price: newAcc.price.trim() || '',
+              desc: newAcc.desc.trim(),
+              roomQuantity: newAcc.roomQuantity.trim() || '1 Room',
+              roomCapacity: newAcc.roomCapacity.trim() || '2 Persons'
+            }
+          : a
+      );
     } else {
       const accObj = {
         id: `acc-${Date.now()}`,
         title: newAcc.title.trim(),
         price: newAcc.price.trim() || '',
         desc: newAcc.desc.trim() || 'Comfortable stay experience at the farm.',
-        icon: newAcc.icon
+        icon: newAcc.icon || 'house',
+        roomQuantity: newAcc.roomQuantity.trim() || '1 Room',
+        roomCapacity: newAcc.roomCapacity.trim() || '2 Persons'
       };
-      setEditForm(prev => ({ ...prev, accommodations: [...prev.accommodations, accObj] }));
+      updatedAccs = [...currentAccs, accObj];
+    }
+
+    setEditForm(prev => ({ ...prev, accommodations: updatedAccs }));
+    setFarm(prev => prev ? ({ ...prev, accommodations: updatedAccs }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        const accsRef = ref(realtimeDb, `farms/${farmKeyToSave}/accommodations`);
+        await set(accsRef, sanitizeForFirebase(updatedAccs));
+      } catch (err) {
+        console.error('Failed to save accommodations to Firebase RTDB:', err);
+      }
     }
 
     setShowAddAccModal(false);
     setEditingAccId(null);
-    setNewAcc({ title: '', price: '', desc: '', icon: 'house' });
+    setManualStayTitleInput('');
+    setNewAcc({ title: '', price: '', desc: '', icon: 'house', roomQuantity: '1 Room', roomCapacity: '2 Persons' });
   };
 
-  const handleRemoveAccItem = (accId) => {
-    setEditForm(prev => ({ ...prev, accommodations: prev.accommodations.filter(a => a.id !== accId) }));
+  const handleRemoveAccItem = async (accId) => {
+    const currentAccs = editForm?.accommodations || farm?.accommodations || [];
+    const updatedAccs = currentAccs.filter(a => a.id !== accId);
+
+    setEditForm(prev => ({ ...prev, accommodations: updatedAccs }));
+    setFarm(prev => prev ? ({ ...prev, accommodations: updatedAccs }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        const accsRef = ref(realtimeDb, `farms/${farmKeyToSave}/accommodations`);
+        await set(accsRef, sanitizeForFirebase(updatedAccs));
+      } catch (err) {
+        console.error('Failed to remove accommodation from Firebase RTDB:', err);
+      }
+    }
   };
 
   // Submit Booking
@@ -887,13 +995,13 @@ export default function FarmDetails() {
 
     setSubmittingBooking(true);
     try {
-      const stayPriceVal = Number(farm.accommodationPrice) || (
-        farm.accommodations && farm.accommodations.length > 0
-          ? (parseFloat(String(farm.accommodations[0]?.price || '').replace(/[^0-9.]/g, '')) || 0)
-          : 0
-      );
-      const admissionCost = isFree ? 0 : Number(farm.costPerPerson) * visitorsCount;
-      const stayCost = includeStay ? stayPriceVal : 0;
+      const accList = farm.accommodations && farm.accommodations.length > 0 ? farm.accommodations : [];
+      const selectedAccObj = accList.find(a => a.title === selectedAccommodation) || accList[0];
+      const selectedAccPrice = includeStay
+        ? (selectedAccObj ? (parseFloat(String(selectedAccObj.price || '').replace(/[^0-9.]/g, '')) || 0) : (Number(farm.accommodationPrice) || 0))
+        : 0;
+      const admissionCost = isFree ? 0 : Number(farm.costPerPerson) * Number(visitorsCount);
+      const stayCost = includeStay ? (selectedAccPrice * Number(selectedRoomsCount)) : 0;
       const totalAmount = admissionCost + stayCost;
 
       const bookingData = {
@@ -910,7 +1018,9 @@ export default function FarmDetails() {
         visitorsCount: Number(visitorsCount),
         costPerPerson: Number(farm.costPerPerson) || 0,
         includeStay,
-        accommodationPrice: stayPriceVal,
+        accommodationTitle: includeStay ? (selectedAccObj?.title || 'Selected Stay') : 'No Stay',
+        roomsBooked: includeStay ? Number(selectedRoomsCount) : 0,
+        accommodationPrice: selectedAccPrice,
         stayCost,
         totalAmount,
         isFree: isFree && stayCost === 0,
@@ -990,7 +1100,7 @@ export default function FarmDetails() {
   const generalGalleryPhotos = activeGallery.filter(p => {
     const c = (p.caption || '').toLowerCase();
     const cat = (p.category || '').toLowerCase();
-    
+
     const isCrop = cat === 'crop' || c.includes('crop') || c.includes('fruit') || c.includes('harvest') || c.includes('orchard') || c.includes('produce');
     const isAnimal = cat === 'livestock' || c.includes('cow') || c.includes('goat') || c.includes('animal') || c.includes('livestock') || c.includes('poultry') || c.includes('bee') || c.includes('duck') || c.includes('sheep') || c.includes('chicken');
     const isKids = cat === 'kids' || c.includes('kid') || c.includes('play') || c.includes('child') || c.includes('swing') || c.includes('toy') || c.includes('petting') || c.includes('fun');
@@ -1002,7 +1112,7 @@ export default function FarmDetails() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen">
-      
+
       {/* ── Owner Action Header Button ── */}
       {isOwner && (
         <div className="mb-4 flex justify-end">
@@ -1268,74 +1378,346 @@ export default function FarmDetails() {
 
       {/* ── Main Farm Experience Details Grid ────────────────────────────── */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 text-left">
-        
+
         {/* Left Column: Farm Offerings & Gallery (8 Cols) */}
         <div className="lg:col-span-8 space-y-6">
-          
-          {/* Section 0: Farm Photo Gallery & Visual Tour 📸 */}
-          {(activeGallery.length > 0 || isEditing) && (
+
+          {/* ── 1. Crops & Fruit Orchards Grown Here 🌾🍎 ── */}
+          {((activeCrops.length > 0 || activeFruits.length > 0) || isEditing) && (
             <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center font-bold text-lg">
-                    📸
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold font-headings text-slate-800">Farm Gallery & Visual Tour</h2>
-                    <p className="text-xs text-slate-400 font-medium font-body">Explore real photos of our fields, crops, stays, animals, and sunsets</p>
-                  </div>
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold text-lg">
+                  🌾
                 </div>
-                {isEditing && (
-                  <button
-                    onClick={() => setShowAddPhotoModal(true)}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95"
-                  >
-                    <Plus size={14} /> Add Farm Photo
-                  </button>
+                <div>
+                  <h2 className="text-xl font-bold font-headings text-slate-800">Crops & Fruit Orchards Grown Here</h2>
+                  <p className="text-xs text-slate-400 font-medium font-body">Organically cultivated crops and fresh fruit trees on this soil</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {(activeCrops.length > 0 || isEditing) && (
+                  <>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">Organic Crops & Produce</h4>
+                    <div className="flex flex-wrap gap-2.5">
+                      {activeCrops.map((crop, index) => (
+                        <span key={index} className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                          <Sprout size={14} className="text-emerald-600" /> {crop}
+                          {isEditing && (
+                            <button onClick={() => handleRemoveCropItem(index)} className="text-rose-500 hover:text-rose-700 ml-1 font-black cursor-pointer">
+                              ×
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    {isEditing && (
+                      <div className="space-y-2 pt-2 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider font-headings">
+                            Select Suggested Crops or Type Custom Crop:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowMoreCrops(!showMoreCrops)}
+                            className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer"
+                          >
+                            {showMoreCrops ? 'Show Less' : `+ Others (${EXTRA_CROPS.length} more)`}
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pb-2">
+                          {(showMoreCrops ? [...INITIAL_CROPS, ...EXTRA_CROPS] : INITIAL_CROPS).map((chip, idx) => {
+                            const isSelected = (editForm?.crops || []).some(c => c.toLowerCase() === chip.toLowerCase());
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleToggleCropChip(chip)}
+                                className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${isSelected
+                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400 hover:text-emerald-700'
+                                  }`}
+                              >
+                                <span>{chip}</span>
+                                {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center gap-2 max-w-md pt-1">
+                          <input
+                            type="text"
+                            value={newCrop}
+                            onChange={(e) => setNewCrop(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ',') {
+                                e.preventDefault();
+                                handleAddCropItem();
+                              }
+                            }}
+                            placeholder="Type custom crop and press Enter (e.g. Sweet Corn)..."
+                            className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium flex-1 outline-none focus:border-emerald-500 font-body"
+                          />
+                          <button onClick={handleAddCropItem} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer">
+                            + Add
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {(activeFruits.length > 0 || isEditing) && (
+                  <>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings pt-2">Fruit Orchards & Trees</h4>
+                    <div className="flex flex-wrap gap-2.5">
+                      {activeFruits.map((fruit, index) => (
+                        <span key={index} className="bg-amber-50 text-amber-900 border border-amber-200/80 px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                          🍎 {fruit}
+                          {isEditing && (
+                            <button onClick={() => handleRemoveFruitItem(index)} className="text-rose-500 hover:text-rose-700 ml-1 font-black cursor-pointer">
+                              ×
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    {isEditing && (
+                      <div className="space-y-2 pt-2 bg-amber-50/50 p-4 rounded-2xl border border-amber-200/80 text-left">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider font-headings">
+                            Select Suggested Fruit Orchards or Type Custom Fruit:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowMoreFruits(!showMoreFruits)}
+                            className="text-xs font-bold text-amber-600 hover:text-amber-700 hover:underline cursor-pointer"
+                          >
+                            {showMoreFruits ? 'Show Less' : `+ Others (${EXTRA_FRUITS.length} more)`}
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pb-2">
+                          {(showMoreFruits ? [...INITIAL_FRUITS, ...EXTRA_FRUITS] : INITIAL_FRUITS).map((chip, idx) => {
+                            const isSelected = (editForm?.fruits || []).some(f => f.toLowerCase() === chip.toLowerCase());
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleToggleFruitChip(chip)}
+                                className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${isSelected
+                                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:border-amber-400 hover:text-amber-700'
+                                  }`}
+                              >
+                                <span>{chip}</span>
+                                {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center gap-2 max-w-md pt-1">
+                          <input
+                            type="text"
+                            value={newFruit}
+                            onChange={(e) => setNewFruit(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ',') {
+                                e.preventDefault();
+                                handleAddFruitItem();
+                              }
+                            }}
+                            placeholder="Type custom fruit/orchard and press Enter..."
+                            className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium flex-1 outline-none focus:border-amber-500 font-body"
+                          />
+                          <button onClick={handleAddFruitItem} className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer">
+                            + Add
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
-              {/* Photo Grid Showcase */}
-              {generalGalleryPhotos.length === 0 ? (
-                <div className="py-8 text-center bg-white/50 border border-dashed border-slate-200 rounded-2xl">
-                  <p className="text-xs text-slate-400 font-medium">No gallery photos added yet.</p>
-                  {isEditing && (
-                    <button
-                      onClick={() => setShowAddPhotoModal(true)}
-                      className="mt-3 bg-emerald-600 text-white px-4 py-1.5 rounded-xl text-xs font-bold"
-                    >
-                      + Add Photo Now
-                    </button>
-                  )}
+              {/* Crops & Fruit Orchards Photos Grid */}
+              {activeCropPhotos.length > 0 && (
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Crops & Fruit Orchard Photos</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {activeCropPhotos.map((photo, idx) => (
+                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
+                        <img src={photo.url} alt={photo.caption || 'Crop Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        {photo.caption && (
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
+                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-                  {generalGalleryPhotos.map((photo, idx) => (
-                    <div
-                      key={photo.id || idx}
-                      className="relative h-36 sm:h-44 rounded-2xl overflow-hidden group cursor-pointer border border-slate-200/80 shadow-xs hover:shadow-lg transition-all"
-                      onClick={() => setLightboxIndex(idx)}
-                    >
-                      <img
-                        src={photo.url}
-                        alt={photo.caption || 'Farm Photo'}
-                        className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent opacity-85 group-hover:opacity-95 transition-opacity"></div>
-                      
-                      {photo.caption && (
-                        <p className="absolute bottom-2.5 left-2.5 right-2.5 text-[11px] font-bold text-white font-body truncate drop-shadow-sm">
-                          {photo.caption}
-                        </p>
-                      )}
+              )}
+            </div>
+          )}
+
+          {/* ── 2. Livestock, Poultry & Cattle 🐄🐓 ── */}
+          {(activeLivestock.length > 0 || isEditing) && (
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center font-bold text-lg">
+                    🐄
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold font-headings text-slate-800">Livestock, Poultry & Cattle</h2>
+                    <p className="text-xs text-slate-400 font-medium font-body">Interact, feed, and observe farm animals up close</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                {activeLivestock.map((animal, index) => (
+                  <div key={index} className="bg-white border border-slate-200/80 p-3.5 rounded-2xl shadow-xs text-center space-y-1 relative group">
+                    {isEditing && (
+                      <button
+                        onClick={() => handleRemoveAnimalItem(index)}
+                        className="absolute top-2 right-2 p-1 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                    <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto text-lg">
+                      {animal.includes('Cow') || animal.includes('Cattle') ? '🐄' : animal.includes('Sheep') || animal.includes('Goat') ? '🐐' : animal.includes('Honey') || animal.includes('Bee') ? '🐝' : '🐓'}
+                    </div>
+                    <p className="font-bold text-slate-800 text-xs font-headings truncate">{animal}</p>
+                    <p className="text-[10px] text-emerald-600 font-bold">100% Organic Raised</p>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-        )}
+              {isEditing && (
+                <div className="space-y-2 pt-2 bg-teal-50/50 p-4 rounded-2xl border border-teal-200/80 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider font-headings">
+                      Select Suggested Livestock/Animals or Type Custom Animal:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowMoreLivestock(!showMoreLivestock)}
+                      className="text-xs font-bold text-teal-600 hover:text-teal-700 hover:underline cursor-pointer"
+                    >
+                      {showMoreLivestock ? 'Show Less' : `+ Others (${EXTRA_LIVESTOCK.length} more)`}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pb-2">
+                    {(showMoreLivestock ? [...INITIAL_LIVESTOCK, ...EXTRA_LIVESTOCK] : INITIAL_LIVESTOCK).map((chip, idx) => {
+                      const isSelected = (editForm?.livestock || []).some(a => a.toLowerCase() === chip.toLowerCase());
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleToggleAnimalChip(chip)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${isSelected
+                            ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-teal-400 hover:text-teal-700'
+                            }`}
+                        >
+                          <span>{chip}</span>
+                          {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center gap-2 max-w-md pt-1">
+                    <input
+                      type="text"
+                      value={newAnimal}
+                      onChange={(e) => setNewAnimal(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ',') {
+                          e.preventDefault();
+                          handleAddAnimalItem();
+                        }
+                      }}
+                      placeholder="Type custom animal and press Enter (e.g. Gir Cows)..."
+                      className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium flex-1 outline-none focus:border-teal-500 font-body"
+                    />
+                    <button onClick={handleAddAnimalItem} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer">
+                      + Add
+                    </button>
+                  </div>
+                </div>
+              )}
+              {/* Livestock & Poultry Photos Grid */}
+              {activeLivestockPhotos.length > 0 && (
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Livestock & Poultry Photos</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {activeLivestockPhotos.map((photo, idx) => (
+                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
+                        <img src={photo.url} alt={photo.caption || 'Livestock Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        {photo.caption && (
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
+                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
-        {/* Section 1: Accommodation & Stay Options 🛖 */}
+          {/* ── 3. Kids Section & Fun Entertainments 🎈 ── */}
+          {((activeKidsActivities && activeKidsActivities.length > 0) || (activeKidsPhotos && activeKidsPhotos.length > 0) || isEditing) && (
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4 text-left">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center font-bold text-lg">
+                    🎈
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold font-headings text-slate-800">Kids Section & Fun Entertainments</h2>
+                    <p className="text-xs text-slate-400 font-medium font-body">Safe playgrounds, petting corners, pottery & mini tractor rides for children</p>
+                  </div>
+                </div>
+                <span className="bg-purple-50 text-purple-800 text-[10px] font-black uppercase px-3 py-1 rounded-full border border-purple-200">
+                  Family Friendly 👨‍👩‍👧‍👦
+                </span>
+              </div>
+
+              {activeKidsActivities && activeKidsActivities.length > 0 && (
+                <div className="flex flex-wrap gap-2.5">
+                  {(Array.isArray(activeKidsActivities) ? activeKidsActivities : activeKidsActivities.split(',').map(a => a.trim())).map((act, index) => (
+                    <span key={index} className="bg-purple-50 text-purple-900 border border-purple-200/80 px-3.5 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                      🎈 {act}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Kids Entertainments Photos Grid */}
+              {activeKidsPhotos && activeKidsPhotos.length > 0 && (
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Kids Play Area & Activity Photos</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {activeKidsPhotos.map((photo, idx) => (
+                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
+                        <img src={photo.url} alt={photo.caption || 'Kids Activity Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        {photo.caption && (
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
+                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── 4. Accommodations & Stay Experience 🛖 ── */}
           {(activeAccommodations.length > 0 || isEditing) && (
             <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1404,6 +1786,16 @@ export default function FarmDetails() {
                       </div>
                       <p className="text-xs text-slate-500 font-medium leading-relaxed italic">{accDesc}</p>
 
+                      {/* Room Quantity & Capacity Badges */}
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <span className="bg-slate-100 text-slate-700 text-[10px] font-extrabold px-2.5 py-1 rounded-lg border border-slate-200/80 flex items-center gap-1 font-headings">
+                           🚪 {typeof acc === 'object' && acc.roomQuantity ? acc.roomQuantity : '1 Room'}
+                        </span>
+                        <span className="bg-emerald-50 text-emerald-800 text-[10px] font-extrabold px-2.5 py-1 rounded-lg border border-emerald-200/60 flex items-center gap-1 font-headings">
+                           👥 {typeof acc === 'object' && acc.roomCapacity ? acc.roomCapacity : '2 Persons'} Capacity
+                        </span>
+                      </div>
+
                       {accPhotos.length > 0 && (
                         <div className="flex gap-1.5 pt-1.5 overflow-x-auto">
                           {accPhotos.map((p, pIdx) => (
@@ -1437,345 +1829,7 @@ export default function FarmDetails() {
             </div>
           )}
 
-          {/* Section 2: Crops & Fruit Orchards Growing 🌾🍎 */}
-          {((activeCrops.length > 0 || activeFruits.length > 0) || isEditing) && (
-            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
-              <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold text-lg">
-                  🌾
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold font-headings text-slate-800">Crops & Fruit Orchards Grown Here</h2>
-                  <p className="text-xs text-slate-400 font-medium font-body">Organically cultivated crops and fresh fruit trees on this soil</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {(activeCrops.length > 0 || isEditing) && (
-                  <>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">Organic Crops & Produce</h4>
-                    <div className="flex flex-wrap gap-2.5">
-                      {activeCrops.map((crop, index) => (
-                        <span key={index} className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
-                          <Sprout size={14} className="text-emerald-600" /> {crop}
-                          {isEditing && (
-                            <button onClick={() => handleRemoveCropItem(index)} className="text-rose-500 hover:text-rose-700 ml-1 font-black cursor-pointer">
-                              ×
-                            </button>
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                    {isEditing && (
-                      <div className="space-y-2 pt-2 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider font-headings">
-                            Select Suggested Crops or Type Custom Crop:
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setShowMoreCrops(!showMoreCrops)}
-                            className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer"
-                          >
-                            {showMoreCrops ? 'Show Less' : `+ Others (${EXTRA_CROPS.length} more)`}
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 pb-2">
-                          {(showMoreCrops ? [...INITIAL_CROPS, ...EXTRA_CROPS] : INITIAL_CROPS).map((chip, idx) => {
-                            const isSelected = (editForm?.crops || []).some(c => c.toLowerCase() === chip.toLowerCase());
-                            return (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => handleToggleCropChip(chip)}
-                                className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${
-                                  isSelected
-                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                                    : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400 hover:text-emerald-700'
-                                }`}
-                              >
-                                <span>{chip}</span>
-                                {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <div className="flex items-center gap-2 max-w-md pt-1">
-                          <input
-                            type="text"
-                            value={newCrop}
-                            onChange={(e) => setNewCrop(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ',') {
-                                e.preventDefault();
-                                handleAddCropItem();
-                              }
-                            }}
-                            placeholder="Type custom crop and press Enter (e.g. Sweet Corn)..."
-                            className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium flex-1 outline-none focus:border-emerald-500 font-body"
-                          />
-                          <button onClick={handleAddCropItem} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer">
-                            + Add
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {(activeFruits.length > 0 || isEditing) && (
-                  <>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings pt-2">Fruit Orchards & Trees</h4>
-                    <div className="flex flex-wrap gap-2.5">
-                      {activeFruits.map((fruit, index) => (
-                        <span key={index} className="bg-amber-50 text-amber-900 border border-amber-200/80 px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
-                          🍎 {fruit}
-                          {isEditing && (
-                            <button onClick={() => handleRemoveFruitItem(index)} className="text-rose-500 hover:text-rose-700 ml-1 font-black cursor-pointer">
-                              ×
-                            </button>
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                    {isEditing && (
-                      <div className="space-y-2 pt-2 bg-amber-50/50 p-4 rounded-2xl border border-amber-200/80 text-left">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider font-headings">
-                            Select Suggested Fruit Orchards or Type Custom Fruit:
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setShowMoreFruits(!showMoreFruits)}
-                            className="text-xs font-bold text-amber-600 hover:text-amber-700 hover:underline cursor-pointer"
-                          >
-                            {showMoreFruits ? 'Show Less' : `+ Others (${EXTRA_FRUITS.length} more)`}
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 pb-2">
-                          {(showMoreFruits ? [...INITIAL_FRUITS, ...EXTRA_FRUITS] : INITIAL_FRUITS).map((chip, idx) => {
-                            const isSelected = (editForm?.fruits || []).some(f => f.toLowerCase() === chip.toLowerCase());
-                            return (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => handleToggleFruitChip(chip)}
-                                className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${
-                                  isSelected
-                                    ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                                    : 'bg-white text-slate-700 border-slate-200 hover:border-amber-400 hover:text-amber-700'
-                                }`}
-                              >
-                                <span>{chip}</span>
-                                {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <div className="flex items-center gap-2 max-w-md pt-1">
-                          <input
-                            type="text"
-                            value={newFruit}
-                            onChange={(e) => setNewFruit(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ',') {
-                                e.preventDefault();
-                                handleAddFruitItem();
-                              }
-                            }}
-                            placeholder="Type custom fruit/orchard and press Enter..."
-                            className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium flex-1 outline-none focus:border-amber-500 font-body"
-                          />
-                          <button onClick={handleAddFruitItem} className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer">
-                            + Add
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* Crops & Fruit Orchards Photos Grid */}
-              {activeCropPhotos.length > 0 && (
-                <div className="pt-3 border-t border-slate-100 space-y-2">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Crops & Fruit Orchard Photos</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {activeCropPhotos.map((photo, idx) => (
-                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
-                        <img src={photo.url} alt={photo.caption || 'Crop Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        {photo.caption && (
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
-                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Section 3: Poultry, Sheep & Cattle 🐄🐓 */}
-          {(activeLivestock.length > 0 || isEditing) && (
-            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center font-bold text-lg">
-                    🐄
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold font-headings text-slate-800">Livestock, Poultry & Cattle</h2>
-                    <p className="text-xs text-slate-400 font-medium font-body">Interact, feed, and observe farm animals up close</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                {activeLivestock.map((animal, index) => (
-                  <div key={index} className="bg-white border border-slate-200/80 p-3.5 rounded-2xl shadow-xs text-center space-y-1 relative group">
-                    {isEditing && (
-                      <button
-                        onClick={() => handleRemoveAnimalItem(index)}
-                        className="absolute top-2 right-2 p-1 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    )}
-                    <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto text-lg">
-                      {animal.includes('Cow') || animal.includes('Cattle') ? '🐄' : animal.includes('Sheep') || animal.includes('Goat') ? '🐐' : animal.includes('Honey') || animal.includes('Bee') ? '🐝' : '🐓'}
-                    </div>
-                    <p className="font-bold text-slate-800 text-xs font-headings truncate">{animal}</p>
-                    <p className="text-[10px] text-emerald-600 font-bold">100% Organic Raised</p>
-                  </div>
-                ))}
-              </div>
-              {isEditing && (
-                <div className="space-y-2 pt-2 bg-teal-50/50 p-4 rounded-2xl border border-teal-200/80 text-left">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider font-headings">
-                      Select Suggested Livestock/Animals or Type Custom Animal:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowMoreLivestock(!showMoreLivestock)}
-                      className="text-xs font-bold text-teal-600 hover:text-teal-700 hover:underline cursor-pointer"
-                    >
-                      {showMoreLivestock ? 'Show Less' : `+ Others (${EXTRA_LIVESTOCK.length} more)`}
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 pb-2">
-                    {(showMoreLivestock ? [...INITIAL_LIVESTOCK, ...EXTRA_LIVESTOCK] : INITIAL_LIVESTOCK).map((chip, idx) => {
-                      const isSelected = (editForm?.livestock || []).some(a => a.toLowerCase() === chip.toLowerCase());
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => handleToggleAnimalChip(chip)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${
-                            isSelected
-                              ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
-                              : 'bg-white text-slate-700 border-slate-200 hover:border-teal-400 hover:text-teal-700'
-                          }`}
-                        >
-                          <span>{chip}</span>
-                          {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="flex items-center gap-2 max-w-md pt-1">
-                    <input
-                      type="text"
-                      value={newAnimal}
-                      onChange={(e) => setNewAnimal(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ',') {
-                          e.preventDefault();
-                          handleAddAnimalItem();
-                        }
-                      }}
-                      placeholder="Type custom animal and press Enter (e.g. Gir Cows)..."
-                      className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium flex-1 outline-none focus:border-teal-500 font-body"
-                    />
-                    <button onClick={handleAddAnimalItem} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer">
-                      + Add
-                    </button>
-                  </div>
-                </div>
-              )}
-              {/* Livestock & Poultry Photos Grid */}
-              {activeLivestockPhotos.length > 0 && (
-                <div className="pt-3 border-t border-slate-100 space-y-2">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Livestock & Poultry Photos</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {activeLivestockPhotos.map((photo, idx) => (
-                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
-                        <img src={photo.url} alt={photo.caption || 'Livestock Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        {photo.caption && (
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
-                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Section: Kids Section & Fun Entertainments 🎈 */}
-          {((activeKidsActivities && activeKidsActivities.length > 0) || (activeKidsPhotos && activeKidsPhotos.length > 0) || isEditing) && (
-            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4 text-left">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center font-bold text-lg">
-                    🎈
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold font-headings text-slate-800">Kids Section & Fun Entertainments</h2>
-                    <p className="text-xs text-slate-400 font-medium font-body">Safe playgrounds, petting corners, pottery & mini tractor rides for children</p>
-                  </div>
-                </div>
-                <span className="bg-purple-50 text-purple-800 text-[10px] font-black uppercase px-3 py-1 rounded-full border border-purple-200">
-                  Family Friendly 👨‍👩‍👧‍👦
-                </span>
-              </div>
-
-              {activeKidsActivities && activeKidsActivities.length > 0 && (
-                <div className="flex flex-wrap gap-2.5">
-                  {(Array.isArray(activeKidsActivities) ? activeKidsActivities : activeKidsActivities.split(',').map(a => a.trim())).map((act, index) => (
-                    <span key={index} className="bg-purple-50 text-purple-900 border border-purple-200/80 px-3.5 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
-                      🎈 {act}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Kids Entertainments Photos Grid */}
-              {activeKidsPhotos && activeKidsPhotos.length > 0 && (
-                <div className="pt-3 border-t border-slate-100 space-y-2">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Kids Play Area & Activity Photos</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {activeKidsPhotos.map((photo, idx) => (
-                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
-                        <img src={photo.url} alt={photo.caption || 'Kids Activity Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        {photo.caption && (
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
-                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Section 4: On-Farm Products For Direct Purchase 🧺 */}
+          {/* ── 5. Buy Direct Farm Harvest 🧺 ── */}
           {(activeFarmProducts.length > 0 || isEditing) && (
             <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1785,7 +1839,7 @@ export default function FarmDetails() {
                   </div>
                   <div>
                     <h2 className="text-xl font-bold font-headings text-slate-800">Buy Direct Farm Harvest</h2>
-                    <p className="text-xs text-slate-400 font-medium font-body">Products harvested right here available for purchase</p>
+                    <p className="text-xs text-slate-400 font-medium font-body">You can buy the products in our farm.</p>
                   </div>
                 </div>
                 {isEditing && (
@@ -1850,7 +1904,70 @@ export default function FarmDetails() {
             </div>
           )}
 
-          {/* Section 5: Verified Customer Reviews & Guest Photos ⭐ */}
+          {/* ── 6. Farm Gallery & Visual Tour 📸 ── */}
+          {(activeGallery.length > 0 || isEditing) && (
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center font-bold text-lg">
+                    📸
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold font-headings text-slate-800">Farm Gallery & Visual Tour</h2>
+                    <p className="text-xs text-slate-400 font-medium font-body">Explore real photos of our fields, crops, stays, animals, and sunsets</p>
+                  </div>
+                </div>
+                {isEditing && (
+                  <button
+                    onClick={() => setShowAddPhotoModal(true)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95"
+                  >
+                    <Plus size={14} /> Add Farm Photo
+                  </button>
+                )}
+              </div>
+
+              {/* Photo Grid Showcase */}
+              {generalGalleryPhotos.length === 0 ? (
+                <div className="py-8 text-center bg-white/50 border border-dashed border-slate-200 rounded-2xl">
+                  <p className="text-xs text-slate-400 font-medium">No gallery photos added yet.</p>
+                  {isEditing && (
+                    <button
+                      onClick={() => setShowAddPhotoModal(true)}
+                      className="mt-3 bg-emerald-600 text-white px-4 py-1.5 rounded-xl text-xs font-bold"
+                    >
+                      + Add Photo Now
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+                  {generalGalleryPhotos.map((photo, idx) => (
+                    <div
+                      key={photo.id || idx}
+                      className="relative h-36 sm:h-44 rounded-2xl overflow-hidden group cursor-pointer border border-slate-200/80 shadow-xs hover:shadow-lg transition-all"
+                      onClick={() => setLightboxIndex(idx)}
+                    >
+                      <img
+                        src={photo.url}
+                        alt={photo.caption || 'Farm Photo'}
+                        className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent opacity-85 group-hover:opacity-95 transition-opacity"></div>
+
+                      {photo.caption && (
+                        <p className="absolute bottom-2.5 left-2.5 right-2.5 text-[11px] font-bold text-white font-body truncate drop-shadow-sm">
+                          {photo.caption}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── 7. Verified Customer Reviews ⭐ ── */}
           <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-3">
@@ -1943,7 +2060,7 @@ export default function FarmDetails() {
 
         {/* Right Column: Booking Sidebar vs Live Map Edit Box (4 Cols) */}
         <div className="lg:col-span-4 space-y-6">
-          
+
           {isEditing ? (
             /* ── Interactive Location Pinning & Ticket Settings Box in Edit Mode ── */
             <div className="bg-white/95 backdrop-blur-md border border-white p-6 rounded-3xl shadow-xl space-y-5 text-left sticky top-24">
@@ -1998,18 +2115,17 @@ export default function FarmDetails() {
                 <p className="text-[10px] text-slate-400 font-body italic pt-0.5">Drag the blue pin or click on the map to select your farm location automatically.</p>
               </div>
 
-              {/* Admission Entry Fee Settings */}
+              {/* Entry Fee Settings */}
               <div className="border-t border-slate-100 pt-4 space-y-3">
-                <label className="text-[11px] font-bold text-slate-700 uppercase block">Admission Ticket Fee</label>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block">Entry Ticket Fee</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setEditForm(prev => ({ ...prev, costType: 'free', costPerPerson: 0 }))}
-                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-left flex items-center gap-2 ${
-                      editForm.costType === 'free' || Number(editForm.costPerPerson) === 0
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                        : 'border-slate-200 text-slate-600 bg-white'
-                    }`}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-left flex items-center gap-2 ${editForm.costType === 'free' || Number(editForm.costPerPerson) === 0
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-200 text-slate-600 bg-white'
+                      }`}
                   >
                     <span>🆓 Free (₹0)</span>
                   </button>
@@ -2017,11 +2133,10 @@ export default function FarmDetails() {
                   <button
                     type="button"
                     onClick={() => setEditForm(prev => ({ ...prev, costType: 'payable', costPerPerson: editForm.costPerPerson || 250 }))}
-                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-left flex items-center gap-2 ${
-                      editForm.costType === 'payable' && Number(editForm.costPerPerson) > 0
-                        ? 'border-teal-600 bg-teal-50 text-teal-700'
-                        : 'border-slate-200 text-slate-600 bg-white'
-                    }`}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-left flex items-center gap-2 ${editForm.costType === 'payable' && Number(editForm.costPerPerson) > 0
+                      ? 'border-teal-600 bg-teal-50 text-teal-700'
+                      : 'border-slate-200 text-slate-600 bg-white'
+                      }`}
                   >
                     <span>💳 Payable Visit</span>
                   </button>
@@ -2047,7 +2162,7 @@ export default function FarmDetails() {
                 <label className="text-[11px] font-bold text-slate-700 uppercase flex items-center gap-1.5 font-headings">
                   <Globe size={14} className="text-emerald-600" /> Social Media & Contact Links
                 </label>
-                
+
                 <div className="space-y-2">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5 font-headings">Instagram URL / Handle</label>
@@ -2122,11 +2237,11 @@ export default function FarmDetails() {
               </div>
             </div>
           ) : (
-            /* ── Standard Customer Admission Ticket & Booking Card ── */
+            /* ── Standard Customer Entry Ticket & Booking Card ── */
             <div className="bg-white/80 backdrop-blur-md border border-white p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.04] space-y-5 text-left sticky top-24">
               <div className="flex justify-between items-center border-b border-slate-100 pb-4">
                 <div>
-                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider font-headings">Admission Ticket</p>
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider font-headings">Entry Ticket</p>
                   {isFree ? (
                     <p className="text-2xl font-black text-emerald-600 font-headings">FREE ENTRY <span className="text-xs font-normal text-emerald-600/70">(₹0)</span></p>
                   ) : (
@@ -2242,11 +2357,11 @@ export default function FarmDetails() {
 
       {/* ── Add Farm Photo Modal (Edit Mode) ────────────────────────────── */}
       {showAddPhotoModal && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm transition-opacity"
           onClick={() => setShowAddPhotoModal(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden text-left p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2306,11 +2421,11 @@ export default function FarmDetails() {
 
       {/* ── Add Farm Harvest Product Modal (Edit Mode) ──────────────────── */}
       {showAddProductModal && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm transition-opacity"
           onClick={() => { setShowAddProductModal(false); setEditingProductId(null); }}
         >
-          <div 
+          <div
             className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden text-left p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2476,11 +2591,11 @@ export default function FarmDetails() {
 
       {/* ── Add Stay Accommodation Choice Modal (Edit Mode) ─────────────── */}
       {showAddAccModal && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm transition-opacity"
           onClick={() => setShowAddAccModal(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden text-left p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2494,58 +2609,167 @@ export default function FarmDetails() {
             </div>
 
             <form onSubmit={handleSaveNewAcc} className="space-y-3">
-              <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase font-headings">Stay Title *</label>
-                <input
-                  required
-                  type="text"
-                  value={newAcc.title}
-                  onChange={(e) => setNewAcc({ ...newAcc, title: e.target.value })}
-                  placeholder="E.g. Mud Huts / Camping Tents"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
-                />
-              </div>
+              {/* 1. Stay Title Section matching Crops/Produce UI Pattern */}
+              <div className="space-y-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 text-left">
+                {/* Header */}
+                <div className="flex items-center gap-1.5 text-[11px] font-black uppercase text-slate-600 font-headings">
+                  <span>🛖 STAY TITLE / ACCOMMODATION TYPE *</span>
+                </div>
 
-              {/* 🛖 Suggested Accommodation Chips */}
-              <div className="space-y-2 pt-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider font-headings">
-                    Select Stay Option Chip:
-                  </span>
+                {/* Selected Stay Title Tag Display */}
+                {newAcc.title && (
+                  <div className="flex flex-wrap gap-2">
+                    <span className="bg-emerald-600 text-white px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-xs">
+                      🛖 {newAcc.title}
+                      <button
+                        type="button"
+                        onClick={() => setNewAcc(prev => ({ ...prev, title: '' }))}
+                        className="text-white hover:text-rose-200 font-black cursor-pointer text-sm leading-none"
+                        title="Clear title"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  </div>
+                )}
+
+                {/* Manual Input Row with + Add Button */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={manualStayTitleInput}
+                    onChange={(e) => setManualStayTitleInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (manualStayTitleInput.trim()) {
+                          setNewAcc(prev => ({ ...prev, title: manualStayTitleInput.trim() }));
+                          setManualStayTitleInput('');
+                        }
+                      }
+                    }}
+                    placeholder="Type stay name and press Enter (e.g. Mud Huts, Camping Tents)..."
+                    className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-medium font-body flex-1"
+                  />
                   <button
                     type="button"
-                    onClick={() => setShowMoreAccommodations(!showMoreAccommodations)}
-                    className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer"
+                    onClick={() => {
+                      if (manualStayTitleInput.trim()) {
+                        setNewAcc(prev => ({ ...prev, title: manualStayTitleInput.trim() }));
+                        setManualStayTitleInput('');
+                      }
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-xs"
                   >
-                    {showMoreAccommodations ? 'Show Less' : `+ Others (${EXTRA_ACCOMMODATIONS.length} more)`}
+                    + Add
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {(showMoreAccommodations ? [...INITIAL_ACCOMMODATIONS, ...EXTRA_ACCOMMODATIONS] : INITIAL_ACCOMMODATIONS).map((chip, idx) => {
-                    const isSelected = newAcc.title.toLowerCase() === chip.toLowerCase();
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setNewAcc(prev => ({ ...prev, title: chip }))}
-                        className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${
-                          isSelected
+
+                {/* Suggested Chips Section */}
+                <div className="space-y-1.5 pt-1 border-t border-slate-200/60">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider font-headings">
+                      SUGGESTED STAY OPTIONS (CLICK TO SELECT):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowMoreAccommodations(!showMoreAccommodations)}
+                      className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer"
+                    >
+                      {showMoreAccommodations ? 'Show Less' : `+ Others (${EXTRA_ACCOMMODATIONS.length} more)`}
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {(showMoreAccommodations ? [...INITIAL_ACCOMMODATIONS, ...EXTRA_ACCOMMODATIONS] : INITIAL_ACCOMMODATIONS).map((chip, idx) => {
+                      const isSelected = newAcc.title.toLowerCase().trim() === chip.toLowerCase().trim();
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setNewAcc(prev => ({ ...prev, title: '' }));
+                            } else {
+                              setNewAcc(prev => ({ ...prev, title: chip }));
+                            }
+                          }}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${isSelected
                             ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-emerald-400 hover:text-emerald-700'
-                        }`}
-                      >
-                        <span>{chip}</span>
-                        {isSelected && <span>✓</span>}
-                      </button>
-                    );
-                  })}
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400 hover:text-emerald-700'
+                            }`}
+                        >
+                          <span>{chip}</span>
+                          {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
+              {/* 3. Quantity of Rooms & Room Capacity (Guests) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-100">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase font-headings">Quantity of Rooms *</label>
+                  <input
+                    type="text"
+                    value={newAcc.roomQuantity}
+                    onChange={(e) => setNewAcc({ ...newAcc, roomQuantity: e.target.value })}
+                    placeholder="E.g. 2 Rooms or 5 Huts"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-bold"
+                  />
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {['1 Room', '2 Rooms', '3 Rooms', '4 Rooms', '5 Rooms', '10 Rooms'].map(opt => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setNewAcc({ ...newAcc, roomQuantity: opt })}
+                        className={`px-2 py-0.5 rounded text-[9px] font-extrabold border transition-all cursor-pointer ${
+                          newAcc.roomQuantity === opt
+                            ? 'bg-emerald-600 text-white border-emerald-600'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-emerald-400'
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase font-headings">Room Capacity (Guests) *</label>
+                  <input
+                    type="text"
+                    value={newAcc.roomCapacity}
+                    onChange={(e) => setNewAcc({ ...newAcc, roomCapacity: e.target.value })}
+                    placeholder="E.g. 2 Persons or 4 Persons"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-bold"
+                  />
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {['1 Person', '2 Persons', '3 Persons', '4 Persons', '5+ Persons'].map(cap => (
+                      <button
+                        key={cap}
+                        type="button"
+                        onClick={() => setNewAcc({ ...newAcc, roomCapacity: cap })}
+                        className={`px-2 py-0.5 rounded text-[9px] font-extrabold border transition-all cursor-pointer ${
+                          newAcc.roomCapacity === cap
+                            ? 'bg-emerald-600 text-white border-emerald-600'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-emerald-400'
+                        }`}
+                      >
+                        {cap}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Stay / Accommodation Price (₹) */}
               <div>
                 <label className="text-[11px] font-bold text-slate-700 uppercase font-headings flex items-center justify-between">
                   <span>Stay / Accommodation Price (₹)</span>
-                  <span className="text-[10px] text-amber-700 font-bold normal-case font-body">(Excluded from visit admission)</span>
+                  <span className="text-[10px] text-amber-700 font-bold normal-case font-body">(Excluded from visit farm Entry)</span>
                 </label>
                 <div className="relative mt-1">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs pointer-events-none">₹</span>
@@ -2565,11 +2789,10 @@ export default function FarmDetails() {
                       key={preset}
                       type="button"
                       onClick={() => setNewAcc({ ...newAcc, price: preset })}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
-                        newAcc.price === preset
-                          ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-amber-400'
-                      }`}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${newAcc.price === preset
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-amber-400'
+                        }`}
                     >
                       {preset}
                     </button>
@@ -2577,6 +2800,7 @@ export default function FarmDetails() {
                 </div>
               </div>
 
+              {/* 5. Short Description */}
               <div>
                 <label className="text-[11px] font-bold text-slate-700 uppercase">Short Description</label>
                 <textarea
@@ -2584,7 +2808,7 @@ export default function FarmDetails() {
                   value={newAcc.desc}
                   onChange={(e) => setNewAcc({ ...newAcc, desc: e.target.value })}
                   placeholder="Describe experience e.g. Cool eco-huts built with natural mud"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none resize-none focus:border-emerald-500"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none resize-none focus:border-emerald-500 font-body"
                 ></textarea>
               </div>
 
@@ -2610,7 +2834,7 @@ export default function FarmDetails() {
 
       {/* ── Lightbox Full Screen Image Modal ───────────────────────────── */}
       {lightboxIndex !== null && activeGallery[lightboxIndex] && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-black/92 backdrop-blur-md flex flex-col items-center justify-center p-4 text-white animate-fade-in"
           onClick={() => setLightboxIndex(null)}
         >
@@ -2657,38 +2881,38 @@ export default function FarmDetails() {
 
       {/* ── Booking Modal Dialog ────────────────────────────────────────── */}
       {showBookingModal && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm transition-opacity duration-300"
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/65 backdrop-blur-sm transition-opacity duration-300 overflow-hidden"
           onClick={() => setShowBookingModal(false)}
         >
-          <div 
-            className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col transform transition-all scale-100 duration-300 text-left"
+          <div
+            className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[85vh] sm:max-h-[88vh] overflow-hidden flex flex-col transform transition-all scale-100 duration-300 text-left border border-slate-100 my-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <form onSubmit={handleConfirmBooking} className="flex flex-col">
-              
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-white">
+            <form onSubmit={handleConfirmBooking} className="flex flex-col h-full max-h-[85vh] sm:max-h-[88vh] overflow-hidden">
+
+              {/* Header (Sticky Top) */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white sticky top-0 z-10 shrink-0">
                 <div className="flex items-center gap-2.5">
-                  <div className="bg-emerald-50 p-2.5 rounded-2xl text-emerald-600 border border-emerald-100">
-                    <Calendar size={20} />
+                  <div className="bg-emerald-50 p-2 rounded-2xl text-emerald-600 border border-emerald-100">
+                    <Calendar size={18} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-800 font-headings">Book Farm Visit Slot</h3>
-                    <p className="text-xs text-slate-400 font-medium font-body">{farm.farmName}</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800 font-headings">Book Farm Visit Slot</h3>
+                    <p className="text-xs text-slate-400 font-medium font-body truncate max-w-[200px]">{farm.farmName}</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowBookingModal(false)}
-                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-all"
+                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-all cursor-pointer"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              {/* Body */}
-              <div className="p-6 space-y-4">
+              {/* Body (Scrollable Middle Container) */}
+              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
                 {bookingSuccess ? (
                   <div className="py-8 text-center space-y-3">
                     <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl animate-bounce">
@@ -2710,13 +2934,12 @@ export default function FarmDetails() {
                         placeholder="Pick visit date..."
                       />
                       {bookingDate && (
-                        <div className={`mt-2.5 p-3 rounded-2xl border text-xs font-bold flex items-center justify-between shadow-xs ${
-                          isFullyBooked
-                            ? 'bg-rose-50 border-rose-200 text-rose-700'
-                            : availableSlotsForDate < 10
+                        <div className={`mt-2.5 p-3 rounded-2xl border text-xs font-bold flex items-center justify-between shadow-xs ${isFullyBooked
+                          ? 'bg-rose-50 border-rose-200 text-rose-700'
+                          : availableSlotsForDate < 10
                             ? 'bg-amber-50 border-amber-200 text-amber-800'
                             : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                        }`}>
+                          }`}>
                           <span>
                             {isFullyBooked
                               ? `🔴 Fully Booked (${bookedCountForDate}/${DAILY_MAX_CAPACITY} Slots filled)`
@@ -2761,55 +2984,165 @@ export default function FarmDetails() {
 
 
 
-                    {/* Accommodation Included Toggle Field */}
+                    {/* Accommodation Included & Stay Selection Field */}
                     {(() => {
-                      const stayPriceVal = Number(farm.accommodationPrice) || (
-                        farm.accommodations && farm.accommodations.length > 0
-                          ? (parseFloat(String(farm.accommodations[0]?.price || '').replace(/[^0-9.]/g, '')) || 0)
-                          : 0
-                      );
-                      const displayStayLabel = farm.accommodations && farm.accommodations.length > 0
-                        ? farm.accommodations[0]?.title || 'Overnight Accommodation Stay'
-                        : 'Overnight Accommodation Stay';
+                      const accList = farm.accommodations && farm.accommodations.length > 0 ? farm.accommodations : [];
+                      const selectedAccObj = accList.find(a => a.title === selectedAccommodation) || accList[0];
+                      const selectedAccPrice = includeStay
+                        ? (selectedAccObj ? (parseFloat(String(selectedAccObj.price || '').replace(/[^0-9.]/g, '')) || 0) : (Number(farm.accommodationPrice) || 0))
+                        : 0;
+
+                      const stayTotalCost = includeStay ? (selectedAccPrice * Number(selectedRoomsCount)) : 0;
+                      const admissionTotalCost = isFree ? 0 : (Number(farm.costPerPerson) || 0) * Number(visitorsCount);
+                      const totalPayableVal = admissionTotalCost + stayTotalCost;
 
                       return (
                         <>
-                          <div className="space-y-1">
-                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider pl-1 font-headings">Accommodation Included</label>
-                            <div
-                              onClick={() => setIncludeStay(!includeStay)}
-                              className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none flex items-center justify-between text-xs ${
-                                includeStay ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500/20' : 'bg-slate-50 border-slate-200 hover:bg-slate-100/70'
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                {/* iOS Style Toggle Switch */}
-                                <div className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${includeStay ? 'bg-emerald-600' : 'bg-slate-300'}`}>
-                                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${includeStay ? 'translate-x-5' : 'translate-x-0'}`} />
+                          <div className="space-y-2 pt-1 text-left">
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider font-headings">
+                              Overnight Stay / Accommodation Option
+                            </label>
+
+                            <div className="space-y-2">
+                              {/* Option 1: No Stay (Day Visit Only) */}
+                              <div
+                                onClick={() => {
+                                  setIncludeStay(false);
+                                  setSelectedAccommodation('');
+                                  setSelectedRoomsCount(1);
+                                }}
+                                className={`p-3 rounded-2xl border transition-all cursor-pointer select-none flex items-center justify-between text-xs ${
+                                  !includeStay
+                                    ? 'bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+                                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100/70'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${!includeStay ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'}`}>
+                                    {!includeStay && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                                  </div>
+                                  <div>
+                                    <span className="font-extrabold text-slate-800 font-headings block">No Stay (Day Visit Only)</span>
+                                    <span className="text-[10px] text-slate-500">Only farm visit entry ticket</span>
+                                  </div>
                                 </div>
-                                <div>
-                                  <label className="font-extrabold text-slate-800 block cursor-pointer font-headings">
-                                    {displayStayLabel}
-                                  </label>
-                                  <span className="text-[10px] text-slate-500 font-medium">
-                                    {stayPriceVal > 0 ? `🛖 Separate from visit ticket (+₹${stayPriceVal} / night)` : '🛖 Separate overnight stay at farm'}
-                                  </span>
-                                </div>
+                                <span className="font-black text-[10px] text-emerald-700 uppercase tracking-wider bg-emerald-100/60 px-2 py-0.5 rounded-lg">Included</span>
                               </div>
-                              <span className={`font-black font-mono text-xs px-2.5 py-1 rounded-lg ${includeStay ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
-                                {includeStay ? (stayPriceVal > 0 ? `+₹${stayPriceVal}` : 'ON') : 'OFF'}
-                              </span>
+
+                              {/* Options 2+: Available Stay Options from Farm */}
+                              {accList.map((acc, idx) => {
+                                const isAccSelected = includeStay && (selectedAccommodation === acc.title || (!selectedAccommodation && idx === 0));
+                                const accPriceNum = parseFloat(String(acc.price || '').replace(/[^0-9.]/g, '')) || 0;
+                                const displayPriceStr = accPriceNum > 0 ? `+₹${accPriceNum}/night` : 'Free Stay';
+                                const quantityStr = acc.roomQuantity || '1 Room';
+                                const capacityStr = acc.roomCapacity || '2 Persons';
+                                const maxAvailableRooms = Math.max(1, parseInt(String(acc.roomQuantity || '').replace(/[^0-9]/g, '')) || 1);
+
+                                return (
+                                  <div
+                                    key={acc.id || idx}
+                                    onClick={() => {
+                                      setIncludeStay(true);
+                                      if (selectedAccommodation !== acc.title) {
+                                        setSelectedAccommodation(acc.title);
+                                        setSelectedRoomsCount(1);
+                                      }
+                                    }}
+                                    className={`p-3 rounded-2xl border transition-all cursor-pointer select-none space-y-2 text-xs ${
+                                      isAccSelected
+                                        ? 'bg-emerald-50/90 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+                                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100/70'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${isAccSelected ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'}`}>
+                                          {isAccSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                                        </div>
+                                        <span className="font-extrabold text-slate-800 font-headings truncate text-xs">
+                                          {acc.title}
+                                        </span>
+                                      </div>
+
+                                      <span className={`font-black text-[11px] font-mono px-2 py-0.5 rounded-lg shrink-0 ${isAccSelected ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                                        {displayPriceStr}
+                                      </span>
+                                    </div>
+
+                                    {/* Badges: Quantity of Rooms & Capacity */}
+                                    <div className="flex flex-wrap items-center gap-1.5 pl-6">
+                                      <span className="bg-amber-100/80 text-amber-900 font-bold text-[10px] px-2 py-0.5 rounded-md border border-amber-200/60 flex items-center gap-1">
+                                        🚪 {quantityStr} Available
+                                      </span>
+                                      <span className="bg-teal-100/80 text-teal-900 font-bold text-[10px] px-2 py-0.5 rounded-md border border-teal-200/60 flex items-center gap-1">
+                                        👥 {capacityStr} Capacity
+                                      </span>
+                                    </div>
+
+                                    {/* Short Description */}
+                                    {acc.desc && (
+                                      <p className="text-[10px] text-slate-500 pl-6 line-clamp-1 font-body">
+                                        {acc.desc}
+                                      </p>
+                                    )}
+
+                                    {/* Increment & Decrement Room Quantity Counter Buttons */}
+                                    {isAccSelected && (
+                                      <div
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="mt-2 pt-2 border-t border-emerald-200/80 flex items-center justify-between gap-2 bg-white p-2.5 rounded-xl border border-emerald-300/80 shadow-xs"
+                                      >
+                                        <div>
+                                          <span className="text-[11px] font-extrabold text-slate-900 font-headings block">
+                                            Rooms to Book:
+                                          </span>
+                                          <span className="text-[10px] text-emerald-700 font-bold font-mono">
+                                            Max Available: {maxAvailableRooms} {maxAvailableRooms === 1 ? 'Room' : 'Rooms'}
+                                          </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 p-1 rounded-xl">
+                                          <button
+                                            type="button"
+                                            disabled={selectedRoomsCount <= 1}
+                                            onClick={() => setSelectedRoomsCount(prev => Math.max(1, prev - 1))}
+                                            className="w-7 h-7 bg-white text-emerald-800 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-600 hover:text-white rounded-lg font-black flex items-center justify-center transition-all cursor-pointer shadow-xs"
+                                            title="Decrease room count"
+                                          >
+                                            <Minus size={13} strokeWidth={2.5} />
+                                          </button>
+
+                                          <span className="w-7 text-center text-xs font-black text-slate-900 font-mono">
+                                            {selectedRoomsCount}
+                                          </span>
+
+                                          <button
+                                            type="button"
+                                            disabled={selectedRoomsCount >= maxAvailableRooms}
+                                            onClick={() => setSelectedRoomsCount(prev => Math.min(maxAvailableRooms, prev + 1))}
+                                            className="w-7 h-7 bg-white text-emerald-800 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-600 hover:text-white rounded-lg font-black flex items-center justify-center transition-all cursor-pointer shadow-xs"
+                                            title="Increase room count"
+                                          >
+                                            <Plus size={13} strokeWidth={2.5} />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
 
-                          <div className="bg-emerald-50/70 border border-emerald-200/60 p-4 rounded-2xl flex items-center justify-between text-xs">
-                            <span className="font-bold text-slate-700 font-headings">Total Payable:</span>
-                            {isFree && (!includeStay || stayPriceVal === 0) ? (
-                              <span className="font-black text-emerald-600 text-sm font-sans">FREE (₹0)</span>
-                            ) : (
-                              <span className="font-black text-slate-900 text-sm font-sans">
-                                ₹{(isFree ? 0 : Number(farm.costPerPerson) * visitorsCount) + (includeStay ? stayPriceVal : 0)}
-                              </span>
+                          <div className="bg-emerald-50/70 border border-emerald-200/60 p-4 rounded-2xl flex flex-col space-y-1 text-xs">
+                            <div className="flex items-center justify-between font-bold text-slate-700 font-headings">
+                              <span>Total Payable Amount:</span>
+                              <span className="text-base font-black text-emerald-700 font-sans">₹{totalPayableVal}</span>
+                            </div>
+                            {includeStay && (
+                              <p className="text-[10px] text-slate-500 font-medium">
+                                (Admission: ₹{admissionTotalCost} + Stay: ₹{selectedAccPrice} × {selectedRoomsCount} {selectedRoomsCount === 1 ? 'Room' : 'Rooms'})
+                              </p>
                             )}
                           </div>
                         </>
@@ -2819,9 +3152,9 @@ export default function FarmDetails() {
                 )}
               </div>
 
-              {/* Footer */}
+              {/* Footer (Sticky Bottom) */}
               {!bookingSuccess && (
-                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/90 sticky bottom-0 z-10 shrink-0">
                   <button
                     type="button"
                     onClick={() => setShowBookingModal(false)}
@@ -2933,7 +3266,7 @@ export default function FarmDetails() {
             <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner border border-emerald-200/60">
               <CheckCircle size={34} />
             </div>
-            
+
             <div className="space-y-2">
               <h3 className="text-xl font-extrabold text-slate-900 font-headings">
                 Farm Page Saved Live! 🎉
