@@ -6,6 +6,7 @@ import { useProducts } from '../context/ProductContext';
 import { realtimeDb } from '../firebase';
 import { ref, onValue } from 'firebase/database';
 import { getFarmSlug } from './FarmDetails';
+import { getProductSlug } from './ProductDetails';
 import { ensureFarmsInFirebase } from '../services/farmSeeder';
 
 const MOCK_FARMS_LIST = [
@@ -714,10 +715,16 @@ export default function Marketplace() {
       }
 
       if (farmParam && farmsList.length > 0) {
-         const match = farmsList.find(f => 
-            String(f.id).toLowerCase() === farmParam.toLowerCase() || 
-            f.farmName.toLowerCase().replace(/[^a-z0-9]+/g, '-').includes(farmParam.toLowerCase())
-         );
+         const pLower = farmParam.toLowerCase();
+         const match = farmsList.find(f => {
+            const fSlug = getFarmSlug(f).toLowerCase();
+            return (
+               fSlug === pLower ||
+               String(f.id).toLowerCase() === pLower ||
+               f.farmName?.toLowerCase().replace(/[^a-z0-9]+/g, '-').includes(pLower) ||
+               pLower.includes(f.farmName?.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+            );
+         });
          if (match) {
             setSelectedFarmShop(match);
             setSelectedShop(null);
@@ -1655,7 +1662,7 @@ export default function Marketplace() {
                                  {filteredFarmProducts.map((product, idx) => (
                                     <div
                                        key={product.id || idx}
-                                       onClick={() => navigate(`/product/${product.id}`)}
+                                       onClick={() => navigate(`/product/${getProductSlug(product)}`)}
                                        className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden border border-white shadow-md hover:shadow-2xl transition-all duration-300 group cursor-pointer flex flex-col h-full"
                                     >
                                        <div className="relative h-48 overflow-hidden bg-gray-50 flex items-center justify-center">
@@ -1914,7 +1921,7 @@ export default function Marketplace() {
                                     {shopProducts.map(product => (
                                        <div
                                           key={product.id}
-                                          onClick={() => navigate(`/product/${product.id}`)}
+                                          onClick={() => navigate(`/product/${getProductSlug(product)}`)}
                                           className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden border border-white shadow-md hover:shadow-2xl transition-all duration-300 group cursor-pointer flex flex-col h-full"
                                        >
                                           <div className="relative h-48 overflow-hidden bg-gray-50 flex items-center justify-center">
@@ -2014,7 +2021,7 @@ export default function Marketplace() {
                                  <div
                                     key={farm.id}
                                     onClick={() => {
-                                       setSearchParams({ tab: 'farms', farm: farm.id });
+                                       setSearchParams({ tab: 'farms', farm: getFarmSlug(farm) });
                                        window.scrollTo({ top: 300, behavior: 'smooth' });
                                     }}
                                     className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden border border-white shadow-md hover:shadow-2xl hover:shadow-emerald-950/[0.06] hover:-translate-y-1 transition-all duration-300 group cursor-pointer flex flex-col h-full"

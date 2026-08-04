@@ -5,6 +5,7 @@ import { ref, onValue } from 'firebase/database';
 import { realtimeDb } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';
+import { getProductSlug } from './ProductDetails';
 
 export default function Home() {
    const navigate = useNavigate();
@@ -379,7 +380,7 @@ export default function Home() {
                      {displayedBestSellers.map((product) => (
                         <div
                            key={product.id}
-                           onClick={() => navigate(`/product/${product.id}`)}
+                           onClick={() => navigate(`/product/${getProductSlug(product)}`)}
                            className="group bg-white/90 reveal-on-scroll reveal-scale backdrop-blur-md rounded-3xl border border-slate-100/90 hover:border-emerald-200/90 shadow-md hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:scale-[1.01] overflow-hidden flex flex-col justify-between cursor-pointer relative text-left"
                         >
                            {/* Product Image Container */}
@@ -451,7 +452,7 @@ export default function Home() {
                                     type="button"
                                     onClick={(e) => {
                                        e.stopPropagation();
-                                       navigate(`/product/${product.id}`);
+                                       navigate(`/product/${getProductSlug(product)}`);
                                     }}
                                     className="bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-1 font-headings active:scale-95 shadow-xs"
                                  >
@@ -470,6 +471,7 @@ export default function Home() {
          )}
 
          {/* ── Top Offer Organic Markets & Shops Section ── */}
+         {!homeContent.hiddenSections?.topOfferMarkets && userProfile?.role !== 'vendor' && userProfile?.role !== 'delivery_person' && userProfile?.role !== 'delivery_boy' && userProfile?.role !== 'admin' && (
          <section className="py-14 sm:py-20 bg-slate-50/60 relative border-t border-b border-slate-100">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
@@ -601,6 +603,7 @@ export default function Home() {
 
             </div>
          </section>
+         )}
 
          {/* About FresVeg Section */}
          {!homeContent.hiddenSections?.about && (

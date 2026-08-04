@@ -6,6 +6,17 @@ import { realtimeDb } from '../firebase';
 import { ref, onValue } from 'firebase/database';
 import { Instagram, Facebook, Youtube, Globe, MessageCircle, ShoppingCart, Target, ShieldCheck, Truck, Star, Info, Tag, ArrowLeft, ArrowRight, Store, RefreshCw, BadgePercent, Leaf, Zap, Minus, Plus } from 'lucide-react';
 
+export function getProductSlug(product) {
+   if (!product) return '';
+   const name = typeof product === 'string' ? product : (product.name || product.title || '');
+   const cleanName = name
+      .toLowerCase()
+      .replace(/'/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+   return cleanName || (product.id ? String(product.id) : 'product');
+}
+
 export default function ProductDetails() {
    const { id } = useParams();
    const { products } = useProducts();
@@ -37,9 +48,48 @@ export default function ProductDetails() {
 
    useEffect(() => {
       window.scrollTo(0, 0);
-      const foundProduct = products.find(p => String(p.id) === String(id));
+      const targetSlug = String(id || '').toLowerCase().trim();
+
+      const foundProduct = products.find(p => {
+         const pSlug = getProductSlug(p).toLowerCase();
+         const pId = String(p.id).toLowerCase();
+         const pNameSlug = String(p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+         return pSlug === targetSlug || pId === targetSlug || pNameSlug === targetSlug || targetSlug.includes(pNameSlug) || pNameSlug.includes(targetSlug);
+      });
+
       if (foundProduct) {
          setProduct(foundProduct);
+      } else {
+         const farmsRef = ref(realtimeDb, 'farms');
+         onValue(farmsRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+               Object.values(data).forEach(farmItem => {
+                  const farmProds = farmItem.farmProducts || [];
+                  if (Array.isArray(farmProds)) {
+                     const match = farmProds.find(fp => {
+                        const fpSlug = getProductSlug(fp).toLowerCase();
+                        const fpId = String(fp.id || '').toLowerCase();
+                        const fpNameSlug = String(fp.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                        return fpSlug === targetSlug || fpId === targetSlug || fpNameSlug === targetSlug || targetSlug.includes(fpNameSlug);
+                     });
+                     if (match) {
+                        setProduct({
+                           id: match.id || id,
+                           name: match.name,
+                           price: Number(match.price) || 50,
+                           unit: match.unit || 'kg',
+                           category: match.category || 'Direct Harvest',
+                           image: match.image || farmItem.image,
+                           vendor: farmItem.farmName || farmItem.vendorName || 'Farm Direct',
+                           rating: match.rating || 5.0,
+                           description: `Fresh ${match.name} harvested directly from ${farmItem.farmName || 'our organic farm'}.`
+                        });
+                     }
+                  }
+               });
+            }
+         }, { onlyOnce: true });
       }
    }, [id, products]);
 
@@ -413,7 +463,7 @@ export default function ProductDetails() {
                      <div
                         key={item.id}
                         onClick={() => {
-                           navigate(`/product/${item.id}`);
+                           navigate(`/product/${getProductSlug(item)}`);
                            window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
                         className="bg-white/70 backdrop-blur-md border border-white/60 rounded-3xl p-4 shadow-sm hover:shadow-xl hover:shadow-emerald-950/[0.03] transition-all duration-300 flex flex-col group cursor-pointer"

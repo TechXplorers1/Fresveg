@@ -17,8 +17,8 @@ export const INITIAL_FARMS_MAP = {
     livestock: ['Poultry & Free-Range Ducks', 'Sheep & Goats Flock', 'Apiculture Honey Bees'],
     kidsActivities: ['🎈 Kids Playground & Swings', '🐰 Bunny & Petting Corner', '🎨 Pottery & Clay Crafts', '🚜 Mini Tractor Rides', '🐟 Fish Feeding Pond'],
     accommodations: [
-      { id: 'acc-1', title: 'Farmhouse Guest Rooms', desc: 'Cozy, air-cooled rooms with private veranda facing strawberry fields.', price: 'Included', icon: 'house', roomQuantity: '4 Rooms', roomCapacity: '2 Persons' },
-      { id: 'acc-2', title: 'Traditional Clay Huts', desc: 'Cool eco-huts built with natural mud & thatched roofs.', price: 'Included', icon: 'hut', roomQuantity: '2 Huts', roomCapacity: '3 Persons' },
+      { id: 'acc-1', title: 'Farmhouse Guest Rooms', desc: 'Cozy, air-cooled rooms with private veranda facing strawberry fields.', price: 'Free', icon: 'house', roomQuantity: '4 Rooms', roomCapacity: '2 Persons' },
+      { id: 'acc-2', title: 'Traditional Clay Huts', desc: 'Cool eco-huts built with natural mud & thatched roofs.', price: 'Free', icon: 'hut', roomQuantity: '2 Huts', roomCapacity: '3 Persons' },
       { id: 'acc-3', title: 'Camping Tents under Stars', desc: 'High-quality waterproof tents with nighttime campfire setup.', price: '+ ₹200/tent', icon: 'tent', roomQuantity: '5 Tents', roomCapacity: '2 Persons' },
       { id: 'acc-4', title: 'Hammocks Under Banyan Trees', desc: 'Relaxing shaded hammocks for afternoon naps.', price: 'Free Access', icon: 'tree', roomQuantity: '6 Hammocks', roomCapacity: '1 Person' }
     ],

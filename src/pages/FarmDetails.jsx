@@ -6,12 +6,15 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import {
   Instagram, Facebook, Youtube, Globe, MessageCircle,
-  MapPin, Calendar, Users, Compass, ArrowLeft, Sparkles, CheckCircle,
+  MapPin, Calendar, Users, Compass, ArrowLeft, ArrowRight, Sparkles, CheckCircle,
   Clock, ShieldCheck, Store, ShoppingCart, Info, Star, Navigation, Home as HomeIcon,
-  Tent, Sun, Sprout, Heart, Check, Plus, Minus, Tag, Zap, Pencil, Trash2, Save, X, Edit3, Image as ImageIcon, Maximize2, ChevronDown, DollarSign, Loader2
+  Tent, Sun, Sprout, Heart, Check, Plus, Minus, Tag, Zap, Pencil, Trash2, Save, X, Edit3, Image as ImageIcon, Maximize2, ChevronDown, DollarSign, Loader2,
+  Camera, ShoppingBag, Smile, PawPrint, Trees, Ticket, Footprints, Feather
 } from 'lucide-react';
 import ModernDatePicker from '../components/common/ModernDatePicker';
+import ImageUploadField from '../components/common/ImageUploadField';
 import { ensureFarmsInFirebase } from '../services/farmSeeder';
+import { getProductSlug } from './ProductDetails';
 
 // Sub-Category Options Map for Farm Direct Products
 export const SUB_CATEGORIES_MAP = {
@@ -63,8 +66,8 @@ export const MOCK_FARM_DATA = {
     livestock: ['Poultry & Free-Range Ducks', 'Sheep & Goats Flock', 'Apiculture Honey Bees'],
     kidsActivities: ['🎈 Kids Playground & Swings', '🐰 Bunny & Petting Corner', '🎨 Pottery & Clay Crafts', '🚜 Mini Tractor Rides', '🐟 Fish Feeding Pond'],
     accommodations: [
-      { id: 'acc-1', title: 'Farmhouse Guest Rooms', desc: 'Cozy, air-cooled rooms with private veranda facing strawberry fields.', price: 'Included', icon: 'house', roomQuantity: '4 Rooms', roomCapacity: '2 Persons' },
-      { id: 'acc-2', title: 'Traditional Clay Huts', desc: 'Cool eco-huts built with natural mud & thatched roofs.', price: 'Included', icon: 'hut', roomQuantity: '2 Huts', roomCapacity: '3 Persons' },
+      { id: 'acc-1', title: 'Farmhouse Guest Rooms', desc: 'Cozy, air-cooled rooms with private veranda facing strawberry fields.', price: 'Free', icon: 'house', roomQuantity: '4 Rooms', roomCapacity: '2 Persons' },
+      { id: 'acc-2', title: 'Traditional Clay Huts', desc: 'Cool eco-huts built with natural mud & thatched roofs.', price: 'Free', icon: 'hut', roomQuantity: '2 Huts', roomCapacity: '3 Persons' },
       { id: 'acc-3', title: 'Camping Tents under Stars', desc: 'High-quality waterproof tents with nighttime campfire setup.', price: '+ ₹200/tent', icon: 'tent', roomQuantity: '5 Tents', roomCapacity: '2 Persons' },
       { id: 'acc-4', title: 'Hammocks Under Banyan Trees', desc: 'Relaxing shaded hammocks for afternoon naps.', price: 'Free Access', icon: 'tree', roomQuantity: '6 Hammocks', roomCapacity: '1 Person' }
     ],
@@ -199,6 +202,7 @@ export default function FarmDetails() {
   const [newCrop, setNewCrop] = useState('');
   const [newFruit, setNewFruit] = useState('');
   const [newAnimal, setNewAnimal] = useState('');
+  const [newKidsActivity, setNewKidsActivity] = useState('');
 
   // Add/Edit Product Modal in Edit Mode
   const [showAddProductModal, setShowAddProductModal] = useState(false);
@@ -213,6 +217,7 @@ export default function FarmDetails() {
 
   // Add Photo Modal in Edit Mode
   const [showAddPhotoModal, setShowAddPhotoModal] = useState(false);
+  const [photoSectionTarget, setPhotoSectionTarget] = useState('gallery'); // 'gallery' | 'crops' | 'livestock' | 'kids'
   const [newPhoto, setNewPhoto] = useState({ url: '', caption: '' });
 
   // Lightbox Viewer Index
@@ -599,6 +604,7 @@ export default function FarmDetails() {
         accommodations: editForm.accommodations || [],
         cropPhotos: editForm.cropPhotos || [],
         livestockPhotos: editForm.livestockPhotos || [],
+        kidsPhotos: editForm.kidsPhotos || [],
         accommodationPhotos: editForm.accommodationPhotos || [],
         farmProducts: editForm.farmProducts || [],
         gallery: editForm.gallery || [],
@@ -621,36 +627,113 @@ export default function FarmDetails() {
     }
   };
 
-  // Add Photo to Gallery with immediate Firebase RTDB persistence
+  // Add Photo to specific section / gallery with immediate Firebase RTDB persistence
   const handleSaveNewPhoto = async (e) => {
     e.preventDefault();
     if (!newPhoto.url.trim()) {
-      alert('Please enter a photo URL.');
+      alert('Please enter or upload a photo URL.');
       return;
     }
-    const photoObj = {
-      id: `g-${Date.now()}`,
-      url: newPhoto.url.trim(),
-      caption: newPhoto.caption.trim() || 'Farm View'
-    };
-    const currentGallery = editForm?.gallery || farm?.gallery || [];
-    const updatedGallery = [...currentGallery, photoObj];
+    const targetKey = photoSectionTarget === 'crops' ? 'cropPhotos'
+      : photoSectionTarget === 'livestock' ? 'livestockPhotos'
+      : photoSectionTarget === 'kids' ? 'kidsPhotos'
+      : photoSectionTarget === 'stay' || photoSectionTarget === 'accommodation' ? 'accommodationPhotos'
+      : 'gallery';
 
-    setEditForm(prev => ({ ...prev, gallery: updatedGallery }));
-    setFarm(prev => prev ? ({ ...prev, gallery: updatedGallery }) : prev);
+    const defaultCap = photoSectionTarget === 'crops' ? 'Organic Crop Harvest'
+      : photoSectionTarget === 'livestock' ? 'Farm Animal'
+      : photoSectionTarget === 'kids' ? 'Kids Activity'
+      : photoSectionTarget === 'stay' || photoSectionTarget === 'accommodation' ? 'Eco Farm Stay'
+      : 'Farm View';
+
+    const photoObj = {
+      id: `${photoSectionTarget[0]}-${Date.now()}`,
+      url: newPhoto.url.trim(),
+      caption: newPhoto.caption.trim() || defaultCap
+    };
+
+    const currentList = editForm?.[targetKey] || farm?.[targetKey] || [];
+    const updatedList = [...currentList, photoObj];
+
+    setEditForm(prev => ({ ...prev, [targetKey]: updatedList }));
+    setFarm(prev => prev ? ({ ...prev, [targetKey]: updatedList }) : prev);
 
     const farmKeyToSave = farm?.id || getFarmSlug(farm);
     if (farmKeyToSave) {
       try {
-        const galRef = ref(realtimeDb, `farms/${farmKeyToSave}/gallery`);
-        await set(galRef, sanitizeForFirebase(updatedGallery));
+        const targetRef = ref(realtimeDb, `farms/${farmKeyToSave}/${targetKey}`);
+        await set(targetRef, sanitizeForFirebase(updatedList));
       } catch (err) {
-        console.error('Failed to save gallery photo to Firebase RTDB:', err);
+        console.error(`Failed to save ${targetKey} photo to Firebase RTDB:`, err);
       }
     }
 
     setShowAddPhotoModal(false);
     setNewPhoto({ url: '', caption: '' });
+  };
+
+  const handleRemoveCropPhoto = async (photoId) => {
+    const current = editForm?.cropPhotos || farm?.cropPhotos || [];
+    const updated = current.filter((p, i) => p.id !== photoId && i !== photoId && p.url !== photoId);
+    setEditForm(prev => ({ ...prev, cropPhotos: updated }));
+    setFarm(prev => prev ? ({ ...prev, cropPhotos: updated }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        await set(ref(realtimeDb, `farms/${farmKeyToSave}/cropPhotos`), sanitizeForFirebase(updated));
+      } catch (err) {
+        console.error('Failed to remove crop photo:', err);
+      }
+    }
+  };
+
+  const handleRemoveLivestockPhoto = async (photoId) => {
+    const current = editForm?.livestockPhotos || farm?.livestockPhotos || [];
+    const updated = current.filter((p, i) => p.id !== photoId && i !== photoId && p.url !== photoId);
+    setEditForm(prev => ({ ...prev, livestockPhotos: updated }));
+    setFarm(prev => prev ? ({ ...prev, livestockPhotos: updated }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        await set(ref(realtimeDb, `farms/${farmKeyToSave}/livestockPhotos`), sanitizeForFirebase(updated));
+      } catch (err) {
+        console.error('Failed to remove livestock photo:', err);
+      }
+    }
+  };
+
+  const handleRemoveKidsPhoto = async (photoId) => {
+    const current = editForm?.kidsPhotos || farm?.kidsPhotos || [];
+    const updated = current.filter((p, i) => p.id !== photoId && i !== photoId && p.url !== photoId);
+    setEditForm(prev => ({ ...prev, kidsPhotos: updated }));
+    setFarm(prev => prev ? ({ ...prev, kidsPhotos: updated }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        await set(ref(realtimeDb, `farms/${farmKeyToSave}/kidsPhotos`), sanitizeForFirebase(updated));
+      } catch (err) {
+        console.error('Failed to remove kids photo:', err);
+      }
+    }
+  };
+
+  const handleRemoveAccommodationPhoto = async (photoId) => {
+    const current = editForm?.accommodationPhotos || farm?.accommodationPhotos || [];
+    const updated = current.filter((p, i) => p.id !== photoId && i !== photoId && p.url !== photoId);
+    setEditForm(prev => ({ ...prev, accommodationPhotos: updated }));
+    setFarm(prev => prev ? ({ ...prev, accommodationPhotos: updated }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        await set(ref(realtimeDb, `farms/${farmKeyToSave}/accommodationPhotos`), sanitizeForFirebase(updated));
+      } catch (err) {
+        console.error('Failed to remove accommodation photo:', err);
+      }
+    }
   };
 
   const handleRemoveGalleryPhoto = async (photoId) => {
@@ -717,12 +800,16 @@ export default function FarmDetails() {
   const INITIAL_LIVESTOCK = ['Pure Gir Cows', 'Goats & Sheep', 'Free-Range Poultry', 'Rabbits & Ducks', 'Honey Bees'];
   const EXTRA_LIVESTOCK = ['Buffaloes', 'Horses & Ponies', 'Fish Ponds', 'Turkeys', 'Geese', 'Quails', 'Dairy Cattle'];
 
+  const INITIAL_KIDS_ACTIVITIES = ['Pottery Making Workshop', 'Petting Zoo & Feeding', 'Mini Tractor Rides', 'Child Playground & Swings', 'Adventure Obstacle Course'];
+  const EXTRA_KIDS_ACTIVITIES = ['Fruit Picking For Kids', 'Paper Craft & Origami', 'Clay Modeling', 'Nature Treasure Hunt', 'Butterfly Garden Tour', 'Mud Play Area', 'Kids Camping Tent'];
+
   const INITIAL_ACCOMMODATIONS = ['Farmhouse Rooms', 'Rustic Mud Huts', 'Camping Tents', 'Treehouse Stays', 'Shaded Hammocks'];
   const EXTRA_ACCOMMODATIONS = ['Luxury Villas', 'Wooden Cottages', 'Dormitory Stays', 'Glamping Pods', 'Caravan Parking'];
 
   const [showMoreCrops, setShowMoreCrops] = useState(false);
   const [showMoreFruits, setShowMoreFruits] = useState(false);
   const [showMoreLivestock, setShowMoreLivestock] = useState(false);
+  const [showMoreKids, setShowMoreKids] = useState(false);
   const [showMoreAccommodations, setShowMoreAccommodations] = useState(false);
 
   const handleToggleCropChip = async (cropName) => {
@@ -799,6 +886,44 @@ export default function FarmDetails() {
 
   const handleRemoveAnimalItem = (idx) => {
     setEditForm(prev => ({ ...prev, livestock: prev.livestock.filter((_, i) => i !== idx) }));
+  };
+
+  const handleToggleKidsChip = async (actName) => {
+    if (!editForm) return;
+    const currentRaw = editForm.kidsActivities || [];
+    const current = Array.isArray(currentRaw) ? currentRaw : (typeof currentRaw === 'string' ? currentRaw.split(',').map(a => a.trim()).filter(Boolean) : []);
+    const exists = current.some(a => a.toLowerCase() === actName.toLowerCase());
+    const updated = exists
+      ? current.filter(a => a.toLowerCase() !== actName.toLowerCase())
+      : [...current, actName];
+
+    setEditForm(prev => ({ ...prev, kidsActivities: updated }));
+    setFarm(prev => prev ? ({ ...prev, kidsActivities: updated }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        const kidsRef = ref(realtimeDb, `farms/${farmKeyToSave}/kidsActivities`);
+        await set(kidsRef, sanitizeForFirebase(updated));
+      } catch (err) {
+        console.error('Failed to toggle kids activity chip in Firebase RTDB:', err);
+      }
+    }
+  };
+
+  const handleAddKidsItem = () => {
+    if (!newKidsActivity.trim()) return;
+    const currentRaw = editForm?.kidsActivities || [];
+    const current = Array.isArray(currentRaw) ? currentRaw : (typeof currentRaw === 'string' ? currentRaw.split(',').map(a => a.trim()).filter(Boolean) : []);
+    const updated = [...current, newKidsActivity.trim()];
+    setEditForm(prev => ({ ...prev, kidsActivities: updated }));
+    setNewKidsActivity('');
+  };
+
+  const handleRemoveKidsItem = (idx) => {
+    const currentRaw = editForm?.kidsActivities || [];
+    const current = Array.isArray(currentRaw) ? currentRaw : (typeof currentRaw === 'string' ? currentRaw.split(',').map(a => a.trim()).filter(Boolean) : []);
+    setEditForm(prev => ({ ...prev, kidsActivities: current.filter((_, i) => i !== idx) }));
   };
 
   const handleEditProductClick = (product) => {
@@ -1163,18 +1288,18 @@ export default function FarmDetails() {
         <div className="relative z-10 space-y-3 max-w-3xl">
           <div className="flex flex-wrap items-center gap-2">
             {isFree ? (
-              <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1 shadow-md">
-                <Sparkles size={13} /> FREE ENTRY (₹0)
+              <span className="bg-emerald-600/90 text-white px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm border border-emerald-400/40 backdrop-blur-md">
+                <Sparkles size={13} className="text-amber-300" /> FREE ENTRY (₹0)
               </span>
             ) : (
-              <span className="bg-teal-500 text-white px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider shadow-md">
+              <span className="bg-emerald-600/90 text-white px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-sm border border-emerald-400/40 backdrop-blur-md">
                 ₹{isEditing ? editForm.costPerPerson : farm.costPerPerson} / GUEST
               </span>
             )}
-            <span className="bg-white/20 backdrop-blur-md text-white border border-white/30 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+            <span className="bg-white/10 backdrop-blur-md text-white border border-white/20 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
               🚜 Verified Agritourism Spot
             </span>
-            <span className="bg-slate-900/85 backdrop-blur-md text-emerald-300 border border-emerald-500/40 px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-xs font-mono">
+            <span className="bg-white/10 backdrop-blur-md text-emerald-300 border border-white/20 px-3.5 py-1.5 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-sm font-mono">
               <Clock size={13} className="text-emerald-400" />
               <span>
                 Page Updated: {formatUpdatedTime(farm.updatedAt || farm.createdAt) || 'Recently Updated'}
@@ -1222,76 +1347,19 @@ export default function FarmDetails() {
             </h1>
           )}
 
-          <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-200">
-            <span onClick={(e) => openLocationInMaps(isEditing ? editForm.location : farm.location, e)} className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 hover:border-emerald-400 hover:text-emerald-300 transition-all cursor-pointer" title="Click to open location in Google Maps">
+          <div className="flex flex-wrap items-center gap-2.5 text-xs font-medium text-slate-200">
+            <span onClick={(e) => openLocationInMaps(isEditing ? editForm.location : farm.location, e)} className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/15 hover:border-emerald-400 hover:text-emerald-300 transition-all cursor-pointer shadow-xs" title="Click to open location in Google Maps">
               <MapPin size={14} className="text-emerald-400" /> {isEditing ? editForm.location : farm.location} ↗
             </span>
-            <span className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
+            <span className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/15 shadow-xs">
               <Store size={14} className="text-emerald-400" /> Owner: {farm.vendorName}
             </span>
-            <span className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-amber-300">
+            <span className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/15 text-amber-300 shadow-xs">
               <Star size={14} className="fill-current" /> {displayRating} ({reviewsList.length} Reviews)
             </span>
           </div>
 
-          {/* Customer Social Media Links Bar */}
-          {!isEditing && farm.socialLinks && (farm.socialLinks.instagram || farm.socialLinks.facebook || farm.socialLinks.youtube || farm.socialLinks.whatsapp || farm.socialLinks.website) && (
-            <div className="flex flex-wrap items-center gap-2 pt-1.5">
-              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider font-headings mr-1">Socials:</span>
-              {farm.socialLinks.instagram && (
-                <a
-                  href={farm.socialLinks.instagram.startsWith('http') ? farm.socialLinks.instagram : `https://instagram.com/${farm.socialLinks.instagram.replace('@', '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
-                >
-                  <Instagram size={12} /> <span>Instagram</span>
-                </a>
-              )}
-              {farm.socialLinks.facebook && (
-                <a
-                  href={farm.socialLinks.facebook.startsWith('http') ? farm.socialLinks.facebook : `https://facebook.com/${farm.socialLinks.facebook}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-2.5 py-1 rounded-xl bg-blue-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
-                >
-                  <Facebook size={12} /> <span>Facebook</span>
-                </a>
-              )}
-              {farm.socialLinks.youtube && (
-                <a
-                  href={farm.socialLinks.youtube.startsWith('http') ? farm.socialLinks.youtube : `https://youtube.com/${farm.socialLinks.youtube}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-2.5 py-1 rounded-xl bg-red-600 text-white shadow-sm hover:scale-105 transition-all flex items-center gap-1 text-[11px] font-bold font-headings"
-                >
-                  <Youtube size={12} /> <span>YouTube</span>
-                </a>
-              )}
-              {farm.socialLinks.whatsapp && (
-                <a
-                  href={farm.socialLinks.whatsapp.startsWith('http') ? farm.socialLinks.whatsapp : `https://wa.me/${farm.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-2.5 py-1 rounded-xl bg-emerald-600 text-white shadow-sm hover:scale-105 transition-all flex items-center gap-1 text-[11px] font-bold font-headings"
-                >
-                  <MessageCircle size={12} /> <span>WhatsApp</span>
-                </a>
-              )}
-              {farm.socialLinks.website && (
-                <a
-                  href={farm.socialLinks.website.startsWith('http') ? farm.socialLinks.website : `https://${farm.socialLinks.website}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-2.5 py-1 rounded-xl bg-slate-800 text-white shadow-sm hover:scale-105 transition-all flex items-center gap-1 text-[11px] font-bold font-headings border border-white/20"
-                >
-                  <Globe size={12} /> <span>Website</span>
-                </a>
-              )}
-            </div>
-          )}
-
-          {/* Editable Description or Display */}
+          {/* Editable Description or Display (Moved ABOVE Social Media Links) */}
           {isEditing ? (
             <div className="bg-black/60 backdrop-blur-md p-3 rounded-2xl border border-white/20">
               <label className="text-[10px] text-emerald-400 font-black uppercase tracking-wider block mb-1">Edit Description</label>
@@ -1307,6 +1375,68 @@ export default function FarmDetails() {
             <p className="text-xs sm:text-sm text-slate-200 font-body leading-relaxed max-w-2xl pt-1 italic opacity-95">
               "{farm.description}"
             </p>
+          )}
+
+          {/* Customer Social Media Links Bar (Real Icons, Below Description) */}
+          {!isEditing && farm.socialLinks && (farm.socialLinks.instagram || farm.socialLinks.facebook || farm.socialLinks.youtube || farm.socialLinks.whatsapp || farm.socialLinks.website) && (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider font-headings mr-1">Socials:</span>
+              {farm.socialLinks.instagram && (
+                <a
+                  href={farm.socialLinks.instagram.startsWith('http') ? farm.socialLinks.instagram : `https://instagram.com/${farm.socialLinks.instagram.replace('@', '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Instagram"
+                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-emerald-600 text-white border border-white/20 hover:border-emerald-400 backdrop-blur-md flex items-center justify-center shadow-sm hover:scale-110 transition-all cursor-pointer"
+                >
+                  <Instagram size={16} />
+                </a>
+              )}
+              {farm.socialLinks.facebook && (
+                <a
+                  href={farm.socialLinks.facebook.startsWith('http') ? farm.socialLinks.facebook : `https://facebook.com/${farm.socialLinks.facebook}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Facebook"
+                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-emerald-600 text-white border border-white/20 hover:border-emerald-400 backdrop-blur-md flex items-center justify-center shadow-sm hover:scale-110 transition-all cursor-pointer"
+                >
+                  <Facebook size={16} />
+                </a>
+              )}
+              {farm.socialLinks.youtube && (
+                <a
+                  href={farm.socialLinks.youtube.startsWith('http') ? farm.socialLinks.youtube : `https://youtube.com/${farm.socialLinks.youtube}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="YouTube"
+                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-emerald-600 text-white border border-white/20 hover:border-emerald-400 backdrop-blur-md flex items-center justify-center shadow-sm hover:scale-110 transition-all cursor-pointer"
+                >
+                  <Youtube size={16} />
+                </a>
+              )}
+              {farm.socialLinks.whatsapp && (
+                <a
+                  href={farm.socialLinks.whatsapp.startsWith('http') ? farm.socialLinks.whatsapp : `https://wa.me/${farm.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="WhatsApp"
+                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-emerald-600 text-white border border-white/20 hover:border-emerald-400 backdrop-blur-md flex items-center justify-center shadow-sm hover:scale-110 transition-all cursor-pointer"
+                >
+                  <MessageCircle size={16} />
+                </a>
+              )}
+              {farm.socialLinks.website && (
+                <a
+                  href={farm.socialLinks.website.startsWith('http') ? farm.socialLinks.website : `https://${farm.socialLinks.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Website"
+                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-emerald-600 text-white border border-white/20 hover:border-emerald-400 backdrop-blur-md flex items-center justify-center shadow-sm hover:scale-110 transition-all cursor-pointer"
+                >
+                  <Globe size={16} />
+                </a>
+              )}
+            </div>
           )}
 
           {/* Hero Action CTA (Hidden when in Edit Mode) */}
@@ -1335,30 +1465,30 @@ export default function FarmDetails() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mt-5">
         <div className="bg-white/70 backdrop-blur-md border border-white/60 p-4 rounded-3xl text-left shadow-sm flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 font-bold text-lg">
-            🌾
+            <Sprout size={20} className="text-emerald-600" />
           </div>
           <div>
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider font-headings">Crops Grown</p>
+            <p className="text-[10px] text-emerald-700 font-black uppercase tracking-wider font-headings">Crops Grown</p>
             <p className="font-extrabold text-slate-800 text-sm font-headings">{activeCrops.length}+ Varieties</p>
           </div>
         </div>
 
         <div className="bg-white/70 backdrop-blur-md border border-white/60 p-4 rounded-3xl text-left shadow-sm flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center flex-shrink-0 font-bold text-lg">
-            🐄
+            <PawPrint size={20} className="text-amber-600" />
           </div>
           <div>
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider font-headings">Livestock & Birds</p>
+            <p className="text-[10px] text-amber-700 font-black uppercase tracking-wider font-headings">Livestock & Birds</p>
             <p className="font-extrabold text-slate-800 text-sm font-headings">{activeLivestock.length} Types</p>
           </div>
         </div>
 
         <div className="bg-white/70 backdrop-blur-md border border-white/60 p-4 rounded-3xl text-left shadow-sm flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center flex-shrink-0 font-bold text-lg">
-            🛖
+            <Tent size={20} className="text-teal-600" />
           </div>
           <div>
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider font-headings">Stay Options</p>
+            <p className="text-[10px] text-teal-700 font-black uppercase tracking-wider font-headings">Stay Options</p>
             <p className="font-extrabold text-slate-800 text-sm font-headings">{activeAccommodations.length} Accommodation Choices</p>
           </div>
         </div>
@@ -1366,10 +1496,10 @@ export default function FarmDetails() {
         {(activeGallery.length > 0 || isEditing) && (
           <div className="bg-white/70 backdrop-blur-md border border-white/60 p-4 rounded-3xl text-left shadow-sm flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center flex-shrink-0 font-bold text-lg">
-              📸
+              <Camera size={20} className="text-indigo-600" />
             </div>
             <div>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider font-headings">Photo Gallery</p>
+              <p className="text-[10px] text-indigo-700 font-black uppercase tracking-wider font-headings">Photo Gallery</p>
               <p className="font-extrabold text-slate-800 text-sm font-headings">{activeGallery.length} Farm Photos</p>
             </div>
           </div>
@@ -1387,7 +1517,7 @@ export default function FarmDetails() {
             <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
               <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
                 <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold text-lg">
-                  🌾
+                  <Trees size={20} className="text-amber-600" />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold font-headings text-slate-800">Crops & Fruit Orchards Grown Here</h2>
@@ -1398,7 +1528,7 @@ export default function FarmDetails() {
               <div className="space-y-4">
                 {(activeCrops.length > 0 || isEditing) && (
                   <>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">Organic Crops & Produce</h4>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-emerald-700 font-headings">Organic Crops & Produce</h4>
                     <div className="flex flex-wrap gap-2.5">
                       {activeCrops.map((crop, index) => (
                         <span key={index} className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
@@ -1469,7 +1599,7 @@ export default function FarmDetails() {
 
                 {(activeFruits.length > 0 || isEditing) && (
                   <>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings pt-2">Fruit Orchards & Trees</h4>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-700 font-headings pt-2">Fruit Orchards & Trees</h4>
                     <div className="flex flex-wrap gap-2.5">
                       {activeFruits.map((fruit, index) => (
                         <span key={index} className="bg-amber-50 text-amber-900 border border-amber-200/80 px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
@@ -1540,21 +1670,50 @@ export default function FarmDetails() {
               </div>
 
               {/* Crops & Fruit Orchards Photos Grid */}
-              {activeCropPhotos.length > 0 && (
+              {(activeCropPhotos.length > 0 || isEditing) && (
                 <div className="pt-3 border-t border-slate-100 space-y-2">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Crops & Fruit Orchard Photos</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {activeCropPhotos.map((photo, idx) => (
-                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
-                        <img src={photo.url} alt={photo.caption || 'Crop Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        {photo.caption && (
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
-                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-emerald-700 font-headings flex items-center gap-1.5"><Camera size={14} className="text-emerald-600 inline" /> Crops & Fruit Orchard Photos</h4>
+                    {isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPhotoSectionTarget('crops');
+                          setNewPhoto({ url: '', caption: '' });
+                          setShowAddPhotoModal(true);
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
+                      >
+                        <Plus size={13} /> Add Crop Photo
+                      </button>
+                    )}
                   </div>
+                  {activeCropPhotos.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic py-2">No crop/fruit photos added yet. Click "+ Add Crop Photo" to upload photos.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {activeCropPhotos.map((photo, idx) => (
+                        <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
+                          <img src={photo.url} alt={photo.caption || 'Crop Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          {photo.caption && (
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
+                              <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
+                            </div>
+                          )}
+                          {isEditing && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCropPhoto(photo.id || photo.url)}
+                              className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90 z-10"
+                              title="Delete Photo"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1566,7 +1725,7 @@ export default function FarmDetails() {
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center font-bold text-lg">
-                    🐄
+                    <PawPrint size={20} className="text-teal-600" />
                   </div>
                   <div>
                     <h2 className="text-xl font-bold font-headings text-slate-800">Livestock, Poultry & Cattle</h2>
@@ -1586,8 +1745,8 @@ export default function FarmDetails() {
                         <Trash2 size={13} />
                       </button>
                     )}
-                    <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto text-lg">
-                      {animal.includes('Cow') || animal.includes('Cattle') ? '🐄' : animal.includes('Sheep') || animal.includes('Goat') ? '🐐' : animal.includes('Honey') || animal.includes('Bee') ? '🐝' : '🐓'}
+                    <div className="w-9 h-9 rounded-full bg-teal-50/60 border border-teal-100 flex items-center justify-center mx-auto text-teal-600">
+                      <PawPrint size={18} className="text-teal-600" />
                     </div>
                     <p className="font-bold text-slate-800 text-xs font-headings truncate">{animal}</p>
                     <p className="text-[10px] text-emerald-600 font-bold">100% Organic Raised</p>
@@ -1648,21 +1807,50 @@ export default function FarmDetails() {
                 </div>
               )}
               {/* Livestock & Poultry Photos Grid */}
-              {activeLivestockPhotos.length > 0 && (
+              {(activeLivestockPhotos.length > 0 || isEditing) && (
                 <div className="pt-3 border-t border-slate-100 space-y-2">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Livestock & Poultry Photos</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {activeLivestockPhotos.map((photo, idx) => (
-                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
-                        <img src={photo.url} alt={photo.caption || 'Livestock Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        {photo.caption && (
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
-                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-teal-700 font-headings flex items-center gap-1.5"><Camera size={14} className="text-teal-600 inline" /> Livestock & Poultry Photos</h4>
+                    {isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPhotoSectionTarget('livestock');
+                          setNewPhoto({ url: '', caption: '' });
+                          setShowAddPhotoModal(true);
+                        }}
+                        className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
+                      >
+                        <Plus size={13} /> Add Livestock Photo
+                      </button>
+                    )}
                   </div>
+                  {activeLivestockPhotos.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic py-2">No livestock photos added yet. Click "+ Add Livestock Photo" to upload photos.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {activeLivestockPhotos.map((photo, idx) => (
+                        <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
+                          <img src={photo.url} alt={photo.caption || 'Livestock Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          {photo.caption && (
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
+                              <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
+                            </div>
+                          )}
+                          {isEditing && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveLivestockPhoto(photo.id || photo.url)}
+                              className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90 z-10"
+                              title="Delete Photo"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1674,44 +1862,139 @@ export default function FarmDetails() {
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center font-bold text-lg">
-                    🎈
+                    <Smile size={20} className="text-purple-600" />
                   </div>
                   <div>
                     <h2 className="text-xl font-bold font-headings text-slate-800">Kids Section & Fun Entertainments</h2>
                     <p className="text-xs text-slate-400 font-medium font-body">Safe playgrounds, petting corners, pottery & mini tractor rides for children</p>
                   </div>
                 </div>
-                <span className="bg-purple-50 text-purple-800 text-[10px] font-black uppercase px-3 py-1 rounded-full border border-purple-200">
-                  Family Friendly 👨‍👩‍👧‍👦
+                <span className="bg-purple-50 text-purple-800 text-[10px] font-black uppercase px-3 py-1 rounded-full border border-purple-200 flex items-center gap-1">
+                  <Users size={12} /> Family Friendly
                 </span>
               </div>
 
-              {activeKidsActivities && activeKidsActivities.length > 0 && (
-                <div className="flex flex-wrap gap-2.5">
-                  {(Array.isArray(activeKidsActivities) ? activeKidsActivities : activeKidsActivities.split(',').map(a => a.trim())).map((act, index) => (
-                    <span key={index} className="bg-purple-50 text-purple-900 border border-purple-200/80 px-3.5 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
-                      🎈 {act}
-                    </span>
-                  ))}
-                </div>
-              )}
+              <div className="space-y-4">
+                {((activeKidsActivities && (Array.isArray(activeKidsActivities) ? activeKidsActivities.length > 0 : String(activeKidsActivities).trim().length > 0)) || isEditing) && (
+                  <>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-purple-700 font-headings">Kids Activities & Entertainments</h4>
+                    <div className="flex flex-wrap gap-2.5">
+                      {(Array.isArray(activeKidsActivities) ? activeKidsActivities : String(activeKidsActivities || '').split(',').map(a => a.trim()).filter(Boolean)).map((act, index) => (
+                        <span key={index} className="bg-purple-50 text-purple-900 border border-purple-200/80 px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                          <Sparkles size={14} className="text-purple-600" /> {act}
+                          {isEditing && (
+                            <button onClick={() => handleRemoveKidsItem(index)} className="text-rose-500 hover:text-rose-700 ml-1 font-black cursor-pointer">
+                              ×
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    {isEditing && (
+                      <div className="space-y-2 pt-2 bg-purple-50/50 p-4 rounded-2xl border border-purple-200/80 text-left">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider font-headings">
+                            Select Suggested Kids Activities or Type Custom Activity:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowMoreKids(!showMoreKids)}
+                            className="text-xs font-bold text-purple-600 hover:text-purple-700 hover:underline cursor-pointer font-headings"
+                          >
+                            {showMoreKids ? 'Show Less' : `+ Others (${EXTRA_KIDS_ACTIVITIES.length} more)`}
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pb-2">
+                          {(showMoreKids ? [...INITIAL_KIDS_ACTIVITIES, ...EXTRA_KIDS_ACTIVITIES] : INITIAL_KIDS_ACTIVITIES).map((chip, idx) => {
+                            const kidsList = Array.isArray(editForm?.kidsActivities)
+                              ? editForm.kidsActivities
+                              : String(editForm?.kidsActivities || '').split(',').map(a => a.trim()).filter(Boolean);
+                            const isSelected = kidsList.some(a => a.toLowerCase() === chip.toLowerCase());
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleToggleKidsChip(chip)}
+                                className={`px-3 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 flex items-center gap-1 ${isSelected
+                                  ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:border-purple-400 hover:text-purple-700'
+                                  }`}
+                              >
+                                <span>{chip}</span>
+                                {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center gap-2 max-w-md pt-1">
+                          <input
+                            type="text"
+                            value={newKidsActivity}
+                            onChange={(e) => setNewKidsActivity(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ',') {
+                                e.preventDefault();
+                                handleAddKidsItem();
+                              }
+                            }}
+                            placeholder="Type custom kids activity and press Enter (e.g. Pottery Workshop)..."
+                            className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium flex-1 outline-none focus:border-purple-500 font-body"
+                          />
+                          <button onClick={handleAddKidsItem} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-xs font-bold shrink-0 cursor-pointer font-headings">
+                            + Add
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
 
               {/* Kids Entertainments Photos Grid */}
-              {activeKidsPhotos && activeKidsPhotos.length > 0 && (
+              {((activeKidsPhotos && activeKidsPhotos.length > 0) || isEditing) && (
                 <div className="pt-3 border-t border-slate-100 space-y-2">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Kids Play Area & Activity Photos</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {activeKidsPhotos.map((photo, idx) => (
-                      <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
-                        <img src={photo.url} alt={photo.caption || 'Kids Activity Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        {photo.caption && (
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
-                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-purple-700 font-headings flex items-center gap-1.5"><Camera size={14} className="text-purple-600 inline" /> Kids Play Area & Activity Photos</h4>
+                    {isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPhotoSectionTarget('kids');
+                          setNewPhoto({ url: '', caption: '' });
+                          setShowAddPhotoModal(true);
+                        }}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
+                      >
+                        <Plus size={13} /> Add Kids Photo
+                      </button>
+                    )}
                   </div>
+                  {!activeKidsPhotos || activeKidsPhotos.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic py-2">No kids activity photos added yet. Click "+ Add Kids Photo" to upload photos.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {activeKidsPhotos.map((photo, idx) => (
+                        <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
+                          <img src={photo.url} alt={photo.caption || 'Kids Activity Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          {photo.caption && (
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
+                              <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
+                            </div>
+                          )}
+                          {isEditing && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveKidsPhoto(photo.id || photo.url)}
+                              className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90 z-10"
+                              title="Delete Photo"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1723,7 +2006,7 @@ export default function FarmDetails() {
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold text-lg">
-                    🛖
+                    <Tent size={20} className="text-emerald-600" />
                   </div>
                   <div>
                     <h2 className="text-xl font-bold font-headings text-slate-800">Accommodations & Stay Experience</h2>
@@ -1776,7 +2059,7 @@ export default function FarmDetails() {
                       <div className="flex items-center justify-between pr-6">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-xl bg-emerald-100/60 text-emerald-700 flex items-center justify-center font-bold text-sm">
-                            {accTitle.includes('Tent') ? '⛺' : accTitle.includes('Hut') ? '🛖' : accTitle.includes('Tree') ? '🌳' : '🏠'}
+                            {accTitle.includes('Tent') ? <Tent size={16} className="text-emerald-700" /> : <HomeIcon size={16} className="text-emerald-700" />}
                           </div>
                           <h4 className="font-bold text-slate-800 text-sm font-headings">{accTitle}</h4>
                         </div>
@@ -1789,10 +2072,10 @@ export default function FarmDetails() {
                       {/* Room Quantity & Capacity Badges */}
                       <div className="flex flex-wrap items-center gap-2 pt-1">
                         <span className="bg-slate-100 text-slate-700 text-[10px] font-extrabold px-2.5 py-1 rounded-lg border border-slate-200/80 flex items-center gap-1 font-headings">
-                           🚪 {typeof acc === 'object' && acc.roomQuantity ? acc.roomQuantity : '1 Room'}
+                          <HomeIcon size={12} className="text-slate-500" /> {typeof acc === 'object' && acc.roomQuantity ? acc.roomQuantity : '1 Room'}
                         </span>
                         <span className="bg-emerald-50 text-emerald-800 text-[10px] font-extrabold px-2.5 py-1 rounded-lg border border-emerald-200/60 flex items-center gap-1 font-headings">
-                           👥 {typeof acc === 'object' && acc.roomCapacity ? acc.roomCapacity : '2 Persons'} Capacity
+                          <Users size={12} className="text-emerald-600" /> {typeof acc === 'object' && acc.roomCapacity ? acc.roomCapacity : '2 Persons'} Capacity
                         </span>
                       </div>
 
@@ -1809,21 +2092,50 @@ export default function FarmDetails() {
               </div>
 
               {/* Accommodation & Stay Photos Grid */}
-              {activeAccommodationPhotos.length > 0 && (
+              {(activeAccommodationPhotos.length > 0 || isEditing) && (
                 <div className="pt-3 border-t border-slate-100 space-y-2">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-headings">📸 Accommodation & Stay Photos</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {activeAccommodationPhotos.map((photo, idx) => (
-                      <div key={photo.id || idx} onClick={() => { const i = activeGallery.findIndex(g => g.url === photo.url); setLightboxIndex(i >= 0 ? i : 0); }} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs cursor-pointer hover:border-emerald-400">
-                        <img src={photo.url} alt={photo.caption || 'Stay Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        {photo.caption && (
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
-                            <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-indigo-700 font-headings flex items-center gap-1.5"><Camera size={14} className="text-indigo-600 inline" /> Accommodation & Stay Photos</h4>
+                    {isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPhotoSectionTarget('stay');
+                          setNewPhoto({ url: '', caption: '' });
+                          setShowAddPhotoModal(true);
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 font-headings"
+                      >
+                        <Plus size={13} /> Add Stay Photo
+                      </button>
+                    )}
                   </div>
+                  {activeAccommodationPhotos.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic py-2">No accommodation photos added yet. Click "+ Add Stay Photo" to upload photos.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {activeAccommodationPhotos.map((photo, idx) => (
+                        <div key={photo.id || idx} className="h-28 rounded-xl overflow-hidden relative group border border-slate-200 shadow-2xs">
+                          <img src={photo.url} alt={photo.caption || 'Stay Photo'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          {photo.caption && (
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-center">
+                              <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
+                            </div>
+                          )}
+                          {isEditing && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAccommodationPhoto(photo.id || photo.url)}
+                              className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90 z-10"
+                              title="Delete Photo"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1835,21 +2147,37 @@ export default function FarmDetails() {
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center font-bold text-lg">
-                    🧺
+                    <ShoppingBag size={20} className="text-rose-600" />
                   </div>
                   <div>
                     <h2 className="text-xl font-bold font-headings text-slate-800">Buy Direct Farm Harvest</h2>
                     <p className="text-xs text-slate-400 font-medium font-body">You can buy the products in our farm.</p>
                   </div>
                 </div>
-                {isEditing && (
-                  <button
-                    onClick={() => setShowAddProductModal(true)}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95"
-                  >
-                    <Plus size={14} /> Add Farm Product
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {!isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const farmSlug = getFarmSlug(farm);
+                        navigate(`/marketplace?tab=farms&farm=${farmSlug}`);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs px-3.5 py-1.5 rounded-xl border border-emerald-200/60 flex items-center gap-1 font-headings cursor-pointer transition-all active:scale-95 shadow-2xs"
+                    >
+                      <span>Explore Harvest Marketplace</span>
+                      <ArrowRight size={13} />
+                    </button>
+                  )}
+                  {isEditing && (
+                    <button
+                      onClick={() => setShowAddProductModal(true)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                    >
+                      <Plus size={14} /> Add Farm Product
+                    </button>
+                  )}
+                </div>
               </div>
 
               {activeFarmProducts.length === 0 ? (
@@ -1867,12 +2195,22 @@ export default function FarmDetails() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {activeFarmProducts.map((product) => (
-                    <div key={product.id} className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs flex flex-col justify-between group hover:shadow-md transition-all relative">
+                    <div
+                      key={product.id}
+                      onClick={() => {
+                        navigate(`/product/${getProductSlug(product)}`);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xs flex flex-col justify-between group hover:shadow-lg hover:border-emerald-400/80 hover:-translate-y-1 transition-all duration-300 relative cursor-pointer"
+                    >
                       {isEditing && (
                         <div className="absolute top-2 right-2 flex items-center gap-1 z-20">
                           <button
                             type="button"
-                            onClick={() => handleEditProductClick(product)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditProductClick(product);
+                            }}
                             className="p-1.5 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg bg-white/90 shadow-xs border border-slate-200/80 transition-colors cursor-pointer"
                             title="Edit Product"
                           >
@@ -1880,7 +2218,10 @@ export default function FarmDetails() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleRemoveProductItem(product.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveProductItem(product.id);
+                            }}
                             className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg bg-white/90 shadow-xs border border-slate-200/80 transition-colors cursor-pointer"
                             title="Delete Product"
                           >
@@ -1889,12 +2230,16 @@ export default function FarmDetails() {
                         </div>
                       )}
                       <div className="relative h-32 bg-slate-50 rounded-xl overflow-hidden mb-3 flex items-center justify-center p-2">
-                        <img src={product.image} alt={product.name} className="max-h-full object-contain group-hover:scale-105 transition-transform" />
+                        <img src={product.image} alt={product.name} className="max-h-full object-contain group-hover:scale-108 transition-transform duration-300" />
+                        <span className="absolute bottom-2 left-2 bg-emerald-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md font-headings shadow-xs">
+                          Direct Harvest
+                        </span>
                       </div>
                       <div className="space-y-2 text-left">
-                        <h4 className="font-bold text-slate-800 text-xs font-headings line-clamp-1">{product.name}</h4>
-                        <div className="pt-1">
+                        <h4 className="font-bold text-slate-800 text-xs font-headings line-clamp-1 group-hover:text-emerald-600 transition-colors">{product.name}</h4>
+                        <div className="pt-1 flex items-center justify-between">
                           <span className="font-extrabold text-slate-900 text-sm font-sans">₹{product.price} <span className="text-[10px] text-slate-400">/{product.unit}</span></span>
+                          <span className="text-[10px] font-bold text-emerald-600 group-hover:underline">View Product →</span>
                         </div>
                       </div>
                     </div>
@@ -1910,7 +2255,7 @@ export default function FarmDetails() {
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center font-bold text-lg">
-                    📸
+                    <Camera size={20} className="text-indigo-600" />
                   </div>
                   <div>
                     <h2 className="text-xl font-bold font-headings text-slate-800">Farm Gallery & Visual Tour</h2>
@@ -2241,7 +2586,7 @@ export default function FarmDetails() {
             <div className="bg-white/80 backdrop-blur-md border border-white p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.04] space-y-5 text-left sticky top-24">
               <div className="flex justify-between items-center border-b border-slate-100 pb-4">
                 <div>
-                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider font-headings">Entry Ticket</p>
+                  <p className="text-[10px] text-emerald-700 font-black uppercase tracking-wider font-headings">Entry Ticket</p>
                   {isFree ? (
                     <p className="text-2xl font-black text-emerald-600 font-headings">FREE ENTRY <span className="text-xs font-normal text-emerald-600/70">(₹0)</span></p>
                   ) : (
@@ -2264,7 +2609,7 @@ export default function FarmDetails() {
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle size={15} className="text-emerald-600" />
-                  <span>Fresh organic welcome drink included</span>
+                  <span>Fresh organic welcome drink</span>
                 </div>
               </div>
 
@@ -2367,34 +2712,39 @@ export default function FarmDetails() {
           >
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-800 text-base font-headings flex items-center gap-2">
-                <ImageIcon size={18} className="text-indigo-600" /> Add Farm Gallery Photo
+                <ImageIcon size={18} className="text-indigo-600" />
+                Add {photoSectionTarget === 'crops' ? 'Crop & Fruit Orchard' : photoSectionTarget === 'livestock' ? 'Livestock & Poultry' : photoSectionTarget === 'kids' ? 'Kids Activity' : photoSectionTarget === 'stay' || photoSectionTarget === 'accommodation' ? 'Accommodation & Stay' : 'Farm Gallery'} Photo
               </h3>
-              <button onClick={() => setShowAddPhotoModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setShowAddPhotoModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleSaveNewPhoto} className="space-y-3">
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase">Photo Image URL *</label>
-                <input
-                  required
-                  type="text"
+                <ImageUploadField
                   value={newPhoto.url}
-                  onChange={(e) => setNewPhoto({ ...newPhoto, url: e.target.value })}
-                  placeholder="https://images.unsplash.com/photo-..."
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500"
+                  onChange={(val) => setNewPhoto({ ...newPhoto, url: val })}
+                  placeholder="Paste URL or upload image file..."
+                  label="Photo Image URL / File Upload *"
+                  required
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase">Photo Caption / Description</label>
+                <label className="text-[11px] font-bold text-slate-700 uppercase font-headings block mb-1">Photo Caption / Description</label>
                 <input
                   type="text"
                   value={newPhoto.caption}
                   onChange={(e) => setNewPhoto({ ...newPhoto, caption: e.target.value })}
-                  placeholder="E.g. Sunset View Over Strawberry Patch"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500"
+                  placeholder={
+                    photoSectionTarget === 'crops' ? 'E.g. Strawberry Harvest Patch'
+                      : photoSectionTarget === 'livestock' ? 'E.g. Desi Cattle Grazing'
+                      : photoSectionTarget === 'kids' ? 'E.g. Playground & Pottery Corner'
+                      : photoSectionTarget === 'stay' || photoSectionTarget === 'accommodation' ? 'E.g. Eco Solar Powered Cottage'
+                      : 'E.g. Sunset View Over Farm'
+                  }
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
                 />
               </div>
 
@@ -2402,13 +2752,13 @@ export default function FarmDetails() {
                 <button
                   type="button"
                   onClick={() => setShowAddPhotoModal(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold"
+                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold font-headings cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer font-headings active:scale-95"
                 >
                   <Plus size={14} />
                   <span>Add Photo</span>
@@ -3026,7 +3376,6 @@ export default function FarmDetails() {
                                     <span className="text-[10px] text-slate-500">Only farm visit entry ticket</span>
                                   </div>
                                 </div>
-                                <span className="font-black text-[10px] text-emerald-700 uppercase tracking-wider bg-emerald-100/60 px-2 py-0.5 rounded-lg">Included</span>
                               </div>
 
                               {/* Options 2+: Available Stay Options from Farm */}

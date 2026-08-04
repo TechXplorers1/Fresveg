@@ -270,32 +270,32 @@ export default function VisitFarms() {
 
         {/* Feature Badges Strip */}
         <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-white/10 text-xs font-bold">
-          <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm p-2.5 rounded-xl border border-white/10">
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm p-2.5 rounded-xl border border-white/15">
             <span className="text-lg">🍓</span>
             <div>
-              <p className="text-emerald-400 font-extrabold text-[11px]">Organic Crops</p>
-              <p className="text-slate-400 text-[9px] font-normal">Self Picking & Tasting</p>
+              <p className="text-white font-black text-[12px] tracking-wide">Organic Crops</p>
+              <p className="text-emerald-200 text-[10px] font-medium">Self Picking & Tasting</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm p-2.5 rounded-xl border border-white/10">
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm p-2.5 rounded-xl border border-white/15">
             <span className="text-lg">🐄</span>
             <div>
-              <p className="text-amber-400 font-extrabold text-[11px]">Desi Livestock</p>
-              <p className="text-slate-400 text-[9px] font-normal">Cows, Poultry & Sheep</p>
+              <p className="text-amber-300 font-black text-[12px] tracking-wide">Desi Livestock</p>
+              <p className="text-amber-100/80 text-[10px] font-medium">Cows, Poultry & Sheep</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm p-2.5 rounded-xl border border-white/10">
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm p-2.5 rounded-xl border border-white/15">
             <span className="text-lg">🛖</span>
             <div>
-              <p className="text-teal-300 font-extrabold text-[11px]">Rustic Stays</p>
-              <p className="text-slate-400 text-[9px] font-normal">Clay Huts & Camping</p>
+              <p className="text-teal-200 font-black text-[12px] tracking-wide">Rustic Stays</p>
+              <p className="text-teal-100/80 text-[10px] font-medium">Clay Huts & Camping</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm p-2.5 rounded-xl border border-white/10">
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm p-2.5 rounded-xl border border-white/15">
             <span className="text-lg">🎟️</span>
             <div>
-              <p className="text-purple-300 font-extrabold text-[11px]">Easy Slots</p>
-              <p className="text-slate-400 text-[9px] font-normal">Free & Paid Entry</p>
+              <p className="text-purple-200 font-black text-[12px] tracking-wide">Easy Slots</p>
+              <p className="text-purple-100/80 text-[10px] font-medium">Free & Paid Entry</p>
             </div>
           </div>
         </div>
@@ -822,7 +822,6 @@ export default function VisitFarms() {
                                     <span className="text-[10px] text-slate-500">Only farm visit entry ticket</span>
                                   </div>
                                 </div>
-                                <span className="font-black text-[10px] text-emerald-700 uppercase tracking-wider bg-emerald-100/60 px-2 py-0.5 rounded-lg">Included</span>
                               </div>
 
                               {/* Options 2+: Available Stay Options from Farm */}

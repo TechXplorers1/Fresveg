@@ -70,8 +70,15 @@ export default function ImageUploadField({
 
     const btnCls = btnColors[accentColor] || btnColors.emerald;
 
+    const defaultInputCls = 'w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body text-slate-800 placeholder:text-slate-400';
+
     return (
-        <div className="space-y-2">
+        <div className="space-y-1.5 text-left">
+            {label && (
+                <label className="text-[11px] font-bold text-slate-700 uppercase font-headings block mb-1">
+                    {label}
+                </label>
+            )}
             {/* Input row: URL text input + Choose File button */}
             <div className="flex items-center gap-2">
                 {/* URL Text Input */}
@@ -81,7 +88,7 @@ export default function ImageUploadField({
                     required={required}
                     onChange={(e) => onChange && onChange(e.target.value)}
                     placeholder={placeholder}
-                    className={`flex-1 min-w-0 ${inputClassName}`}
+                    className={`flex-1 min-w-0 ${inputClassName ? inputClassName : defaultInputCls}`}
                 />
 
                 {/* Choose File Button */}

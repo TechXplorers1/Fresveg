@@ -352,26 +352,34 @@ export default function Checkout() {
                   <div key={method.id}>
                     <button
                       onClick={() => { setSelectedPayment(method.name); setRzpError(''); }}
-                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-300 text-left ${
+                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-300 text-left cursor-pointer ${
                         isSelected
-                          ? 'border-emerald-500 bg-emerald-500/[0.02] shadow-md shadow-emerald-950/[0.01]'
-                          : 'border-slate-100 hover:border-slate-200 bg-white/40 hover:bg-white/80'
+                          ? 'border-emerald-500 bg-emerald-50/40 animate-payment-heartbeat shadow-lg shadow-emerald-500/10'
+                          : 'border-slate-200 hover:border-emerald-400 hover:animate-payment-heartbeat bg-white/40 hover:bg-white/80'
                       }`}
                     >
                       <div className={`p-3 rounded-xl transition-all duration-300 ${
-                        isSelected ? 'bg-emerald-600 text-white' : 'bg-slate-50 text-slate-400'
+                        isSelected ? 'bg-emerald-600 text-white animate-pulse' : 'bg-slate-50 text-slate-400'
                       }`}>
                         <method.icon size={20} />
                       </div>
                       <div className="flex-grow">
-                        <p className={`font-bold font-headings text-sm ${isSelected ? 'text-emerald-800' : 'text-slate-800'}`}>
-                          {method.name}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className={`font-bold font-headings text-sm ${isSelected ? 'text-emerald-800' : 'text-slate-800'}`}>
+                            {method.name}
+                          </p>
+                          {isSelected && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 font-headings border border-emerald-300/60 uppercase tracking-widest animate-pulse">
+                              Active Method
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-slate-400 mt-0.5">{method.desc}</p>
                       </div>
                       {isSelected ? (
-                        <div className="bg-emerald-500 text-white p-1 rounded-full">
-                          <Check size={12} strokeWidth={3} />
+                        <div className="bg-emerald-500 text-white p-1 rounded-full relative flex items-center justify-center">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <Check size={12} strokeWidth={3} className="relative z-10" />
                         </div>
                       ) : (
                         <ChevronRight size={14} className="text-slate-300" />
