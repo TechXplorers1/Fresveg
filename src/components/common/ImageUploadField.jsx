@@ -135,7 +135,8 @@ export default function ImageUploadField({
                         <img
                             src={value}
                             alt="Preview"
-                            className="max-w-full max-h-full object-cover"
+                            title="Click to view full image in modal"
+                            className="max-w-full max-h-full object-cover cursor-zoom-in"
                             onError={(e) => {
                                 e.target.style.display = 'none';
                                 e.target.nextSibling.style.display = 'flex';

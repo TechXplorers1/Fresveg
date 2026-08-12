@@ -11,11 +11,13 @@ import ImageUploadField from '../../components/common/ImageUploadField';
 import AddStayModal from './modals/AddStayModal';
 import AddFarmProductModal from './modals/AddFarmProductModal';
 import AddGalleryModal from './modals/AddGalleryModal';
+import EditPhotoModal from './modals/EditPhotoModal';
 import SignoutConfirmModal from './modals/SignoutConfirmModal';
 import ProfileHeader from './components/ProfileHeader';
 import ProfileTabsNav from './components/ProfileTabsNav';
 import VendorAnalyticsTab from './components/VendorAnalyticsTab';
 import { SUB_CATEGORIES_MAP, CATEGORIES, STANDARD_UNITS, INITIAL_CROPS, EXTRA_CROPS, INITIAL_FRUITS, EXTRA_FRUITS, INITIAL_LIVESTOCK, EXTRA_LIVESTOCK, INITIAL_KIDS_ACTIVITIES, EXTRA_KIDS_ACTIVITIES, INITIAL_ACCOMMODATIONS, EXTRA_ACCOMMODATIONS, formatUpdatedTime, geocodeAddress } from './constants/profileConstants';
+import { useImageModal } from '../../context/ImageModalContext';
 
 
 
@@ -23,6 +25,7 @@ import { SUB_CATEGORIES_MAP, CATEGORIES, STANDARD_UNITS, INITIAL_CROPS, EXTRA_CR
 export default function Profile() {
     const { user, userProfile, loading, updateProfile, logout } = useAuth();
     const { products: allProducts, addProduct, updateProduct, deleteProduct, categories: dynamicCategories } = useProducts();
+    const { openImageModal } = useImageModal();
     const categories = dynamicCategories && dynamicCategories.length > 0 ? dynamicCategories : CATEGORIES;
     const navigate = useNavigate();
 
@@ -604,6 +607,24 @@ export default function Profile() {
 
     const handleRemoveGalleryPhoto = (indexToRemove) => {
         setFarmGalleryList(prev => prev.filter((_, idx) => idx !== indexToRemove));
+    };
+
+    const [showEditPhotoModal, setShowEditPhotoModal] = useState(false);
+    const [photoToEdit, setPhotoToEdit] = useState(null);
+
+    const handleSaveEditedGalleryPhoto = (updatedPhoto) => {
+        setFarmGalleryList(prev => prev.map((item, idx) => {
+            if (idx === updatedPhoto.id || item.id === updatedPhoto.id || item.url === photoToEdit?.url) {
+                return {
+                    ...item,
+                    url: updatedPhoto.url,
+                    caption: updatedPhoto.caption
+                };
+            }
+            return item;
+        }));
+        setShowEditPhotoModal(false);
+        setPhotoToEdit(null);
     };
 
     const INITIAL_CROPS = ['Strawberries', 'Cherry Tomatoes', 'Sweet Corn', 'Spinach', 'Carrots'];
@@ -3170,37 +3191,95 @@ export default function Profile() {
 
                                                 {/* 📸 Farm Gallery & Visual Tour Photos Section */}
                                                 <div className="text-left space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
-                                                    <div className="flex items-center justify-between">
+                                                    <div className="flex flex-wrap items-center justify-between gap-2">
                                                         <div>
                                                             <label className={labelCls}>📸 Farm Gallery & Visual Tour Photos ({farmGalleryList.length})</label>
                                                             <p className="text-[11px] text-slate-400 font-medium">Add photos of your fields, crops, stays, and farm views for visitors to explore.</p>
                                                         </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setNewGalleryForm({ url: '', caption: '' });
-                                                                setShowAddGalleryModal(true);
-                                                            }}
-                                                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-xs shrink-0 cursor-pointer active:scale-95"
-                                                        >
-                                                            <Plus size={13} /> Add Photo
-                                                        </button>
+
+                                                        <div className="flex items-center gap-2">
+                                                            {farmGalleryList.length > 0 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const tourItems = farmGalleryList.map((g, i) => ({
+                                                                            src: g.url,
+                                                                            title: g.caption || `Farm Photo ${i + 1}`,
+                                                                            caption: g.caption || ''
+                                                                        }));
+                                                                        openImageModal({
+                                                                            src: tourItems[0].src,
+                                                                            title: tourItems[0].title,
+                                                                            gallery: tourItems,
+                                                                            currentIndex: 0
+                                                                        });
+                                                                    }}
+                                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold font-headings flex items-center gap-1 shadow-xs shrink-0 cursor-pointer active:scale-95"
+                                                                >
+                                                                    <Compass size={13} className="animate-spin-slow" />
+                                                                    <span>▶ Preview Tour</span>
+                                                                </button>
+                                                            )}
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setNewGalleryForm({ url: '', caption: '' });
+                                                                    setShowAddGalleryModal(true);
+                                                                }}
+                                                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-xs shrink-0 cursor-pointer active:scale-95"
+                                                            >
+                                                                <Plus size={13} /> Add Photo
+                                                            </button>
+                                                        </div>
                                                     </div>
 
                                                     {/* Added Gallery Photos Grid */}
                                                     {farmGalleryList.length > 0 ? (
                                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
                                                             {farmGalleryList.map((item, idx) => (
-                                                                <div key={item.id || idx} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs relative group">
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleRemoveGalleryPhoto(idx)}
-                                                                        className="absolute top-1.5 right-1.5 bg-rose-600/90 hover:bg-rose-700 text-white p-1 rounded-lg z-20 transition-transform active:scale-95 cursor-pointer"
-                                                                        title="Remove photo"
+                                                                <div key={item.id || idx} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs relative group cursor-pointer">
+                                                                    <div className="absolute top-1.5 right-1.5 flex items-center gap-1 z-20">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setPhotoToEdit({ ...item, id: idx });
+                                                                                setShowEditPhotoModal(true);
+                                                                            }}
+                                                                            className="bg-slate-900/90 hover:bg-emerald-600 text-white p-1 rounded-lg transition-transform active:scale-95 cursor-pointer"
+                                                                            title="Edit photo"
+                                                                        >
+                                                                            <Pencil size={12} />
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleRemoveGalleryPhoto(idx);
+                                                                            }}
+                                                                            className="bg-rose-600/90 hover:bg-rose-700 text-white p-1 rounded-lg transition-transform active:scale-95 cursor-pointer"
+                                                                            title="Remove photo"
+                                                                        >
+                                                                            <Trash2 size={12} />
+                                                                        </button>
+                                                                    </div>
+                                                                    <div 
+                                                                        className="h-20 bg-slate-100 overflow-hidden relative"
+                                                                        onClick={() => {
+                                                                            const tourItems = farmGalleryList.map((g, i) => ({
+                                                                                src: g.url,
+                                                                                title: g.caption || `Farm Photo ${i + 1}`,
+                                                                                caption: g.caption || ''
+                                                                            }));
+                                                                            openImageModal({
+                                                                                src: item.url,
+                                                                                title: item.caption || `Farm Photo ${idx + 1}`,
+                                                                                gallery: tourItems,
+                                                                                currentIndex: idx
+                                                                            });
+                                                                        }}
                                                                     >
-                                                                        <Trash2 size={12} />
-                                                                    </button>
-                                                                    <div className="h-20 bg-slate-100 overflow-hidden relative">
                                                                         <img
                                                                             src={item.url || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80'}
                                                                             alt={item.caption || 'Farm Photo'}
@@ -6293,6 +6372,14 @@ export default function Profile() {
                 </div>,
                 document.body
             )}
+
+            {/* Edit Photo Modal */}
+            <EditPhotoModal
+                showEditPhotoModal={showEditPhotoModal}
+                setShowEditPhotoModal={setShowEditPhotoModal}
+                photoToEdit={photoToEdit}
+                handleSaveEditedPhoto={handleSaveEditedGalleryPhoto}
+            />
         </div>
     );
 }

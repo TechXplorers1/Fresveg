@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ref, onValue, push, set } from 'firebase/database';
+import { ref, onValue, push, set, remove } from 'firebase/database';
 import { realtimeDb } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -15,6 +15,8 @@ import ModernDatePicker from '../components/common/ModernDatePicker';
 import ImageUploadField from '../components/common/ImageUploadField';
 import { ensureFarmsInFirebase } from '../services/farmSeeder';
 import { getProductSlug } from './ProductDetails';
+import { useImageModal } from '../context/ImageModalContext';
+import EditPhotoModal from './Profile/modals/EditPhotoModal';
 
 // Sub-Category Options Map for Farm Direct Products
 export const SUB_CATEGORIES_MAP = {
@@ -186,6 +188,7 @@ export default function FarmDetails() {
 
   const { user, userProfile } = useAuth();
   const { addToCart, cartItems, updateQuantity } = useCart();
+  const { openImageModal } = useImageModal();
 
   const [farm, setFarm] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -219,6 +222,53 @@ export default function FarmDetails() {
   const [showAddPhotoModal, setShowAddPhotoModal] = useState(false);
   const [photoSectionTarget, setPhotoSectionTarget] = useState('gallery'); // 'gallery' | 'crops' | 'livestock' | 'kids'
   const [newPhoto, setNewPhoto] = useState({ url: '', caption: '' });
+
+  // Edit Photo Modal State
+  const [showEditPhotoModal, setShowEditPhotoModal] = useState(false);
+  const [photoToEdit, setPhotoToEdit] = useState(null);
+  const [editSectionTarget, setEditSectionTarget] = useState('gallery');
+
+  const handleOpenEditPhotoModal = (photo, sectionKey) => {
+    setPhotoToEdit(photo);
+    setEditSectionTarget(sectionKey);
+    setShowEditPhotoModal(true);
+  };
+
+  const handleSaveEditedPhoto = async (updatedPhoto) => {
+    const targetKey = editSectionTarget === 'crops' ? 'cropPhotos'
+      : editSectionTarget === 'livestock' ? 'livestockPhotos'
+      : editSectionTarget === 'kids' ? 'kidsPhotos'
+      : editSectionTarget === 'stay' || editSectionTarget === 'accommodation' ? 'accommodationPhotos'
+      : 'gallery';
+
+    const currentList = editForm?.[targetKey] || farm?.[targetKey] || [];
+    const updatedList = currentList.map((item, idx) => {
+      if ((item.id && item.id === updatedPhoto.id) || idx === updatedPhoto.id || item.url === photoToEdit?.url) {
+        return {
+          ...item,
+          url: updatedPhoto.url,
+          caption: updatedPhoto.caption
+        };
+      }
+      return item;
+    });
+
+    setEditForm(prev => ({ ...prev, [targetKey]: updatedList }));
+    setFarm(prev => prev ? ({ ...prev, [targetKey]: updatedList }) : prev);
+
+    const farmKeyToSave = farm?.id || getFarmSlug(farm);
+    if (farmKeyToSave) {
+      try {
+        const targetRef = ref(realtimeDb, `farms/${farmKeyToSave}/${targetKey}`);
+        await set(targetRef, sanitizeForFirebase(updatedList));
+      } catch (err) {
+        console.error(`Failed to save edited ${targetKey} photo:`, err);
+      }
+    }
+
+    setShowEditPhotoModal(false);
+    setPhotoToEdit(null);
+  };
 
   // Lightbox Viewer Index
   const openLocationInMaps = (locationStr, e) => {
@@ -444,6 +494,21 @@ export default function FarmDetails() {
     } catch (err) {
       console.error('Failed to submit customer review:', err);
       alert('Failed to submit review: ' + err.message);
+    }
+  };
+
+  // Vendor / Owner / Admin delete customer review
+  const handleDeleteReview = async (reviewId) => {
+    if (!farm?.id || !reviewId) return;
+    const confirmDelete = window.confirm("Are you sure you want to delete this customer review?");
+    if (!confirmDelete) return;
+
+    try {
+      const reviewRef = ref(realtimeDb, `farms/${farm.id}/reviews/${reviewId}`);
+      await remove(reviewRef);
+    } catch (err) {
+      console.error("Failed to delete customer review:", err);
+      alert("Error deleting review: " + err.message);
     }
   };
 
@@ -1448,6 +1513,34 @@ export default function FarmDetails() {
               >
                 <Calendar size={16} /> Book Farm Visit Slot
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const allPhotos = [
+                    ...(farm.gallery || []),
+                    ...(farm.cropPhotos || []),
+                    ...(farm.livestockPhotos || []),
+                    ...(farm.accommodationPhotos || []),
+                    ...(farm.kidsPhotos || [])
+                  ];
+                  const fullTourList = allPhotos.map((p, i) => ({
+                    src: p.url || p.image || p,
+                    title: p.caption || `${farm.farmName} Tour Photo ${i + 1}`,
+                    caption: p.caption || ''
+                  }));
+                  if (fullTourList.length > 0) {
+                    openImageModal({
+                      src: fullTourList[0].src,
+                      title: fullTourList[0].title,
+                      gallery: fullTourList,
+                      currentIndex: 0
+                    });
+                  }
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-400/40 backdrop-blur-md px-5 py-3 rounded-2xl font-bold text-xs font-headings transition-all flex items-center gap-2 shadow-lg cursor-pointer active:scale-95"
+              >
+                <Compass size={16} /> ▶ Start Visual Tour
+              </button>
               <a
                 href={`https://maps.google.com/?q=${encodeURIComponent(farm.farmName + ' ' + farm.location)}`}
                 target="_blank"
@@ -1701,14 +1794,30 @@ export default function FarmDetails() {
                             </div>
                           )}
                           {isEditing && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveCropPhoto(photo.id || photo.url)}
-                              className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90 z-10"
-                              title="Delete Photo"
-                            >
-                              <Trash2 size={12} />
-                            </button>
+                            <div className="absolute top-1.5 right-1.5 flex items-center gap-1 z-10">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenEditPhotoModal({ ...photo, id: photo.id || idx }, 'crops');
+                                }}
+                                className="bg-slate-800/90 hover:bg-emerald-600 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90"
+                                title="Edit Photo"
+                              >
+                                <Pencil size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveCropPhoto(photo.id || photo.url);
+                                }}
+                                className="bg-rose-600/90 hover:bg-rose-700 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90"
+                                title="Delete Photo"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
                           )}
                         </div>
                       ))}
@@ -1838,14 +1947,30 @@ export default function FarmDetails() {
                             </div>
                           )}
                           {isEditing && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveLivestockPhoto(photo.id || photo.url)}
-                              className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90 z-10"
-                              title="Delete Photo"
-                            >
-                              <Trash2 size={12} />
-                            </button>
+                            <div className="absolute top-1.5 right-1.5 flex items-center gap-1 z-10">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenEditPhotoModal({ ...photo, id: photo.id || idx }, 'livestock');
+                                }}
+                                className="bg-slate-800/90 hover:bg-teal-600 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90"
+                                title="Edit Photo"
+                              >
+                                <Pencil size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveLivestockPhoto(photo.id || photo.url);
+                                }}
+                                className="bg-rose-600/90 hover:bg-rose-700 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90"
+                                title="Delete Photo"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
                           )}
                         </div>
                       ))}
@@ -1982,14 +2107,30 @@ export default function FarmDetails() {
                             </div>
                           )}
                           {isEditing && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveKidsPhoto(photo.id || photo.url)}
-                              className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90 z-10"
-                              title="Delete Photo"
-                            >
-                              <Trash2 size={12} />
-                            </button>
+                            <div className="absolute top-1.5 right-1.5 flex items-center gap-1 z-10">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenEditPhotoModal({ ...photo, id: photo.id || idx }, 'kids');
+                                }}
+                                className="bg-slate-800/90 hover:bg-purple-600 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90"
+                                title="Edit Photo"
+                              >
+                                <Pencil size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveKidsPhoto(photo.id || photo.url);
+                                }}
+                                className="bg-rose-600/90 hover:bg-rose-700 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90"
+                                title="Delete Photo"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
                           )}
                         </div>
                       ))}
@@ -2123,14 +2264,30 @@ export default function FarmDetails() {
                             </div>
                           )}
                           {isEditing && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveAccommodationPhoto(photo.id || photo.url)}
-                              className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90 z-10"
-                              title="Delete Photo"
-                            >
-                              <Trash2 size={12} />
-                            </button>
+                            <div className="absolute top-1.5 right-1.5 flex items-center gap-1 z-10">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenEditPhotoModal({ ...photo, id: photo.id || idx }, 'stay');
+                                }}
+                                className="bg-slate-800/90 hover:bg-indigo-600 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90"
+                                title="Edit Photo"
+                              >
+                                <Pencil size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveAccommodationPhoto(photo.id || photo.url);
+                                }}
+                                className="bg-rose-600/90 hover:bg-rose-700 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90"
+                                title="Delete Photo"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
                           )}
                         </div>
                       ))}
@@ -2252,7 +2409,7 @@ export default function FarmDetails() {
           {/* ── 6. Farm Gallery & Visual Tour 📸 ── */}
           {(activeGallery.length > 0 || isEditing) && (
             <div className="bg-white/70 backdrop-blur-md border border-white/60 p-5 sm:p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02] space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3 gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center font-bold text-lg">
                     <Camera size={20} className="text-indigo-600" />
@@ -2262,14 +2419,40 @@ export default function FarmDetails() {
                     <p className="text-xs text-slate-400 font-medium font-body">Explore real photos of our fields, crops, stays, animals, and sunsets</p>
                   </div>
                 </div>
-                {isEditing && (
-                  <button
-                    onClick={() => setShowAddPhotoModal(true)}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95"
-                  >
-                    <Plus size={14} /> Add Farm Photo
-                  </button>
-                )}
+
+                <div className="flex items-center gap-2">
+                  {generalGalleryPhotos.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const fullTourList = generalGalleryPhotos.map((p, i) => ({
+                          src: p.url,
+                          title: p.caption || `${farm?.farmName || 'Farm'} Tour Photo ${i + 1}`,
+                          caption: p.caption || ''
+                        }));
+                        openImageModal({
+                          src: fullTourList[0].src,
+                          title: fullTourList[0].title,
+                          gallery: fullTourList,
+                          currentIndex: 0
+                        });
+                      }}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                    >
+                      <Compass size={14} className="animate-spin-slow" />
+                      <span>▶ Start Visual Tour</span>
+                    </button>
+                  )}
+
+                  {isEditing && (
+                    <button
+                      onClick={() => setShowAddPhotoModal(true)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                    >
+                      <Plus size={14} /> Add Farm Photo
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Photo Grid Showcase */}
@@ -2291,7 +2474,19 @@ export default function FarmDetails() {
                     <div
                       key={photo.id || idx}
                       className="relative h-36 sm:h-44 rounded-2xl overflow-hidden group cursor-pointer border border-slate-200/80 shadow-xs hover:shadow-lg transition-all"
-                      onClick={() => setLightboxIndex(idx)}
+                      onClick={() => {
+                        const fullTourList = generalGalleryPhotos.map((p, i) => ({
+                          src: p.url,
+                          title: p.caption || `${farm?.farmName || 'Farm'} Tour Photo ${i + 1}`,
+                          caption: p.caption || ''
+                        }));
+                        openImageModal({
+                          src: photo.url,
+                          title: photo.caption || `${farm?.farmName || 'Farm'} Tour Photo ${idx + 1}`,
+                          gallery: fullTourList,
+                          currentIndex: idx
+                        });
+                      }}
                     >
                       <img
                         src={photo.url}
@@ -2299,6 +2494,37 @@ export default function FarmDetails() {
                         className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent opacity-85 group-hover:opacity-95 transition-opacity"></div>
+
+                      {isEditing ? (
+                        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 z-20">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditPhotoModal({ ...photo, id: photo.id || idx }, 'gallery');
+                            }}
+                            className="bg-slate-900/90 hover:bg-emerald-600 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90"
+                            title="Edit Photo"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveGalleryPhoto(photo.id || idx);
+                            }}
+                            className="bg-rose-600/90 hover:bg-rose-700 text-white p-1.5 rounded-lg shadow-md cursor-pointer transition-all active:scale-90"
+                            title="Delete Photo"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="absolute top-2.5 right-2.5 bg-black/40 backdrop-blur-md p-1.5 rounded-xl text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Maximize2 size={13} />
+                        </div>
+                      )}
 
                       {photo.caption && (
                         <p className="absolute bottom-2.5 left-2.5 right-2.5 text-[11px] font-bold text-white font-body truncate drop-shadow-sm">
@@ -2377,10 +2603,22 @@ export default function FarmDetails() {
                             <span className="text-[10px] text-slate-400 font-medium">{rev.date || 'Verified Visitor'}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-0.5 text-amber-400">
-                          {[...Array(Number(rev.rating) || 5)].map((_, i) => (
-                            <Star key={i} size={12} className="fill-current" />
-                          ))}
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-0.5 text-amber-400">
+                            {[...Array(Number(rev.rating) || 5)].map((_, i) => (
+                              <Star key={i} size={12} className="fill-current" />
+                            ))}
+                          </div>
+                          {(isOwner || isEditing || userProfile?.role === 'vendor' || userProfile?.role === 'admin') && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteReview(rev.id)}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="Delete Customer Review"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </div>
                       <p className="text-xs text-slate-600 font-body leading-relaxed italic">"{rev.comment}"</p>
@@ -3637,7 +3875,13 @@ export default function FarmDetails() {
           </div>
         </div>
       )}
-
+      {/* Edit Photo Modal */}
+      <EditPhotoModal
+        showEditPhotoModal={showEditPhotoModal}
+        setShowEditPhotoModal={setShowEditPhotoModal}
+        photoToEdit={photoToEdit}
+        handleSaveEditedPhoto={handleSaveEditedPhoto}
+      />
     </div>
   );
 }

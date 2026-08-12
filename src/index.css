@@ -284,3 +284,18 @@
     opacity: 1;
     transform: translateY(0) translateX(0) scale(1);
   }
+
+  /* Image Modal & Zoom Utilities */
+  img:not(.no-modal):not([data-no-modal="true"]) {
+    cursor: zoom-in;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
