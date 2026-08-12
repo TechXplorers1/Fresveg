@@ -2,12 +2,15 @@ import React from 'react';
 import { BarChart2, TrendingUp, DollarSign, Store, Compass, Users, Package, ShoppingBag, Calendar, CheckCircle } from 'lucide-react';
 
 export default function VendorAnalyticsTab({
+    activeTab,
+    isVendor,
     vendorShops = [],
     vendorFarms = [],
     vendorProducts = [],
     orders = [],
     incomingFarmBookings = []
 }) {
+    if (activeTab !== 'analytics' || !isVendor) return null;
     // 1. Calculate Market / Shops Sales & Revenue
     const completedShopOrders = orders.filter(o => o.status === 'delivered');
     const totalShopSalesRevenue = completedShopOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
