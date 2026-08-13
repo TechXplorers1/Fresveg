@@ -181,11 +181,17 @@ export const CartProvider = ({ children }) => {
       const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const orderRef = ref(realtimeDb, `orders/${orderId}`);
       
+      const customerPhone = user?.phoneNumber || user?.phone || '+91 98765 43210';
+      const firstItem = cartItems[0] || {};
+      const vendorPhone = firstItem.vendorPhone || firstItem.phone || '+91 98765 43210';
+
       const orderData = {
         orderId: orderId,
         customerId: user.uid,
         customerName: user.displayName || 'Customer',
         customerEmail: user.email,
+        customerPhone: customerPhone,
+        vendorPhone: vendorPhone,
         items: cartItems,
         total: getTotal(),
         address: address,

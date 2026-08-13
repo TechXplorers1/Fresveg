@@ -1,5 +1,5 @@
 import React from 'react';
-import { Store, Plus, MapPin, FileText, Loader2, ArrowLeft, Pencil, Trash2, Globe, Instagram, Facebook, Youtube, MessageCircle, Package, Star, Navigation, X, CheckCircle, ExternalLink, Clock } from 'lucide-react';
+import { Store, Plus, MapPin, FileText, Loader2, ArrowLeft, Pencil, Trash2, Globe, Instagram, Facebook, Youtube, MessageCircle, Package, Star, Navigation, X, Check, CheckCircle, ExternalLink, Clock } from 'lucide-react';
 import ImageUploadField from '../../../components/common/ImageUploadField';
 
 const formatUpdatedTime = (ts) => {

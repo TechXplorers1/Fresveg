@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCart, Store, User, Menu, X, Leaf, LogOut, Bike, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import NotificationDrawer from '../common/NotificationDrawer';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -94,21 +95,25 @@ export default function Navbar() {
             )}
 
             <div className="flex items-center space-x-3.5 border-l border-slate-200/80 pl-4 ml-2">
-              <Link 
-                to="/cart" 
-                className={`relative p-2.5 transition-all duration-200 rounded-xl ${
-                  isActive('/cart') 
-                    ? 'text-emerald-600 bg-emerald-50/80 border border-emerald-200/60 shadow-xs' 
-                    : 'text-slate-500 hover:text-emerald-600 hover:bg-slate-100/60'
-                }`}
-              >
-                <ShoppingCart size={21} />
-                {cartItemCount > 0 && (
-                  <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-5 h-5 px-1 py-0.5 text-2xs font-extrabold leading-none text-white transform translate-x-1/4 -translate-y-1/4 bg-brand rounded-full border-2 border-white animate-pulse-glow">
-                    {cartItemCount}
-                  </span>
-                )}
-              </Link>
+              <NotificationDrawer />
+
+              {userProfile?.role !== 'vendor' && userProfile?.role !== 'admin' && userProfile?.role !== 'delivery_person' && (
+                <Link 
+                  to="/cart" 
+                  className={`relative p-2.5 transition-all duration-200 rounded-xl ${
+                    isActive('/cart') 
+                      ? 'text-emerald-600 bg-emerald-50/80 border border-emerald-200/60 shadow-xs' 
+                      : 'text-slate-500 hover:text-emerald-600 hover:bg-slate-100/60'
+                  }`}
+                >
+                  <ShoppingCart size={21} />
+                  {cartItemCount > 0 && (
+                    <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-5 h-5 px-1 py-0.5 text-2xs font-extrabold leading-none text-white transform translate-x-1/4 -translate-y-1/4 bg-brand rounded-full border-2 border-white animate-pulse-glow">
+                      {cartItemCount}
+                    </span>
+                  )}
+                </Link>
+              )}
               
               {user ? (
                 <div className="flex items-center gap-2">
@@ -160,15 +165,19 @@ export default function Navbar() {
                  <ShieldCheck size={16} className="text-emerald-600" /> Admin Panel
                </Link>
              )}
-            <Link to="/cart" onClick={() => setIsMenuOpen(false)} className={`flex items-center justify-between ${getMobileLinkStyle('/cart')}`}>
-              <div className="flex items-center gap-2">
-                <ShoppingCart size={16} /> Cart
-              </div>
-              {cartItemCount > 0 && (
-                 <span className="bg-brand text-white text-2xs font-extrabold px-2 py-0.5 rounded-full">{cartItemCount}</span>
-              )}
-            </Link>
+            {userProfile?.role !== 'vendor' && userProfile?.role !== 'admin' && userProfile?.role !== 'delivery_person' && (
+              <Link to="/cart" onClick={() => setIsMenuOpen(false)} className={`flex items-center justify-between ${getMobileLinkStyle('/cart')}`}>
+                <div className="flex items-center gap-2">
+                  <ShoppingCart size={16} /> Cart
+                </div>
+                {cartItemCount > 0 && (
+                   <span className="bg-brand text-white text-2xs font-extrabold px-2 py-0.5 rounded-full">{cartItemCount}</span>
+                )}
+              </Link>
+            )}
             
+            <NotificationDrawer isMobile />
+
             {user && (
               <Link to="/profile" onClick={() => setIsMenuOpen(false)} className={`flex items-center gap-2 ${getMobileLinkStyle('/profile')}`}>
                 {userProfile?.role === 'vendor' ? (

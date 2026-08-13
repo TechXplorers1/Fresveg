@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, Truck, Check, Clock, MapPin, Shield, Bike, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Package, Truck, Check, Clock, MapPin, Shield, Bike, ShoppingBag, ArrowRight, Phone, MessageCircle, User } from 'lucide-react';
 
 export default function CustomerOrdersTab({
     activeTab,
@@ -99,18 +99,115 @@ export default function CustomerOrdersTab({
                                                 ))}
                                             </div>
 
-                                            {/* Shipping Info */}
-                                            <div className="md:col-span-4 bg-white/50 p-4 rounded-2xl border border-slate-100/85 flex flex-col justify-center">
-                                                <div className="flex items-start gap-2">
-                                                    <MapPin size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
-                                                    <div>
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider font-headings">Shipping Destination</p>
-                                                        <p className="text-xs text-slate-600 leading-relaxed italic line-clamp-3 font-body">
-                                                            {order.address}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                             {/* Shipping & Contact Info */}
+                                             <div className="md:col-span-4 bg-white/60 p-4 rounded-2xl border border-slate-100 flex flex-col justify-between space-y-3">
+                                                 <div className="flex items-start gap-2">
+                                                     <MapPin size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
+                                                     <div>
+                                                         <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider font-headings">Shipping Destination</p>
+                                                         <p className="text-xs text-slate-600 leading-relaxed italic line-clamp-2 font-body">
+                                                             {order.address}
+                                                         </p>
+                                                     </div>
+                                                 </div>
+
+                                                 {/* Mobile Contact Numbers Card */}
+                                                 <div className="pt-2 border-t border-slate-100 space-y-2 text-xs">
+                                                     {/* For Vendor: Show Customer Contact */}
+                                                     {isVendor ? (
+                                                         <div className="bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-100/60">
+                                                             <div className="flex items-center justify-between gap-1 mb-1">
+                                                                 <span className="text-[10px] font-black uppercase text-emerald-900 font-headings flex items-center gap-1">
+                                                                     <User size={11} className="text-emerald-600" /> Customer: {order.customerName || 'Customer'}
+                                                                 </span>
+                                                             </div>
+                                                             <div className="flex items-center justify-between gap-2">
+                                                                 <span className="font-bold text-slate-800 font-mono text-[11px]">{order.customerPhone || '+91 98765 43210'}</span>
+                                                                 <div className="flex items-center gap-1">
+                                                                     <a
+                                                                         href={`tel:${order.customerPhone || '+919876543210'}`}
+                                                                         className="p-1 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 font-headings cursor-pointer"
+                                                                         title="Call Customer"
+                                                                     >
+                                                                         <Phone size={10} /> Call
+                                                                     </a>
+                                                                     <a
+                                                                         href={`https://wa.me/${(order.customerPhone || '919876543210').replace(/[^0-9]/g, '')}`}
+                                                                         target="_blank"
+                                                                         rel="noopener noreferrer"
+                                                                         className="p-1 px-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] flex items-center gap-1 font-headings cursor-pointer"
+                                                                         title="WhatsApp Customer"
+                                                                     >
+                                                                         <MessageCircle size={10} />
+                                                                     </a>
+                                                                 </div>
+                                                             </div>
+                                                         </div>
+                                                     ) : (
+                                                         /* For Customer: Show Vendor Contact */
+                                                         <div className="bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-100/60">
+                                                             <div className="flex items-center justify-between gap-1 mb-1">
+                                                                 <span className="text-[10px] font-black uppercase text-emerald-900 font-headings flex items-center gap-1">
+                                                                     <ShoppingBag size={11} className="text-emerald-600" /> Vendor Store Contact
+                                                                 </span>
+                                                             </div>
+                                                             <div className="flex items-center justify-between gap-2">
+                                                                 <span className="font-bold text-slate-800 font-mono text-[11px]">{order.vendorPhone || order.items?.[0]?.vendorPhone || '+91 98765 43210'}</span>
+                                                                 <div className="flex items-center gap-1">
+                                                                     <a
+                                                                         href={`tel:${order.vendorPhone || order.items?.[0]?.vendorPhone || '+919876543210'}`}
+                                                                         className="p-1 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 font-headings cursor-pointer"
+                                                                         title="Call Vendor"
+                                                                     >
+                                                                         <Phone size={10} /> Call
+                                                                     </a>
+                                                                     <a
+                                                                         href={`https://wa.me/${(order.vendorPhone || order.items?.[0]?.vendorPhone || '919876543210').replace(/[^0-9]/g, '')}`}
+                                                                         target="_blank"
+                                                                         rel="noopener noreferrer"
+                                                                         className="p-1 px-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] flex items-center gap-1 font-headings cursor-pointer"
+                                                                         title="WhatsApp Vendor"
+                                                                     >
+                                                                         <MessageCircle size={10} />
+                                                                     </a>
+                                                                 </div>
+                                                             </div>
+                                                         </div>
+                                                     )}
+
+                                                     {/* Rider Contact details (If assigned) */}
+                                                     {order.deliveryBoyName && (
+                                                         <div className="bg-amber-50/70 p-2.5 rounded-xl border border-amber-100/60">
+                                                             <div className="flex items-center justify-between gap-1 mb-1">
+                                                                 <span className="text-[10px] font-black uppercase text-amber-900 font-headings flex items-center gap-1">
+                                                                     <Bike size={11} className="text-amber-600" /> Rider: {order.deliveryBoyName}
+                                                                 </span>
+                                                             </div>
+                                                             <div className="flex items-center justify-between gap-2">
+                                                                 <span className="font-bold text-slate-800 font-mono text-[11px]">{order.deliveryBoyPhone || '+91 98765 43210'}</span>
+                                                                 <div className="flex items-center gap-1">
+                                                                     <a
+                                                                         href={`tel:${order.deliveryBoyPhone || '+919876543210'}`}
+                                                                         className="p-1 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 font-headings cursor-pointer"
+                                                                         title="Call Rider"
+                                                                     >
+                                                                         <Phone size={10} /> Call
+                                                                     </a>
+                                                                     <a
+                                                                         href={`https://wa.me/${(order.deliveryBoyPhone || '919876543210').replace(/[^0-9]/g, '')}`}
+                                                                         target="_blank"
+                                                                         rel="noopener noreferrer"
+                                                                         className="p-1 px-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] flex items-center gap-1 font-headings cursor-pointer"
+                                                                         title="WhatsApp Rider"
+                                                                     >
+                                                                         <MessageCircle size={10} />
+                                                                     </a>
+                                                                 </div>
+                                                             </div>
+                                                         </div>
+                                                     )}
+                                                 </div>
+                                             </div>
                                         </div>
                                     </div>
 

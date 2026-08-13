@@ -7,7 +7,7 @@ import OrderTrackingMap from '../components/OrderTrackingMap';
 import {
   ArrowLeft, Package, MapPin, Clock, CheckCircle, Truck,
   ShoppingBag, Store, CreditCard, Calendar, AlertCircle,
-  Navigation, RefreshCw
+  Navigation, RefreshCw, Phone, MessageCircle
 } from 'lucide-react';
 
 // ─── Order Status Timeline config ────────────────────────────────────────────
@@ -282,6 +282,8 @@ export default function OrderTracking() {
     );
   }
 
+  const isDelivered = order.status === 'delivered';
+
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       {/* Progress Stepper */}
@@ -290,11 +292,11 @@ export default function OrderTracking() {
           {[
             { label: 'Shopping Cart', desc: 'Manage items & location' },
             { label: 'Payment', desc: 'Choose checkout method' },
-            { label: 'Live Tracking', desc: 'Monitor delivery status' }
+            { label: isDelivered ? 'Delivery Completed' : 'Live Tracking', desc: isDelivered ? 'Order received' : 'Monitor delivery status' }
           ].map((step, idx) => {
             const stepNum = idx + 1;
             const isActive = stepNum === 3;
-            const isCompleted = stepNum < 3;
+            const isCompleted = stepNum < 3 || isDelivered;
             return (
               <div key={idx} className="flex-1 w-full flex items-center gap-4 relative">
                 <div className="relative flex items-center">
@@ -329,33 +331,39 @@ export default function OrderTracking() {
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 bg-white/70 backdrop-blur-md border border-white/60 p-6 rounded-3xl shadow-sm animate-fade-in">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/profile')}
-            className="flex items-center gap-2 text-slate-500 hover:text-emerald-700 font-bold text-xs bg-white px-4 py-2.5 rounded-xl shadow-sm border border-slate-100 hover:border-emerald-250 transition-all uppercase tracking-wider"
-          >
-            <ArrowLeft size={14} /> Back to Profile
-          </button>
-          <div>
-            <h1 className="text-xl font-bold text-slate-800 font-headings">
-              Track Order
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-800 font-headings">
+              {isDelivered ? 'Delivery Completed' : 'Track Order'}
             </h1>
-            <p className="text-xs text-slate-400 font-mono mt-0.5">
-              Order ID: #{order.id.slice(-10).toUpperCase()}
-            </p>
+            {isDelivered && (
+              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-emerald-300 font-mono">
+                Delivered
+              </span>
+            )}
           </div>
+          <p className="text-xs text-slate-400 font-mono mt-0.5">
+            Order ID: #{order.id.slice(-10).toUpperCase()}
+          </p>
         </div>
-        {/* Live badge */}
-        <div className="bg-emerald-50 text-emerald-800 border border-emerald-100/50 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 self-start sm:self-auto">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-          Live Tracking Active
-        </div>
+        {/* Status badge */}
+        {isDelivered ? (
+          <div className="bg-emerald-600 text-white px-4 py-2 rounded-full text-xs font-extrabold flex items-center gap-2 self-start sm:self-auto shadow-md font-mono">
+            <CheckCircle size={15} />
+            Order Delivered Successfully
+          </div>
+        ) : (
+          <div className="bg-emerald-50 text-emerald-800 border border-emerald-100/50 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 self-start sm:self-auto font-mono">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+            Live Tracking Active
+          </div>
+        )}
       </div>
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* Left Column: Timeline, Info & Items */}
+        {/* Left Column: Timeline & Order Metadata */}
         <div className="lg:col-span-5 space-y-6">
           
           {/* Status Timeline */}
@@ -366,7 +374,9 @@ export default function OrderTracking() {
               </div>
               <div>
                 <h2 className="font-bold text-slate-800 font-headings">Delivery Progress</h2>
-                <p className="text-xs text-slate-450">Updates automatically in real-time</p>
+                <p className="text-xs text-slate-450">
+                  {isDelivered ? 'All delivery stages completed' : 'Updates automatically in real-time'}
+                </p>
               </div>
             </div>
             <div className="pl-1">
@@ -375,7 +385,7 @@ export default function OrderTracking() {
                   key={step.key}
                   step={step}
                   isActive={idx === currentStepIdx}
-                  isCompleted={idx < currentStepIdx}
+                  isCompleted={idx < currentStepIdx || (isDelivered && idx === STATUS_STEPS.length - 1)}
                   isLast={idx === STATUS_STEPS.length - 1}
                 />
               ))}
@@ -403,6 +413,28 @@ export default function OrderTracking() {
                 <span className="text-slate-400">Store / Vendor</span>
                 <span className="text-slate-700 font-bold truncate max-w-[180px]">{vendorName}</span>
               </div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-slate-100/50 gap-2">
+                <span className="text-slate-400">Vendor Contact Phone</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-slate-700 font-mono font-bold">{order.vendorPhone || order.items?.[0]?.vendorPhone || '+91 98765 43210'}</span>
+                  <a
+                    href={`tel:${order.vendorPhone || order.items?.[0]?.vendorPhone || '+919876543210'}`}
+                    className="p-1 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer font-headings"
+                    title="Call Vendor"
+                  >
+                    <Phone size={10} /> Call
+                  </a>
+                  <a
+                    href={`https://wa.me/${(order.vendorPhone || order.items?.[0]?.vendorPhone || '919876543210').replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1 px-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer font-headings"
+                    title="WhatsApp Vendor"
+                  >
+                    <MessageCircle size={10} />
+                  </a>
+                </div>
+              </div>
               <div className="flex items-start justify-between py-2">
                 <span className="text-slate-400 flex-shrink-0">Shipping Destination</span>
                 <span className="text-slate-600 font-semibold text-right max-w-[200px] leading-relaxed italic">
@@ -418,135 +450,249 @@ export default function OrderTracking() {
             </div>
           </div>
 
-          {/* Items */}
-          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02]">
-            <h2 className="font-bold text-slate-800 font-headings flex items-center gap-2 mb-4">
-              <ShoppingBag size={16} className="text-emerald-600" />
-              Ordered Items ({order.items?.length || 0})
-            </h2>
-            <div className="space-y-3">
-              {order.items?.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-3 bg-white/40 border border-slate-100 rounded-2xl p-3">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-14 h-14 object-cover rounded-xl border border-slate-100 flex-shrink-0"
-                    onError={(e) => { e.target.style.display = 'none'; }}
-                  />
-                  <div className="flex-grow min-w-0">
-                    <p className="font-bold text-slate-800 text-sm truncate font-headings">{item.name}</p>
-                    <p className="text-[10px] text-slate-400 font-semibold">Merchant: {item.vendor}</p>
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <span className="text-[10px] font-black bg-emerald-50 text-emerald-850 px-2 py-0.5 rounded border border-emerald-100/30 font-sans">Qty: {item.quantity}</span>
-                      <span className="text-xs font-bold text-slate-650">₹{item.price}</span>
+          {/* Items (Only rendered in left column when order is STILL IN TRANSIT) */}
+          {!isDelivered && (
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02]">
+              <h2 className="font-bold text-slate-800 font-headings flex items-center gap-2 mb-4">
+                <ShoppingBag size={16} className="text-emerald-600" />
+                Ordered Items ({order.items?.length || 0})
+              </h2>
+              <div className="space-y-3">
+                {order.items?.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-3 bg-white/40 border border-slate-100 rounded-2xl p-3">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-14 h-14 object-cover rounded-xl border border-slate-100 flex-shrink-0"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                    <div className="flex-grow min-w-0">
+                      <p className="font-bold text-slate-800 text-sm truncate font-headings">{item.name}</p>
+                      <p className="text-[10px] text-slate-400 font-semibold">Merchant: {item.vendor}</p>
+                      <div className="flex items-center gap-3 mt-1.5">
+                        <span className="text-[10px] font-black bg-emerald-50 text-emerald-850 px-2 py-0.5 rounded border border-emerald-100/30 font-sans">Qty: {item.quantity}</span>
+                        <span className="text-xs font-bold text-slate-650">₹{item.price}</span>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-extrabold text-slate-800 text-sm font-sans">₹{(item.price * item.quantity).toFixed(2)}</p>
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="font-extrabold text-slate-800 text-sm font-sans">₹{(item.price * item.quantity).toFixed(2)}</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
 
-        {/* Right Column: Map & Simulator */}
+        {/* Right Column: Delivery Completed View OR Live Map View */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02]">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
-                <MapPin size={18} />
-              </div>
-              <div>
-                <h2 className="font-bold text-slate-800 font-headings">Live Delivery Route Map</h2>
-                <p className="text-xs text-slate-450">Estimated real-time travel progress</p>
-              </div>
-            </div>
-
-            {/* Location lookup spinner */}
-            {locationLoading && (
-              <div className="flex items-center gap-2 mb-4 bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-455 animate-pulse">
-                <div className="w-3 h-3 rounded-full border-2 border-emerald-550 border-t-transparent animate-spin" />
-                Looking up vendor coordinates on Nominatim...
-              </div>
-            )}
-
-            <div className="rounded-2xl border border-slate-150 overflow-hidden shadow-inner relative">
-              <OrderTrackingMap
-                vendorLocation={resolvedVendorLocation}
-                vendorName={vendorName}
-                deliveryAddress={order.address}
-                deliveryBoyLocation={order.deliveryBoyLocation}
-                deliveryBoyName={order.deliveryBoyName}
-              />
-            </div>
-
-            {/* Developer Location Simulation Panel */}
-            {order.status === 'dispatched' && (
-              <div className="mt-5 bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-inner">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-white border border-indigo-100 flex items-center justify-center">
-                    <Navigation size={14} className="text-indigo-650" />
+          {isDelivered ? (
+            <>
+              {/* Delivery Completed Celebration Card */}
+              <div className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl space-y-6 text-left relative overflow-hidden">
+                <div className="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white shrink-0 border border-white/20 shadow-inner">
+                    <CheckCircle size={32} />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-indigo-950 font-headings">Simulation Testing Panel</p>
-                    <p className="text-[10px] text-slate-450">Test moving rider marker live on this device</p>
+                    <span className="bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-white/20 font-mono tracking-wider">
+                      Verified Delivery
+                    </span>
+                    <h2 className="text-xl sm:text-2xl font-black font-headings text-white mt-1 leading-tight">
+                      Order Delivered Successfully!
+                    </h2>
+                    <p className="text-xs text-emerald-100 font-medium mt-1 leading-relaxed">
+                      Your 100% fresh organic harvest has been delivered to your shipping address.
+                    </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleSimulateMovement}
-                  className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 active:scale-[0.98] w-full sm:w-auto text-white ${
-                    simulating ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-900/10' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-900/10'
-                  }`}
-                >
-                  <RefreshCw size={12} className={simulating ? 'animate-spin' : ''} />
-                  {simulating ? 'Stop Simulation' : 'Start Simulation'}
-                </button>
-              </div>
-            )}
 
-            {/* Assigned Driver Details Card */}
-            {order.deliveryBoyName && (
-              <div className="mt-4 bg-amber-500/[0.03] border border-amber-500/10 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-inner">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-amber-100 flex items-center justify-center text-amber-500">
-                    <Truck size={18} />
+                {order.deliveryBoyName && (
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
+                        <Truck size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-emerald-200 font-bold uppercase tracking-wider font-headings">Delivered By Partner</p>
+                        <p className="font-extrabold text-white text-sm mt-0.5 font-headings">{order.deliveryBoyName}</p>
+                      </div>
+                    </div>
+                    <span className="bg-white text-emerald-800 text-xs font-black px-3 py-1 rounded-xl shadow-xs font-mono">
+                      Completed
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wider font-headings">Assigned Rider</p>
-                    <p className="font-extrabold text-slate-805 text-sm mt-0.5 font-headings">{order.deliveryBoyName}</p>
-                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/marketplace')}
+                    className="flex-1 bg-white hover:bg-emerald-50 text-emerald-800 font-extrabold py-3.5 px-4 rounded-2xl text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 cursor-pointer font-headings flex items-center justify-center gap-1.5"
+                  >
+                    <ShoppingBag size={15} /> Buy Organic Produce Again
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/profile')}
+                    className="flex-1 bg-emerald-900/60 hover:bg-emerald-950 text-white font-extrabold py-3.5 px-4 rounded-2xl text-xs uppercase tracking-wider border border-white/20 transition-all active:scale-95 cursor-pointer font-headings flex items-center justify-center gap-1.5"
+                  >
+                    <Package size={15} /> View All Orders
+                  </button>
                 </div>
-                <div>
-                  <span className="text-[10px] font-black bg-emerald-50 text-emerald-800 px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    On The Way
+              </div>
+
+              {/* Prominent High-Visibility Ordered Items Card (Placed Right at top when delivered) */}
+              <div className="bg-white/80 backdrop-blur-md border border-white/60 p-6 md:p-8 rounded-3xl shadow-xl shadow-emerald-950/[0.02] text-left">
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="font-black text-lg text-slate-800 font-headings flex items-center gap-2">
+                    <ShoppingBag size={20} className="text-emerald-600" />
+                    Ordered Items Summary ({order.items?.length || 0})
+                  </h2>
+                  <span className="bg-emerald-50 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200/60 font-mono">
+                    Total: ₹{parseFloat(order.total).toFixed(2)}
                   </span>
                 </div>
-              </div>
-            )}
 
-            {/* Notice: vendor hasn't set location */}
-            {!resolvedVendorLocation && !locationLoading && (
-              <div className="mt-4 bg-amber-50 border border-amber-200/50 rounded-2xl p-4 flex items-start gap-3">
-                <AlertCircle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-bold text-amber-800 font-headings">Shop coordinates not set</p>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    The vendor has not marked their shop location. Real-time path distance metrics will activate once the store location details are registered by the shop.
-                  </p>
+                <div className="space-y-3.5">
+                  {order.items?.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-4 bg-slate-50/80 hover:bg-emerald-50/40 border border-slate-200/60 rounded-2xl p-4 transition-all duration-200">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-16 h-16 object-cover rounded-xl border border-slate-200 shrink-0 shadow-xs"
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                      <div className="flex-grow min-w-0">
+                        <p className="font-bold text-slate-900 text-sm truncate font-headings">{item.name}</p>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">Merchant: <strong className="text-slate-700">{item.vendor}</strong></p>
+                        <div className="flex items-center gap-3 mt-1.5">
+                          <span className="text-xs font-extrabold bg-emerald-100/80 text-emerald-800 px-2.5 py-0.5 rounded-lg border border-emerald-200/60 font-sans">
+                            Qty: {item.quantity} × ₹{item.price}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-black text-slate-900 text-base font-sans">₹{(item.price * item.quantity).toFixed(2)}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            )}
-          </div>
+            </>
+          ) : (
+            /* Live Map View (Only shown when order is still in transit) */
+            <div className="bg-white/70 backdrop-blur-md border border-white/60 p-6 rounded-3xl shadow-xl shadow-emerald-950/[0.02]">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+                  <MapPin size={18} />
+                </div>
+                <div>
+                  <h2 className="font-bold text-slate-800 font-headings">Live Delivery Route Map</h2>
+                  <p className="text-xs text-slate-450">Estimated real-time travel progress</p>
+                </div>
+              </div>
+
+              {/* Location lookup spinner */}
+              {locationLoading && (
+                <div className="flex items-center gap-2 mb-4 bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-455 animate-pulse">
+                  <div className="w-3 h-3 rounded-full border-2 border-emerald-550 border-t-transparent animate-spin" />
+                  Looking up vendor coordinates on Nominatim...
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-slate-150 overflow-hidden shadow-inner relative">
+                <OrderTrackingMap
+                  vendorLocation={resolvedVendorLocation}
+                  vendorName={vendorName}
+                  deliveryAddress={order.address}
+                  deliveryBoyLocation={order.deliveryBoyLocation}
+                  deliveryBoyName={order.deliveryBoyName}
+                />
+              </div>
+
+              {/* Developer Location Simulation Panel */}
+              {order.status === 'dispatched' && (
+                <div className="mt-5 bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-inner">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-white border border-indigo-100 flex items-center justify-center">
+                      <Navigation size={14} className="text-indigo-650" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-indigo-950 font-headings">Simulation Testing Panel</p>
+                      <p className="text-[10px] text-slate-450">Test moving rider marker live on this device</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSimulateMovement}
+                    className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 active:scale-[0.98] w-full sm:w-auto text-white ${
+                      simulating ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-900/10' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-900/10'
+                    }`}
+                  >
+                    <RefreshCw size={12} className={simulating ? 'animate-spin' : ''} />
+                    {simulating ? 'Stop Simulation' : 'Start Simulation'}
+                  </button>
+                </div>
+              )}
+
+              {/* Assigned Driver Details Card */}
+              {order.deliveryBoyName && (
+                <div className="mt-4 bg-amber-500/[0.03] border border-amber-500/10 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-inner">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-amber-100 flex items-center justify-center text-amber-500 shrink-0">
+                      <Truck size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wider font-headings">Assigned Rider</p>
+                      <p className="font-extrabold text-slate-805 text-sm mt-0.5 font-headings">{order.deliveryBoyName}</p>
+                      <p className="text-xs text-slate-500 font-mono font-bold">{order.deliveryBoyPhone || '+91 98765 43210'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`tel:${order.deliveryBoyPhone || '+919876543210'}`}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer font-headings shadow-2xs"
+                    >
+                      <Phone size={12} /> Call Rider
+                    </a>
+                    <a
+                      href={`https://wa.me/${(order.deliveryBoyPhone || '919876543210').replace(/[^0-9]/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 cursor-pointer font-headings shadow-2xs"
+                    >
+                      <MessageCircle size={13} />
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Notice: vendor hasn't set location */}
+              {!resolvedVendorLocation && !locationLoading && (
+                <div className="mt-4 bg-amber-50 border border-amber-200/50 rounded-2xl p-4 flex items-start gap-3">
+                  <AlertCircle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold text-amber-800 font-headings">Shop coordinates not set</p>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      The vendor has not marked their shop location. Real-time path distance metrics will activate once the store location details are registered by the shop.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Refresh tip */}
-          <div className="flex items-center justify-center gap-2 text-slate-400 text-xs">
-            <RefreshCw size={12} className="animate-spin" style={{ animationDuration: '4s' }} />
-            <span>Updates automatically as shop updates delivery stages.</span>
-          </div>
+          {!isDelivered && (
+            <div className="flex items-center justify-center gap-2 text-slate-400 text-xs">
+              <RefreshCw size={12} className="animate-spin" style={{ animationDuration: '4s' }} />
+              <span>Updates automatically as shop updates delivery stages.</span>
+            </div>
+          )}
         </div>
 
       </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Leaf, Facebook, Twitter, Instagram, ShieldCheck, Truck, Clock, Heart } from 'lucide-react';
+import { Leaf, Facebook, Instagram, ShieldCheck, Truck, Clock, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Footer() {
@@ -53,8 +53,10 @@ export default function Footer() {
               <a href="#" className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 hover:text-emerald-400 hover:border-emerald-500/40 transition-all">
                 <Facebook size={16} />
               </a>
-              <a href="#" className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 hover:text-emerald-400 hover:border-emerald-500/40 transition-all">
-                <Twitter size={16} />
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 hover:text-emerald-400 hover:border-emerald-500/40 transition-all flex items-center justify-center">
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
               </a>
               <a href="#" className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 hover:text-emerald-400 hover:border-emerald-500/40 transition-all">
                 <Instagram size={16} />

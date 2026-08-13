@@ -4,8 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { ref, push, set } from 'firebase/database';
 import { realtimeDb } from '../firebase';
 import {
-  CheckCircle, MapPin, Calendar, Users, Banknote, CreditCard,
-  Check, ShieldCheck, Zap, AlertTriangle, Loader, ChevronRight, Tent
+  CheckCircle, MapPin, Calendar, Clock, Users, ArrowRight,
+  ShieldCheck, AlertTriangle, Zap, Check, Store, Phone, MessageCircle, Banknote, CreditCard, Loader, ChevronRight, Tent
 } from 'lucide-react';
 
 // ─── Razorpay Config ───────────────────────────────────────────────────────────
@@ -303,6 +303,64 @@ export default function FarmCheckout() {
               <Tent className="text-emerald-600" size={18} />
             </div>
             <h2 className="text-xl font-bold font-headings text-slate-800">Booking Summary</h2>
+          </div>
+
+          {/* Farm Vendor Information Card */}
+          <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 mb-5 text-left space-y-2.5 shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1.5 font-headings">
+                <Store size={14} className="text-emerald-600" /> Farm Vendor Details
+              </span>
+              <span className="bg-emerald-600 text-white text-[9px] font-bold uppercase px-2 py-0.5 rounded-md font-mono shadow-2xs">
+                Verified Host
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+              <div>
+                <span className="text-slate-400 font-medium block text-[10px]">Farm Name:</span>
+                <span className="font-extrabold text-slate-800 font-headings text-sm">{booking.farmName}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 font-medium block text-[10px]">Farm Owner / Vendor:</span>
+                <span className="font-bold text-slate-700">{booking.vendorName || booking.ownerName || 'Farm Host'}</span>
+              </div>
+
+              <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-2 bg-white/80 p-2.5 rounded-xl border border-emerald-100/60 mt-1">
+                <div>
+                  <span className="text-slate-400 font-bold uppercase tracking-wider block text-[9px] font-headings">Vendor Contact Phone:</span>
+                  <span className="font-extrabold text-slate-800 font-mono text-xs">{booking.vendorPhone || booking.phone || '+91 98765 43210'}</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <a
+                    href={`tel:${booking.vendorPhone || booking.phone || '+919876543210'}`}
+                    className="p-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all text-[11px] flex items-center gap-1 cursor-pointer font-headings"
+                    title="Call Farm Vendor"
+                  >
+                    <Phone size={11} /> Call Host
+                  </a>
+                  <a
+                    href={`https://wa.me/${(booking.vendorPhone || booking.phone || '919876543210').replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 px-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all text-[11px] flex items-center gap-1 cursor-pointer font-headings"
+                    title="WhatsApp Farm Vendor"
+                  >
+                    <MessageCircle size={11} /> WhatsApp
+                  </a>
+                </div>
+              </div>
+
+              {booking.location && (
+                <div className="sm:col-span-2 pt-1 border-t border-emerald-100">
+                  <span className="text-slate-400 font-medium block text-[10px]">Farm Location Address:</span>
+                  <p className="font-semibold text-emerald-900 flex items-center gap-1 truncate">
+                    <MapPin size={12} className="text-emerald-600 shrink-0" />
+                    {booking.location}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Farm Banner */}

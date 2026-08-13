@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bike, Navigation, MapPin, Store, Clock, ExternalLink, Check, ShoppingBag, ShieldCheck, Power } from 'lucide-react';
+import { Bike, Navigation, MapPin, Store, Clock, ExternalLink, Check, ShoppingBag, ShieldCheck, Power, Phone, MessageCircle } from 'lucide-react';
 import OrderTrackingMap from '../../../components/OrderTrackingMap';
 
 export default function DeliveryOrdersTab({
@@ -86,25 +86,71 @@ export default function DeliveryOrdersTab({
                                     <div className="p-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {/* Vendor shop details */}
-                                            <div className="bg-white/60 p-4 rounded-2xl border border-slate-100 shadow-xs">
-                                                <h4 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-1.5 text-emerald-600 font-headings">
-                                                    <Store size={16} /> Pickup From (Vendor)
-                                                </h4>
-                                                <p className="font-extrabold text-slate-700 text-sm font-headings">{order.items[0]?.vendor || 'Local Vendor'}</p>
-                                                <p className="text-xs text-slate-400 italic mt-1.5 leading-relaxed font-body">
-                                                    {order.items[0]?.shopLocation || 'Shop Address Not Provided'}
-                                                </p>
+                                            <div className="bg-white/60 p-4 rounded-2xl border border-slate-100 shadow-xs space-y-3">
+                                                <div>
+                                                    <h4 className="font-bold text-slate-800 text-sm mb-1.5 flex items-center gap-1.5 text-emerald-600 font-headings">
+                                                        <Store size={16} /> Pickup From (Vendor)
+                                                    </h4>
+                                                    <p className="font-extrabold text-slate-700 text-sm font-headings">{order.items[0]?.vendor || 'Local Vendor'}</p>
+                                                    <p className="text-xs text-slate-400 italic mt-1 leading-relaxed font-body">
+                                                        {order.items[0]?.shopLocation || 'Shop Address Not Provided'}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 bg-emerald-50/50 p-2 rounded-xl border border-emerald-100/50">
+                                                    <span className="font-bold text-slate-800 font-mono text-xs">{order.vendorPhone || order.items?.[0]?.vendorPhone || '+91 98765 43210'}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <a
+                                                            href={`tel:${order.vendorPhone || order.items?.[0]?.vendorPhone || '+919876543210'}`}
+                                                            className="p-1 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 font-headings cursor-pointer"
+                                                            title="Call Vendor"
+                                                        >
+                                                            <Phone size={10} /> Call Vendor
+                                                        </a>
+                                                        <a
+                                                            href={`https://wa.me/${(order.vendorPhone || order.items?.[0]?.vendorPhone || '919876543210').replace(/[^0-9]/g, '')}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="p-1 px-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] flex items-center gap-1 font-headings cursor-pointer"
+                                                            title="WhatsApp Vendor"
+                                                        >
+                                                            <MessageCircle size={10} />
+                                                        </a>
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             {/* Customer address */}
-                                            <div className="bg-white/60 p-4 rounded-2xl border border-slate-100 shadow-xs">
-                                                <h4 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-1.5 text-blue-600 font-headings">
-                                                    <MapPin size={16} /> Deliver To (Customer)
-                                                </h4>
-                                                <p className="font-extrabold text-slate-700 text-sm font-headings">{order.customerName}</p>
-                                                <p className="text-xs text-slate-400 italic mt-1.5 leading-relaxed line-clamp-2 font-body">
-                                                    {order.address}
-                                                </p>
+                                            <div className="bg-white/60 p-4 rounded-2xl border border-slate-100 shadow-xs space-y-3">
+                                                <div>
+                                                    <h4 className="font-bold text-slate-800 text-sm mb-1.5 flex items-center gap-1.5 text-blue-600 font-headings">
+                                                        <MapPin size={16} /> Deliver To (Customer)
+                                                    </h4>
+                                                    <p className="font-extrabold text-slate-700 text-sm font-headings">{order.customerName}</p>
+                                                    <p className="text-xs text-slate-400 italic mt-1 leading-relaxed line-clamp-2 font-body">
+                                                        {order.address}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 bg-blue-50/50 p-2 rounded-xl border border-blue-100/50">
+                                                    <span className="font-bold text-slate-800 font-mono text-xs">{order.customerPhone || '+91 98765 43210'}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <a
+                                                            href={`tel:${order.customerPhone || '+919876543210'}`}
+                                                            className="p-1 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] flex items-center gap-1 font-headings cursor-pointer"
+                                                            title="Call Customer"
+                                                        >
+                                                            <Phone size={10} /> Call Customer
+                                                        </a>
+                                                        <a
+                                                            href={`https://wa.me/${(order.customerPhone || '919876543210').replace(/[^0-9]/g, '')}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="p-1 px-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-bold text-[10px] flex items-center gap-1 font-headings cursor-pointer"
+                                                            title="WhatsApp Customer"
+                                                        >
+                                                            <MessageCircle size={10} />
+                                                        </a>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -220,6 +266,28 @@ export default function DeliveryOrdersTab({
                                                     <p className="text-xs text-slate-400 italic mt-1.5 leading-relaxed font-body">
                                                         {order.items[0]?.shopLocation || 'Shop location not set'}
                                                     </p>
+                                                    <div className="flex items-center justify-between gap-2 mt-3 bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-100/60">
+                                                        <div>
+                                                            <span className="text-[9px] font-black uppercase text-emerald-900 block font-headings">Vendor Phone</span>
+                                                            <span className="font-bold text-slate-800 font-mono text-xs">{order.vendorPhone || order.items?.[0]?.vendorPhone || '+91 98765 43210'}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <a
+                                                                href={`tel:${order.vendorPhone || order.items?.[0]?.vendorPhone || '+919876543210'}`}
+                                                                className="p-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 font-headings cursor-pointer"
+                                                            >
+                                                                <Phone size={11} /> Call Vendor
+                                                            </a>
+                                                            <a
+                                                                href={`https://wa.me/${(order.vendorPhone || order.items?.[0]?.vendorPhone || '919876543210').replace(/[^0-9]/g, '')}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="p-1.5 px-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[11px] flex items-center gap-1 font-headings cursor-pointer"
+                                                            >
+                                                                <MessageCircle size={11} />
+                                                            </a>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 {order.items[0]?.shopLocation && (
                                                     <a
@@ -243,6 +311,28 @@ export default function DeliveryOrdersTab({
                                                     <p className="text-xs text-slate-400 italic mt-1.5 leading-relaxed font-body">
                                                         {order.address}
                                                     </p>
+                                                    <div className="flex items-center justify-between gap-2 mt-3 bg-blue-50/70 p-2.5 rounded-xl border border-blue-100/60">
+                                                        <div>
+                                                            <span className="text-[9px] font-black uppercase text-blue-900 block font-headings">Customer Phone</span>
+                                                            <span className="font-bold text-slate-800 font-mono text-xs">{order.customerPhone || '+91 98765 43210'}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <a
+                                                                href={`tel:${order.customerPhone || '+919876543210'}`}
+                                                                className="p-1.5 px-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] flex items-center gap-1 font-headings cursor-pointer"
+                                                            >
+                                                                <Phone size={11} /> Call Customer
+                                                            </a>
+                                                            <a
+                                                                href={`https://wa.me/${(order.customerPhone || '919876543210').replace(/[^0-9]/g, '')}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="p-1.5 px-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-bold text-[11px] flex items-center gap-1 font-headings cursor-pointer"
+                                                            >
+                                                                <MessageCircle size={11} />
+                                                            </a>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <a
                                                     href={`https://www.google.com/maps/dir/${order.deliveryBoyLocation?.lat || ''},${order.deliveryBoyLocation?.lng || ''}/${encodeURIComponent(order.address)}`}

@@ -707,10 +707,9 @@ export default function Marketplace() {
          if (match) {
             setSelectedShop(match);
             setSelectedFarmShop(null);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
          }
-      } else {
+      } else if (!shopParam) {
          setSelectedShop(null);
       }
 
@@ -728,10 +727,9 @@ export default function Marketplace() {
          if (match) {
             setSelectedFarmShop(match);
             setSelectedShop(null);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
          }
-      } else {
+      } else if (!farmParam) {
          setSelectedFarmShop(null);
       }
    }, [searchParams, shopsList, farmsList]);
@@ -825,8 +823,8 @@ export default function Marketplace() {
    }, [selectedShop, shopActiveCategory, activeCategory, shopSearchQuery, searchQuery, ratingFilters, priceRanges, discountFilters, sortBy]);
 
    const renderSidebarFilters = () => (
-      <div className="lg:w-76 flex-shrink-0 text-left lg:sticky lg:top-24 h-fit">
-         <div className="bg-white/70 backdrop-blur-md rounded-3xl p-6 shadow-xl shadow-emerald-950/[0.02] border border-white max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pr-2">
+      <div className="w-full lg:w-56 shrink-0 text-left lg:sticky lg:top-24 h-fit">
+         <div className="bg-white/70 backdrop-blur-md rounded-3xl p-4 sm:p-5 shadow-xl shadow-emerald-950/[0.02] border border-white max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pr-2">
             <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
                <h3 className="text-base font-extrabold text-gray-900 font-headings">Filters</h3>
                <div className="flex gap-2 items-center">
@@ -862,76 +860,7 @@ export default function Marketplace() {
                </div>
             </div>
 
-            {/* Distance Radius Filter Section in Sidebar */}
-            <div className="mb-6 border-b border-gray-100 pb-5 text-left">
-               <label className="block text-xs font-extrabold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-1.5 font-headings">
-                  <MapPin size={14} className="text-emerald-600" /> Distance Radius
-               </label>
-               <div className="space-y-2">
-                  {[
-                     { label: 'All Locations', value: 'all' },
-                     { label: 'Within 5 km radius', value: '5' },
-                     { label: 'Within 10 km radius', value: '10' },
-                     { label: 'Within 25 km radius', value: '25' },
-                     { label: 'Within 50 km radius', value: '50' }
-                  ].map(r => (
-                     <label key={r.value} className="flex items-center gap-2.5 text-xs font-bold text-slate-700 hover:text-emerald-800 cursor-pointer transition-colors">
-                        <input
-                           type="radio"
-                           name="radiusFilter"
-                           checked={selectedRadius === r.value}
-                           onChange={() => setSelectedRadius(r.value)}
-                           className="accent-emerald-600 w-4 h-4 cursor-pointer"
-                        />
-                        <span>{r.label}</span>
-                     </label>
-                  ))}
-               </div>
-            </div>
 
-            {/* High-visibility Search Filter */}
-            <div className="mb-6 bg-gradient-to-br from-emerald-50/80 to-teal-50/40 p-3.5 rounded-2xl border-2 border-emerald-500/30 shadow-sm focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10 focus-within:bg-white transition-all">
-               <label className="block text-xs font-extrabold text-emerald-950 uppercase tracking-wider mb-2 flex items-center justify-between font-headings">
-                  <span className="flex items-center gap-1.5">
-                     <Search size={14} className="text-emerald-600" />
-                     Search Products
-                  </span>
-                  {(searchQuery || shopSearchQuery || farmSearchQuery) && (
-                     <button
-                        type="button"
-                        onClick={() => { setSearchQuery(''); setShopSearchQuery(''); setFarmSearchQuery(''); }}
-                        className="text-[10px] text-emerald-700 hover:text-red-600 font-bold underline cursor-pointer"
-                     >
-                        Clear
-                     </button>
-                  )}
-               </label>
-               <div className="relative group">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 group-focus-within:text-emerald-700 transition-colors" size={16} />
-                  <input
-                     type="text"
-                     placeholder="Search produce, items..."
-                     value={selectedShop ? shopSearchQuery : selectedFarmShop ? farmSearchQuery : searchQuery}
-                     onChange={(e) => {
-                        const val = e.target.value;
-                        setSearchQuery(val);
-                        if (selectedShop) setShopSearchQuery(val);
-                        if (selectedFarmShop) setFarmSearchQuery(val);
-                     }}
-                     className="w-full pl-9 pr-8 py-2 bg-white border border-emerald-300/70 rounded-xl focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/10 transition-all text-xs font-semibold text-gray-900 shadow-inner placeholder-gray-400 font-body"
-                  />
-                  {(searchQuery || shopSearchQuery || farmSearchQuery) && (
-                     <button
-                        type="button"
-                        onClick={() => { setSearchQuery(''); setShopSearchQuery(''); setFarmSearchQuery(''); }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                        title="Clear search"
-                     >
-                        <X size={14} />
-                     </button>
-                  )}
-               </div>
-            </div>
 
             {/* Sort By */}
             <div className="mb-6">
@@ -1178,7 +1107,8 @@ export default function Marketplace() {
                               <img
                                  src={cat.image || '/cherry_tomatoes.png'}
                                  alt={cat.name}
-                                 className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300"
+                                 data-no-modal="true"
+                                 className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300 no-modal"
                                  onError={(e) => {
                                     e.target.src = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&q=80';
                                  }}
@@ -1218,6 +1148,8 @@ export default function Marketplace() {
                         <button
                            type="button"
                            onClick={() => {
+                              setSelectedShop(null);
+                              setSelectedFarmShop(null);
                               setSearchParams({ tab: 'markets' });
                            }}
                            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer font-headings ${
@@ -1231,6 +1163,8 @@ export default function Marketplace() {
                         <button
                            type="button"
                            onClick={() => {
+                              setSelectedShop(null);
+                              setSelectedFarmShop(null);
                               setSearchParams({ tab: 'farms' });
                            }}
                            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer font-headings ${
@@ -1387,9 +1321,10 @@ export default function Marketplace() {
                         <button
                            type="button"
                            onClick={() => {
-                              if (window.history.length > 1) navigate(-1);
-                              else setSearchParams({ tab: 'farms' });
+                              setSelectedFarmShop(null);
                               setFarmSearchQuery('');
+                              setFarmActiveCategory('All');
+                              setSearchParams({ tab: 'farms' });
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                            }}
                            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-all shadow-xs cursor-pointer"
@@ -1443,7 +1378,8 @@ export default function Marketplace() {
                            <img
                               src={selectedFarmShop.image || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1200&q=80'}
                               alt={selectedFarmShop.farmName}
-                              className="w-full h-full object-cover opacity-80"
+                              data-no-modal="true"
+                              className="w-full h-full object-cover opacity-80 no-modal"
                            />
                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent" />
 
@@ -1485,9 +1421,10 @@ export default function Marketplace() {
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                                className="p-2 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white shadow-sm hover:scale-110 transition-transform flex items-center justify-center"
+                                                title="Instagram"
                                              >
-                                                <Instagram size={12} /> <span>Instagram</span>
+                                                <Instagram size={14} />
                                              </a>
                                           )}
                                           {farmSocials.facebook && (
@@ -1496,9 +1433,10 @@ export default function Marketplace() {
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="px-2.5 py-1 rounded-xl bg-blue-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                                className="p-2 rounded-xl bg-blue-600 text-white shadow-sm hover:scale-110 transition-transform flex items-center justify-center"
+                                                title="Facebook"
                                              >
-                                                <Facebook size={12} /> <span>Facebook</span>
+                                                <Facebook size={14} />
                                              </a>
                                           )}
                                           {farmSocials.youtube && (
@@ -1507,9 +1445,10 @@ export default function Marketplace() {
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="px-2.5 py-1 rounded-xl bg-red-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                                className="p-2 rounded-xl bg-red-600 text-white shadow-sm hover:scale-110 transition-transform flex items-center justify-center"
+                                                title="YouTube"
                                              >
-                                                <Youtube size={12} /> <span>YouTube</span>
+                                                <Youtube size={14} />
                                              </a>
                                           )}
                                           {farmSocials.whatsapp && (
@@ -1518,9 +1457,10 @@ export default function Marketplace() {
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="px-2.5 py-1 rounded-xl bg-emerald-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"
+                                                className="p-2 rounded-xl bg-emerald-600 text-white shadow-sm hover:scale-110 transition-transform flex items-center justify-center"
+                                                title="WhatsApp"
                                              >
-                                                <MessageCircle size={12} /> <span>WhatsApp</span>
+                                                <MessageCircle size={14} />
                                              </a>
                                           )}
                                           {farmSocials.website && (
@@ -1529,9 +1469,10 @@ export default function Marketplace() {
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="px-2.5 py-1 rounded-xl bg-slate-800 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings border border-white/20"
+                                                className="p-2 rounded-xl bg-slate-800 text-white shadow-sm hover:scale-110 transition-transform flex items-center justify-center border border-white/20"
+                                                title="Website"
                                              >
-                                                <Globe size={12} /> <span>Website</span>
+                                                <Globe size={14} />
                                              </a>
                                           )}
                                        </div>
@@ -1658,53 +1599,53 @@ export default function Marketplace() {
                                  <p className="text-xs text-slate-400 font-medium">The vendor has not listed any direct harvest products matching your active filters.</p>
                               </div>
                            ) : (
-                              <div className={`grid gap-6 ${showFilters ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
+                              <div className={`grid ${showFilters ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4'}`}>
                                  {filteredFarmProducts.map((product, idx) => (
                                     <div
                                        key={product.id || idx}
                                        onClick={() => navigate(`/product/${getProductSlug(product)}`)}
-                                       className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden border border-white shadow-md hover:shadow-2xl transition-all duration-300 group cursor-pointer flex flex-col h-full"
+                                       className="bg-white/80 backdrop-blur-md rounded-2xl overflow-hidden border border-white shadow-sm hover:shadow-xl transition-all duration-300 group cursor-pointer flex flex-col h-full"
                                     >
-                                       <div className="relative h-48 overflow-hidden bg-gray-50 flex items-center justify-center">
-                                          <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500" />
-                                          <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-xl text-[10px] font-extrabold text-emerald-800 shadow-sm border border-emerald-100/40">
+                                       <div className="relative h-36 sm:h-40 overflow-hidden bg-gray-50 flex items-center justify-center">
+                                          <img src={product.image} alt={product.name} data-no-modal="true" className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 no-modal" />
+                                          <div className="absolute top-2 left-2 bg-white/95 backdrop-blur-sm px-2 py-0.5 rounded-lg text-[9px] font-extrabold text-emerald-800 shadow-xs border border-emerald-100/40">
                                              {product.category}
                                           </div>
                                        </div>
-                                       <div className="p-4 flex flex-col flex-1 text-left justify-between">
+                                       <div className="p-3 flex flex-col flex-1 text-left justify-between">
                                           <div>
-                                             <div className="flex justify-between items-start mb-1 gap-2">
-                                                <h4 className="font-bold text-gray-900 leading-tight group-hover:text-emerald-600 transition-colors text-sm line-clamp-1 font-headings">{product.name}</h4>
-                                                <div className="flex items-center text-[10px] font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg shrink-0">
-                                                   <Star size={11} className="mr-0.5 fill-current" /> {product.rating || 5.0}
+                                             <div className="flex justify-between items-start mb-1 gap-1">
+                                                <h4 className="font-bold text-gray-900 leading-tight group-hover:text-emerald-600 transition-colors text-xs sm:text-sm line-clamp-1 font-headings">{product.name}</h4>
+                                                <div className="flex items-center text-[9px] font-extrabold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md shrink-0">
+                                                   <Star size={10} className="mr-0.5 fill-current" /> {product.rating || 5.0}
                                                 </div>
                                              </div>
-                                             <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mb-3">🌾 100% Farm Soil Direct Harvest</p>
+                                             <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mb-2">🌾 100% Direct Harvest</p>
                                           </div>
 
-                                          <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                                          <div className="flex justify-between items-center pt-1.5 border-t border-slate-100">
                                              <div>
-                                                <span className="text-lg font-black text-gray-900 font-sans">₹{product.price}</span>
-                                                <span className="text-[10px] text-slate-400 font-medium">/{product.unit}</span>
+                                                <span className="text-base font-black text-gray-900 font-sans">₹{product.price}</span>
+                                                <span className="text-[9px] text-slate-400 font-medium">/{product.unit}</span>
                                              </div>
                                              {(() => {
                                                 const cartItem = cartItems.find(item => String(item.id) === String(product.id));
                                                 return cartItem ? (
-                                                   <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-xl p-1 shadow-xs" onClick={(e) => e.stopPropagation()}>
+                                                   <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-lg p-0.5 shadow-xs" onClick={(e) => e.stopPropagation()}>
                                                       <button
                                                          type="button"
                                                          onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
-                                                         className="w-6 h-6 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all active:scale-90 font-black cursor-pointer"
+                                                         className="w-5 h-5 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-all active:scale-90 font-black cursor-pointer"
                                                       >
-                                                         <Minus size={11} strokeWidth={3} />
+                                                         <Minus size={10} strokeWidth={3} />
                                                       </button>
-                                                      <span className="text-xs font-black text-slate-800 px-1 font-sans text-center min-w-[16px]">{cartItem.quantity}</span>
+                                                      <span className="text-xs font-black text-slate-800 px-0.5 font-sans text-center min-w-[14px]">{cartItem.quantity}</span>
                                                       <button
                                                          type="button"
                                                          onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
-                                                         className="w-6 h-6 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all active:scale-90 font-black cursor-pointer"
+                                                         className="w-5 h-5 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-all active:scale-90 font-black cursor-pointer"
                                                       >
-                                                         <Plus size={11} strokeWidth={3} />
+                                                         <Plus size={10} strokeWidth={3} />
                                                       </button>
                                                    </div>
                                                 ) : (
@@ -1714,10 +1655,10 @@ export default function Marketplace() {
                                                          e.stopPropagation();
                                                          addToCart(product);
                                                       }}
-                                                      className="bg-emerald-600 text-white hover:bg-emerald-700 p-2.5 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center cursor-pointer"
+                                                      className="bg-emerald-600 text-white hover:bg-emerald-700 p-2 rounded-lg transition-all shadow-xs active:scale-95 flex items-center justify-center cursor-pointer"
                                                       title="Add to Cart"
                                                    >
-                                                      <ShoppingCart size={15} />
+                                                      <ShoppingCart size={13} />
                                                    </button>
                                                 );
                                              })()}
@@ -1740,6 +1681,7 @@ export default function Marketplace() {
                            setSelectedShop(null);
                            setShopSearchQuery('');
                            setShopActiveCategory('All');
+                           setSearchParams({ tab: 'markets' });
                         }}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-all shadow-xs cursor-pointer"
                      >
@@ -1752,7 +1694,8 @@ export default function Marketplace() {
                            <img
                               src={selectedShop.image}
                               alt={selectedShop.name}
-                              className="w-full h-full object-cover opacity-80"
+                              data-no-modal="true"
+                              className="w-full h-full object-cover opacity-80 no-modal"
                            />
                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent" />
 
@@ -1786,19 +1729,19 @@ export default function Marketplace() {
                                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/20 mt-2">
                                           <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider font-headings mr-1">Social Links:</span>
                                           {shopSocials.instagram && (
-                                             <a href={shopSocials.instagram.startsWith('http') ? shopSocials.instagram : `https://instagram.com/${shopSocials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"><Instagram size={12} /> <span>Instagram</span></a>
+                                             <a href={shopSocials.instagram.startsWith('http') ? shopSocials.instagram : `https://instagram.com/${shopSocials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white shadow-sm hover:scale-110 transition-transform flex items-center justify-center" title="Instagram"><Instagram size={14} /></a>
                                           )}
                                           {shopSocials.facebook && (
-                                             <a href={shopSocials.facebook.startsWith('http') ? shopSocials.facebook : `https://facebook.com/${shopSocials.facebook}`} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1 rounded-xl bg-blue-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"><Facebook size={12} /> <span>Facebook</span></a>
+                                             <a href={shopSocials.facebook.startsWith('http') ? shopSocials.facebook : `https://facebook.com/${shopSocials.facebook}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl bg-blue-600 text-white shadow-sm hover:scale-110 transition-transform flex items-center justify-center" title="Facebook"><Facebook size={14} /></a>
                                           )}
                                           {shopSocials.youtube && (
-                                             <a href={shopSocials.youtube.startsWith('http') ? shopSocials.youtube : `https://youtube.com/${shopSocials.youtube}`} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1 rounded-xl bg-red-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"><Youtube size={12} /> <span>YouTube</span></a>
+                                             <a href={shopSocials.youtube.startsWith('http') ? shopSocials.youtube : `https://youtube.com/${shopSocials.youtube}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl bg-red-600 text-white shadow-sm hover:scale-110 transition-transform flex items-center justify-center" title="YouTube"><Youtube size={14} /></a>
                                           )}
                                           {shopSocials.whatsapp && (
-                                             <a href={shopSocials.whatsapp.startsWith('http') ? shopSocials.whatsapp : `https://wa.me/${shopSocials.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1 rounded-xl bg-emerald-600 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings"><MessageCircle size={12} /> <span>WhatsApp</span></a>
+                                             <a href={shopSocials.whatsapp.startsWith('http') ? shopSocials.whatsapp : `https://wa.me/${shopSocials.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl bg-emerald-600 text-white shadow-sm hover:scale-110 transition-transform flex items-center justify-center" title="WhatsApp"><MessageCircle size={14} /></a>
                                           )}
                                           {shopSocials.website && (
-                                             <a href={shopSocials.website.startsWith('http') ? shopSocials.website : `https://${shopSocials.website}`} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1 rounded-xl bg-slate-800 text-white shadow-sm hover:scale-105 transition-transform flex items-center gap-1 text-[11px] font-bold font-headings border border-white/20"><Globe size={12} /> <span>Website</span></a>
+                                             <a href={shopSocials.website.startsWith('http') ? shopSocials.website : `https://${shopSocials.website}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl bg-slate-800 text-white shadow-sm hover:scale-110 transition-transform flex items-center justify-center border border-white/20" title="Website"><Globe size={14} /></a>
                                           )}
                                        </div>
                                     );
@@ -1917,53 +1860,53 @@ export default function Marketplace() {
                                     <p className="text-xs text-slate-400 font-medium">Try clearing your search or selecting another category.</p>
                                  </div>
                               ) : (
-                                 <div className={`grid gap-6 ${showFilters ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
+                                 <div className={`grid ${showFilters ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4'}`}>
                                     {shopProducts.map(product => (
                                        <div
                                           key={product.id}
                                           onClick={() => navigate(`/product/${getProductSlug(product)}`)}
-                                          className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden border border-white shadow-md hover:shadow-2xl transition-all duration-300 group cursor-pointer flex flex-col h-full"
+                                          className="bg-white/80 backdrop-blur-md rounded-2xl overflow-hidden border border-white shadow-sm hover:shadow-xl transition-all duration-300 group cursor-pointer flex flex-col h-full"
                                        >
-                                          <div className="relative h-48 overflow-hidden bg-gray-50 flex items-center justify-center">
-                                             <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500" />
-                                             <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-xl text-[10px] font-extrabold text-emerald-800 shadow-sm border border-emerald-100/40">
+                                          <div className="relative h-36 sm:h-40 overflow-hidden bg-gray-50 flex items-center justify-center">
+                                             <img src={product.image} alt={product.name} data-no-modal="true" className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 no-modal" />
+                                             <div className="absolute top-2 left-2 bg-white/95 backdrop-blur-sm px-2 py-0.5 rounded-lg text-[9px] font-extrabold text-emerald-800 shadow-xs border border-emerald-100/40">
                                                 {product.category}
                                              </div>
                                           </div>
-                                          <div className="p-4 flex flex-col flex-1 text-left justify-between">
+                                          <div className="p-3 flex flex-col flex-1 text-left justify-between">
                                              <div>
-                                                <div className="flex justify-between items-start mb-1 gap-2">
-                                                   <h4 className="font-bold text-gray-900 leading-tight group-hover:text-emerald-600 transition-colors text-sm line-clamp-1 font-headings">{product.name}</h4>
-                                                   <div className="flex items-center text-[10px] font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg shrink-0">
-                                                      <Star size={11} className="mr-0.5 fill-current" /> {product.rating}
+                                                <div className="flex justify-between items-start mb-1 gap-1">
+                                                   <h4 className="font-bold text-gray-900 leading-tight group-hover:text-emerald-600 transition-colors text-xs sm:text-sm line-clamp-1 font-headings">{product.name}</h4>
+                                                   <div className="flex items-center text-[9px] font-extrabold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md shrink-0">
+                                                      <Star size={10} className="mr-0.5 fill-current" /> {product.rating}
                                                    </div>
                                                 </div>
-                                                <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mb-3">100% Organic Direct Harvest</p>
+                                                <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mb-2">🌾 100% Direct Harvest</p>
                                              </div>
 
-                                             <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                                             <div className="flex justify-between items-center pt-1.5 border-t border-slate-100">
                                                 <div>
-                                                   <span className="text-lg font-black text-gray-900 font-sans">₹{product.price}</span>
-                                                   <span className="text-[10px] text-slate-400 font-medium">/{product.unit}</span>
+                                                   <span className="text-base font-black text-gray-900 font-sans">₹{product.price}</span>
+                                                   <span className="text-[9px] text-slate-400 font-medium">/{product.unit}</span>
                                                 </div>
                                                 {(() => {
                                                    const cartItem = cartItems.find(item => String(item.id) === String(product.id));
                                                    return cartItem ? (
-                                                      <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-xl p-1 shadow-xs" onClick={(e) => e.stopPropagation()}>
+                                                      <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-lg p-0.5 shadow-xs" onClick={(e) => e.stopPropagation()}>
                                                          <button
                                                             type="button"
                                                             onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
-                                                            className="w-6 h-6 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all active:scale-90 font-black cursor-pointer"
+                                                            className="w-5 h-5 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-all active:scale-90 font-black cursor-pointer"
                                                          >
-                                                            <Minus size={11} strokeWidth={3} />
+                                                            <Minus size={10} strokeWidth={3} />
                                                          </button>
-                                                         <span className="text-xs font-black text-slate-800 px-1 font-sans text-center min-w-[16px]">{cartItem.quantity}</span>
+                                                         <span className="text-xs font-black text-slate-800 px-0.5 font-sans text-center min-w-[14px]">{cartItem.quantity}</span>
                                                          <button
                                                             type="button"
                                                             onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
-                                                            className="w-6 h-6 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all active:scale-90 font-black cursor-pointer"
+                                                            className="w-5 h-5 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-all active:scale-90 font-black cursor-pointer"
                                                          >
-                                                            <Plus size={11} strokeWidth={3} />
+                                                            <Plus size={10} strokeWidth={3} />
                                                          </button>
                                                       </div>
                                                    ) : (
@@ -1971,12 +1914,17 @@ export default function Marketplace() {
                                                          type="button"
                                                          onClick={(e) => {
                                                             e.stopPropagation();
-                                                            addToCart(product);
+                                                            addToCart({
+                                                               ...product,
+                                                               vendorName: product.vendorName || selectedFarmShop?.vendorName || selectedFarmShop?.ownerName || 'Farm Vendor',
+                                                               shopName: selectedFarmShop?.farmName || product.farmName || 'Direct Farm',
+                                                               location: product.location || selectedFarmShop?.location || ''
+                                                            });
                                                          }}
-                                                         className="bg-emerald-600 text-white hover:bg-emerald-700 p-2.5 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center cursor-pointer"
+                                                         className="bg-emerald-600 text-white hover:bg-emerald-700 p-2 rounded-lg transition-all shadow-xs active:scale-95 flex items-center justify-center cursor-pointer"
                                                          title="Add to Cart"
                                                       >
-                                                         <ShoppingCart size={15} />
+                                                         <ShoppingCart size={13} />
                                                       </button>
                                                    );
                                                 })()}
@@ -2021,6 +1969,8 @@ export default function Marketplace() {
                                  <div
                                     key={farm.id}
                                     onClick={() => {
+                                       setSelectedFarmShop(farm);
+                                       setSelectedShop(null);
                                        setSearchParams({ tab: 'farms', farm: getFarmSlug(farm) });
                                        window.scrollTo({ top: 300, behavior: 'smooth' });
                                     }}
@@ -2031,7 +1981,8 @@ export default function Marketplace() {
                                        <img
                                           src={farm.image || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80'}
                                           alt={farm.farmName}
-                                          className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+                                          data-no-modal="true"
+                                          className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 no-modal"
                                        />
                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
@@ -2150,6 +2101,8 @@ export default function Marketplace() {
                               <div
                                  key={shop.id}
                                  onClick={() => {
+                                    setSelectedShop(shop);
+                                    setSelectedFarmShop(null);
                                     setSearchParams({ tab: 'markets', shop: shop.id });
                                     window.scrollTo({ top: 300, behavior: 'smooth' });
                                  }}

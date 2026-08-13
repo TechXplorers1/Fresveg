@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import {
   CheckCircle, MapPin, Package, Banknote, CreditCard,
-  Check, ShieldCheck, Zap, AlertTriangle, Loader, ChevronRight
+  Check, ShieldCheck, Zap, AlertTriangle, Loader, ChevronRight, Store, Phone, MessageCircle
 } from 'lucide-react';
 
 // ─── Razorpay Config ──────────────────────────────────────────────────────────
@@ -214,6 +214,22 @@ export default function Checkout() {
   const canConfirm = cartItems.length > 0 && address && !isProcessing && !rzpLoading;
   const isRazorpay = selectedPayment === 'Pay Online';
 
+  // Extract unique vendor / shop details from items in cart
+  const vendorInfoList = React.useMemo(() => {
+    const vendorMap = new Map();
+    cartItems.forEach(item => {
+      const vName = item.vendorName || item.vendor || item.ownerName || 'Verified Vendor';
+      const sName = item.shopName || item.farmName || item.storeName || item.vendorName || 'FresVeg Organic Partner Store';
+      const loc = item.location || item.shopLocation || item.farmLocation || item.address || '';
+      const phone = item.vendorPhone || item.phone || item.mobile || '+91 98765 43210';
+      const key = `${sName}-${vName}`;
+      if (!vendorMap.has(key)) {
+        vendorMap.set(key, { vendorName: vName, shopName: sName, location: loc, phone: phone });
+      }
+    });
+    return Array.from(vendorMap.values());
+  }, [cartItems]);
+
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       {/* Progress Stepper */}
@@ -269,6 +285,54 @@ export default function Checkout() {
             <h2 className="text-xl font-bold font-headings text-slate-800">Order Summary</h2>
           </div>
 
+          {/* Vendor & Shop Information Card */}
+          {vendorInfoList.length > 0 && (
+            <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 mb-6 text-left space-y-2.5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1.5 font-headings">
+                  <Store size={14} className="text-emerald-600" /> Vendor & Shop Details
+                </span>
+                <span className="bg-emerald-600 text-white text-[9px] font-bold uppercase px-2 py-0.5 rounded-md font-mono shadow-2xs">
+                  Verified Seller
+                </span>
+              </div>
+              <div className="space-y-2.5 text-xs">
+                {vendorInfoList.map((v, i) => (
+                  <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white/80 p-3 rounded-xl border border-emerald-100/60 shadow-2xs">
+                    <div>
+                      <span className="font-extrabold text-slate-800 text-sm font-headings block">{v.shopName}</span>
+                      <span className="text-[11px] text-slate-500 font-medium">Owner / Vendor: <strong className="text-slate-700">{v.vendorName}</strong></span>
+                      {v.location && (
+                        <span className="text-[11px] text-emerald-800 font-bold flex items-center gap-1 mt-0.5">
+                          <MapPin size={11} className="text-emerald-600 shrink-0" /> {v.location}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                      <a
+                        href={`tel:${v.phone || '+919876543210'}`}
+                        className="p-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all text-[11px] flex items-center gap-1 cursor-pointer font-headings"
+                        title="Call Vendor"
+                      >
+                        <Phone size={11} /> {v.phone || '+91 98765 43210'}
+                      </a>
+                      <a
+                        href={`https://wa.me/${(v.phone || '919876543210').replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 px-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all text-[11px] flex items-center gap-1 cursor-pointer font-headings"
+                        title="WhatsApp Vendor"
+                      >
+                        <MessageCircle size={11} />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4">
             {cartItems.map(item => (
               <div key={item.id} className="flex items-center gap-4 p-4 bg-white/40 border border-slate-100 rounded-2xl hover:bg-white/80 transition-all duration-300">
@@ -279,6 +343,16 @@ export default function Checkout() {
                 <div className="flex-grow min-w-0">
                   <h3 className="font-bold text-base text-slate-800 font-headings truncate">{item.name}</h3>
                   <p className="text-xs text-slate-400 mt-0.5">Qty: {item.quantity} × ₹{item.price}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
+                    <span className="bg-emerald-100/80 text-emerald-800 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                      <Store size={11} /> {item.shopName || item.farmName || item.vendorName || 'Organic Shop'}
+                    </span>
+                    {(item.location || item.address) && (
+                      <span className="text-slate-500 font-medium flex items-center gap-1">
+                        <MapPin size={10} className="text-emerald-600" /> {item.location || item.address}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <p className="font-extrabold text-slate-800 text-base flex-shrink-0 font-sans">
                   ₹{(item.price * item.quantity).toFixed(2)}

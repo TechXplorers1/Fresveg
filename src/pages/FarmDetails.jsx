@@ -1395,13 +1395,14 @@ export default function FarmDetails() {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-300 font-bold uppercase">Main Cover Photo URL</label>
-                  <input
-                    type="text"
+                  <label className="text-[10px] text-slate-300 font-bold uppercase block mb-1">Main Cover Photo URL</label>
+                  <ImageUploadField
                     value={editForm.image}
-                    onChange={(e) => setEditForm({ ...editForm, image: e.target.value })}
-                    className="w-full px-3 py-1.5 bg-white text-slate-900 rounded-lg text-xs font-medium outline-none"
-                    placeholder="Photo URL"
+                    onChange={(val) => setEditForm({ ...editForm, image: val })}
+                    placeholder="https://images.unsplash.com/photo-..."
+                    inputClassName="w-full px-3 py-1.5 bg-white text-slate-900 rounded-lg text-xs font-medium outline-none"
+                    accentColor="emerald"
+                    id="farm-cover-photo-input"
                   />
                 </div>
               </div>

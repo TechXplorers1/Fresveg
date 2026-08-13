@@ -21,6 +21,7 @@ import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { ProductProvider } from './context/ProductContext';
 import { ImageModalProvider } from './context/ImageModalContext';
+import { NotificationProvider } from './context/NotificationContext';
 import ImageModal from './components/common/ImageModal';
 
 function ScrollToTop() {
@@ -69,38 +70,40 @@ function TopLeftBackButton() {
 function App() {
   return (
     <AuthProvider>
-      <ProductProvider>
-        <CartProvider>
-          <ImageModalProvider>
-            <Router>
-              <ScrollToTop />
-              <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-50 via-green-100/50 to-emerald-100 font-sans text-gray-900 selection:bg-brand selection:text-white">
-                <Navbar />
-                <TopLeftBackButton />
-                <main className="flex-grow">
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/cart" element={<Cart />} />
-                    <Route path="/checkout" element={<Checkout />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/product/:id" element={<ProductDetails />} />
-                    <Route path="/farm/:id" element={<FarmDetails />} />
-                    <Route path="/order/:orderId" element={<OrderTracking />} />
-                    <Route path="/visit-farms" element={<VisitFarms />} />
-                    <Route path="/farm-checkout" element={<FarmCheckout />} />
-                    <Route path="/marketplace" element={<Marketplace />} />
-                    <Route path="/admin" element={<Admin />} />
-                  </Routes>
-                </main>
-                <Footer />
-                <BackToTop />
-                <ImageModal />
-              </div>
-            </Router>
-          </ImageModalProvider>
-        </CartProvider>
-      </ProductProvider>
+      <NotificationProvider>
+        <ProductProvider>
+          <CartProvider>
+            <ImageModalProvider>
+              <Router>
+                <ScrollToTop />
+                <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-50 via-green-100/50 to-emerald-100 font-sans text-gray-900 selection:bg-brand selection:text-white">
+                  <Navbar />
+                  <TopLeftBackButton />
+                  <main className="flex-grow">
+                    <Routes>
+                      <Route path="/" element={<Home />} />
+                      <Route path="/auth" element={<Auth />} />
+                      <Route path="/cart" element={<Cart />} />
+                      <Route path="/checkout" element={<Checkout />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/product/:id" element={<ProductDetails />} />
+                      <Route path="/farm/:id" element={<FarmDetails />} />
+                      <Route path="/order/:orderId" element={<OrderTracking />} />
+                      <Route path="/visit-farms" element={<VisitFarms />} />
+                      <Route path="/farm-checkout" element={<FarmCheckout />} />
+                      <Route path="/marketplace" element={<Marketplace />} />
+                      <Route path="/admin" element={<Admin />} />
+                    </Routes>
+                  </main>
+                  <Footer />
+                  <BackToTop />
+                  <ImageModal />
+                </div>
+              </Router>
+            </ImageModalProvider>
+          </CartProvider>
+        </ProductProvider>
+      </NotificationProvider>
     </AuthProvider>
   );
 }
