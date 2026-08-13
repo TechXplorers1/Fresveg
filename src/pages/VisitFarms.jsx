@@ -126,11 +126,29 @@ export default function VisitFarms() {
     return matchesSearch && matchesCategory;
   });
 
+  const isFarmOwner = (farm) => {
+    if (!user || !farm) return false;
+    if (userProfile?.role !== 'vendor') return false;
+
+    const matchesVendorId = Boolean(farm.vendorId && String(farm.vendorId) === String(user.uid));
+    const matchesVendorEmail = Boolean(farm.vendorEmail && user.email && farm.vendorEmail.toLowerCase() === user.email.toLowerCase());
+    const matchesOwnerName = Boolean(farm.vendorName && userProfile?.displayName && farm.vendorName.trim().toLowerCase() === userProfile.displayName.trim().toLowerCase());
+
+    const userShops = userProfile?.shops || [];
+    const matchesShop = Boolean(userShops.some(s => s.shopName && farm.farmName && s.shopName.trim().toLowerCase() === farm.farmName.trim().toLowerCase()));
+
+    return matchesVendorId || matchesVendorEmail || matchesOwnerName || matchesShop;
+  };
+
   // Start Booking Process
   const handleOpenBooking = (farm) => {
     if (!user) {
       // Redirect to Auth page if not logged in
       navigate('/auth?redirect=visit-farms');
+      return;
+    }
+    if (isFarmOwner(farm)) {
+      alert("As the owner of this farm, booking visit slots on your own farm is disabled.");
       return;
     }
     setSelectedFarm(farm);
@@ -522,13 +540,23 @@ export default function VisitFarms() {
                           <Compass size={14} className="text-emerald-600" /> Explore Farm
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleOpenBooking(farm)}
-                          className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs py-2.5 px-3 rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 font-headings cursor-pointer"
-                        >
-                          <Calendar size={14} /> Book Slot
-                        </button>
+                        {isFarmOwner(farm) ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate('/profile?tab=farms')}
+                            className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs py-2.5 px-3 rounded-2xl transition-all shadow-xs active:scale-95 flex items-center justify-center gap-1.5 font-headings cursor-pointer"
+                          >
+                            <ShieldAlert size={14} /> My Farm
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenBooking(farm)}
+                            className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs py-2.5 px-3 rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 font-headings cursor-pointer"
+                          >
+                            <Calendar size={14} /> Book Slot
+                          </button>
+                        )}
                       </div>
                     </div>
 

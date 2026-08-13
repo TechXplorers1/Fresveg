@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Instagram, Facebook, Youtube, Globe, MessageCircle, ShoppingCart, Star, Search, Filter, Plus, Minus, X, ChevronLeft, ChevronRight, MapPin, Clock, Store, ArrowLeft, CheckCircle, Sprout, Compass, Navigation, ExternalLink, Target, Loader2, Sparkles } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';
 import { realtimeDb } from '../firebase';
 import { ref, onValue } from 'firebase/database';
@@ -152,22 +153,30 @@ const resolveShopSocialLinks = (shopOrFarm, publicShopsData) => {
       website: direct.website || matchedPublic.website || ''
    };
 
-   // Ensure every shop & farm always displays social links
-   return {
-      instagram: combined.instagram || `https://instagram.com/${slug}`,
-      facebook: combined.facebook || `https://facebook.com/${slug}`,
-      youtube: combined.youtube || `https://youtube.com/@${slug}`,
-      whatsapp: combined.whatsapp || `+91 98765 43210`,
-      website: combined.website || `https://${slug}.fresveg.com`
-   };
+   return combined;
 };
 
 export default function Marketplace() {
    const { cartItems, addToCart, updateQuantity } = useCart();
+   const { user, userProfile } = useAuth();
    const { products, searchQuery, setSearchQuery, categoriesWithDetails = [] } = useProducts();
    const navigate = useNavigate();
    const [activeCategory, setActiveCategory] = useState('All');
    const [sortBy, setSortBy] = useState('none');
+
+   const isProductOwnedByUser = (product) => {
+      if (!user || !userProfile || !product) return false;
+      if (userProfile.role !== 'vendor') return false;
+
+      const matchesVendorId = Boolean(product.vendorId && String(product.vendorId) === String(user.uid));
+      const matchesVendorEmail = Boolean(product.vendorEmail && user.email && product.vendorEmail.toLowerCase() === user.email.toLowerCase());
+      const matchesVendorName = Boolean(product.vendor && userProfile.displayName && product.vendor.trim().toLowerCase() === userProfile.displayName.trim().toLowerCase());
+
+      const userShops = userProfile.shops || [];
+      const matchesShop = Boolean(userShops.some(s => s.shopName && product.vendor && s.shopName.trim().toLowerCase() === product.vendor.trim().toLowerCase()));
+
+      return matchesVendorId || matchesVendorEmail || matchesVendorName || matchesShop;
+   };
 
    const openLocationInMaps = (locationStr, e) => {
       if (e) {
@@ -1872,6 +1881,11 @@ export default function Marketplace() {
                                              <div className="absolute top-2 left-2 bg-white/95 backdrop-blur-sm px-2 py-0.5 rounded-lg text-[9px] font-extrabold text-emerald-800 shadow-xs border border-emerald-100/40">
                                                 {product.category}
                                              </div>
+                                             {(product.isDeliverable === false || product.fulfillmentType === 'non_deliverable') && (
+                                                <div className="absolute top-2 right-2 bg-amber-600 text-white px-2 py-0.5 rounded-lg text-[9px] font-extrabold shadow-xs font-mono">
+                                                   🚜 Pickup Only
+                                                </div>
+                                             )}
                                           </div>
                                           <div className="p-3 flex flex-col flex-1 text-left justify-between">
                                              <div>
@@ -1890,6 +1904,28 @@ export default function Marketplace() {
                                                    <span className="text-[9px] text-slate-400 font-medium">/{product.unit}</span>
                                                 </div>
                                                 {(() => {
+                                                   if (isProductOwnedByUser(product)) {
+                                                      return (
+                                                         <span className="text-[9px] font-bold text-slate-500 italic bg-slate-100 px-2 py-1 rounded-md border border-slate-200" title="You own this farm harvest product">
+                                                            Owner
+                                                         </span>
+                                                      );
+                                                   }
+                                                   if (product.isDeliverable === false || product.fulfillmentType === 'non_deliverable') {
+                                                      return (
+                                                         <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                               e.stopPropagation();
+                                                               alert("🚜 Non-Deliverable Harvest: Online ordering & delivery are disabled for this product. You must visit the farm directly to purchase!");
+                                                            }}
+                                                            className="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2 py-1 rounded-md text-[9px] font-extrabold font-headings transition-all shadow-2xs cursor-pointer flex items-center gap-1"
+                                                            title="Non-Deliverable — Visit Farm to Buy"
+                                                         >
+                                                            <Store size={11} /> Non-Deliverable
+                                                         </button>
+                                                      );
+                                                   }
                                                    const cartItem = cartItems.find(item => String(item.id) === String(product.id));
                                                    return cartItem ? (
                                                       <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-lg p-0.5 shadow-xs" onClick={(e) => e.stopPropagation()}>
@@ -1914,12 +1950,7 @@ export default function Marketplace() {
                                                          type="button"
                                                          onClick={(e) => {
                                                             e.stopPropagation();
-                                                            addToCart({
-                                                               ...product,
-                                                               vendorName: product.vendorName || selectedFarmShop?.vendorName || selectedFarmShop?.ownerName || 'Farm Vendor',
-                                                               shopName: selectedFarmShop?.farmName || product.farmName || 'Direct Farm',
-                                                               location: product.location || selectedFarmShop?.location || ''
-                                                            });
+                                                            addToCart(product);
                                                          }}
                                                          className="bg-emerald-600 text-white hover:bg-emerald-700 p-2 rounded-lg transition-all shadow-xs active:scale-95 flex items-center justify-center cursor-pointer"
                                                          title="Add to Cart"

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { realtimeDb } from '../firebase';
 import { ref, onValue } from 'firebase/database';
 import { Instagram, Facebook, Youtube, Globe, MessageCircle, ShoppingCart, Target, ShieldCheck, Truck, Star, Info, Tag, ArrowLeft, ArrowRight, Store, RefreshCw, BadgePercent, Leaf, Zap, Minus, Plus } from 'lucide-react';
@@ -21,6 +22,7 @@ export default function ProductDetails() {
    const { id } = useParams();
    const { products } = useProducts();
    const { addToCart, cartItems, updateQuantity } = useCart();
+   const { user, userProfile } = useAuth();
    const navigate = useNavigate();
    const [product, setProduct] = useState(null);
    const [vendorSocialLinks, setVendorSocialLinks] = useState(null);
@@ -74,7 +76,9 @@ export default function ProductDetails() {
                         return fpSlug === targetSlug || fpId === targetSlug || fpNameSlug === targetSlug || targetSlug.includes(fpNameSlug);
                      });
                      if (match) {
+                        const isDeliv = match.isDeliverable !== false && match.fulfillmentType !== 'non_deliverable';
                         setProduct({
+                           ...match,
                            id: match.id || id,
                            name: match.name,
                            price: Number(match.price) || 50,
@@ -82,8 +86,12 @@ export default function ProductDetails() {
                            category: match.category || 'Direct Harvest',
                            image: match.image || farmItem.image,
                            vendor: farmItem.farmName || farmItem.vendorName || 'Farm Direct',
+                           vendorId: farmItem.vendorId || match.vendorId || '',
+                           vendorEmail: farmItem.vendorEmail || match.vendorEmail || '',
                            rating: match.rating || 5.0,
-                           description: `Fresh ${match.name} harvested directly from ${farmItem.farmName || 'our organic farm'}.`
+                           description: match.description || `Fresh ${match.name} harvested directly from ${farmItem.farmName || 'our organic farm'}.`,
+                           isDeliverable: isDeliv,
+                           fulfillmentType: isDeliv ? 'deliverable' : 'non_deliverable'
                         });
                      }
                   }
@@ -155,43 +163,60 @@ export default function ProductDetails() {
                      />
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2.5">
-                     {cartItem ? (
-                        <div className="flex-1 flex items-center justify-between bg-slate-50/50 border-2 border-slate-200/60 rounded-2xl p-1 font-bold h-[48px]">
-                           <button
-                              onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
-                              className="w-9 h-9 rounded-xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-emerald-600 hover:bg-slate-50 transition-all active:scale-[0.95]"
-                           >
-                              <Minus size={15} strokeWidth={3} />
-                           </button>
-                           <span className="text-slate-800 text-sm font-black font-sans px-3">{cartItem.quantity}</span>
-                           <button
-                              onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
-                              className="w-9 h-9 rounded-xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-all active:scale-[0.95]"
-                           >
-                              <Plus size={15} strokeWidth={3} />
-                           </button>
+                     {userProfile?.role === 'vendor' && Boolean(
+                        (product.vendorId && String(product.vendorId) === String(user?.uid)) ||
+                        (product.vendorEmail && user?.email && product.vendorEmail.toLowerCase() === user.email.toLowerCase()) ||
+                        (product.vendor && userProfile.displayName && product.vendor.trim().toLowerCase() === userProfile.displayName.trim().toLowerCase())
+                     ) ? (
+                        <div className="flex-1 bg-slate-100 border border-slate-200 text-slate-600 p-3 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 text-center">
+                           <span>Owner View — You cannot order your own farm products.</span>
+                        </div>
+                     ) : product.isDeliverable === false || product.fulfillmentType === 'non_deliverable' ? (
+                        <div className="flex-1 bg-amber-50 border-2 border-amber-300 text-amber-900 p-3 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 text-center font-headings">
+                           <Store size={18} className="text-amber-600 shrink-0" />
+                           <span>🚜 Farm Pickup Only: Visit Farm In-Person to Buy</span>
                         </div>
                      ) : (
-                        <button
-                           onClick={() => addToCart(product)}
-                           className="flex-1 bg-white/80 border-2 border-emerald-600 text-emerald-600 h-[48px] rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-emerald-50 hover:shadow-md transition-all active:scale-[0.98]"
-                        >
-                           <ShoppingCart size={17} />
-                           Add to Cart
-                        </button>
+                        <>
+                           {cartItem ? (
+                              <div className="flex-1 flex items-center justify-between bg-slate-50/50 border-2 border-slate-200/60 rounded-2xl p-1 font-bold h-[48px]">
+                                 <button
+                                    onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
+                                    className="w-9 h-9 rounded-xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-emerald-600 hover:bg-slate-50 transition-all active:scale-[0.95]"
+                                 >
+                                    <Minus size={15} strokeWidth={3} />
+                                 </button>
+                                 <span className="text-slate-800 text-sm font-black font-sans px-3">{cartItem.quantity}</span>
+                                 <button
+                                    onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
+                                    className="w-9 h-9 rounded-xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-all active:scale-[0.95]"
+                                 >
+                                    <Plus size={15} strokeWidth={3} />
+                                 </button>
+                              </div>
+                           ) : (
+                              <button
+                                 onClick={() => addToCart(product)}
+                                 className="flex-1 bg-white/80 border-2 border-emerald-600 text-emerald-600 h-[48px] rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-emerald-50 hover:shadow-md transition-all active:scale-[0.98]"
+                              >
+                                 <ShoppingCart size={17} />
+                                 Add to Cart
+                              </button>
+                           )}
+                           <button
+                              onClick={() => {
+                                 if (!cartItem) {
+                                    addToCart(product);
+                                 }
+                                 navigate('/checkout');
+                              }}
+                              className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white h-[48px] rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-900/20 transition-all duration-300 active:scale-[0.98]"
+                           >
+                              <Zap size={17} className="text-amber-300 fill-amber-300" />
+                              Buy Now
+                           </button>
+                        </>
                      )}
-                     <button
-                        onClick={() => {
-                           if (!cartItem) {
-                              addToCart(product);
-                           }
-                           navigate('/checkout');
-                        }}
-                        className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white h-[48px] rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-900/20 transition-all duration-300 active:scale-[0.98]"
-                     >
-                        <Zap size={17} className="text-amber-300 fill-amber-300" />
-                        Buy Now
-                     </button>
                   </div>
                </div>
             </div>
@@ -205,6 +230,15 @@ export default function ProductDetails() {
                      <span className="bg-emerald-50 text-emerald-800 border border-emerald-100/50 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
                         {product.category}
                      </span>
+                     {product.isDeliverable === false || product.fulfillmentType === 'non_deliverable' ? (
+                        <span className="bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 font-mono">
+                           <Store size={11} /> 🚜 Farm Pickup Only (Non-Deliverable)
+                        </span>
+                     ) : (
+                        <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 font-mono">
+                           <Truck size={11} /> Home Delivery Available 🚚
+                        </span>
+                     )}
                      {isOrganic && (
                         <span className="bg-green-50 text-green-700 border border-green-100 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
                            <Leaf size={10} /> Organic

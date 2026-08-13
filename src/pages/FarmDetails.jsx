@@ -9,7 +9,7 @@ import {
   MapPin, Calendar, Users, Compass, ArrowLeft, ArrowRight, Sparkles, CheckCircle,
   Clock, ShieldCheck, Store, ShoppingCart, Info, Star, Navigation, Home as HomeIcon,
   Tent, Sun, Sprout, Heart, Check, Plus, Minus, Tag, Zap, Pencil, Trash2, Save, X, Edit3, Image as ImageIcon, Maximize2, ChevronDown, DollarSign, Loader2,
-  Camera, ShoppingBag, Smile, PawPrint, Trees, Ticket, Footprints, Feather
+  Camera, ShoppingBag, Smile, PawPrint, Trees, Ticket, Footprints, Feather, Truck
 } from 'lucide-react';
 import ModernDatePicker from '../components/common/ModernDatePicker';
 import ImageUploadField from '../components/common/ImageUploadField';
@@ -210,7 +210,7 @@ export default function FarmDetails() {
   // Add/Edit Product Modal in Edit Mode
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
-  const [newProduct, setNewProduct] = useState({ name: '', category: 'Vegetables', subCategory: 'Organic Spinach', price: '', quantity: '1', unit: 'kg', image: '' });
+  const [newProduct, setNewProduct] = useState({ name: '', category: 'Vegetables', subCategory: 'Organic Spinach', price: '', quantity: '1', unit: 'kg', image: '', isDeliverable: true, fulfillmentType: 'deliverable' });
 
   // Add Accommodation Modal in Edit Mode
   const [showAddAccModal, setShowAddAccModal] = useState(false);
@@ -306,7 +306,16 @@ export default function FarmDetails() {
   const leafletMapInstanceRef = useRef(null);
   const farmMarkerRef = useRef(null);
 
-  const isOwner = user && farm && (user.uid === farm.vendorId || userProfile?.role === 'vendor');
+  const isFarmOwner = Boolean(
+    user && farm && userProfile?.role === 'vendor' && (
+      (farm.vendorId && String(farm.vendorId) === String(user.uid)) ||
+      (farm.vendorEmail && user.email && farm.vendorEmail.toLowerCase() === user.email.toLowerCase()) ||
+      (farm.vendorName && userProfile?.displayName && farm.vendorName.trim().toLowerCase() === userProfile.displayName.trim().toLowerCase()) ||
+      (userProfile?.shops && userProfile.shops.some(s => s.shopName && farm.farmName && s.shopName.trim().toLowerCase() === farm.farmName.trim().toLowerCase()))
+    )
+  );
+
+  const isOwner = isFarmOwner;
 
   // Fetch Farm data 100% directly from Firebase Realtime Database
   useEffect(() => {
@@ -471,6 +480,11 @@ export default function FarmDetails() {
     if (e) e.preventDefault();
     if (!user) {
       navigate('/auth?redirect=visit-farms');
+      return;
+    }
+    if (isFarmOwner) {
+      alert("As the farm owner, you cannot review your own farm.");
+      setShowAddReviewModal(false);
       return;
     }
     if (!newReviewForm.comment.trim()) {
@@ -995,6 +1009,7 @@ export default function FarmDetails() {
     setEditingProductId(product.id);
     const cat = product.category || 'Vegetables';
     const subCatList = SUB_CATEGORIES_MAP[cat] || SUB_CATEGORIES_MAP['Vegetables'];
+    const isDeliv = product.isDeliverable !== false && product.fulfillmentType !== 'non_deliverable';
     setNewProduct({
       name: product.name || '',
       category: cat,
@@ -1002,7 +1017,9 @@ export default function FarmDetails() {
       price: product.price || '',
       quantity: product.quantity || '1',
       unit: product.rawUnit || product.unit || 'kg',
-      image: product.image || ''
+      image: product.image || '',
+      isDeliverable: isDeliv,
+      fulfillmentType: isDeliv ? 'deliverable' : 'non_deliverable'
     });
     setShowAddProductModal(true);
   };
@@ -1019,6 +1036,8 @@ export default function FarmDetails() {
     const qtyStr = newProduct.quantity?.trim();
     const unitStr = newProduct.unit?.trim() || 'kg';
     const displayUnit = qtyStr ? `${qtyStr} ${unitStr}` : unitStr;
+    const isDeliverable = newProduct.isDeliverable !== false && newProduct.fulfillmentType !== 'non_deliverable';
+    const fulfillmentType = isDeliverable ? 'deliverable' : 'non_deliverable';
 
     if (editingProductId) {
       updatedProducts = currentProducts.map(p =>
@@ -1032,7 +1051,9 @@ export default function FarmDetails() {
             quantity: qtyStr || '1',
             unit: displayUnit,
             rawUnit: unitStr,
-            image: newProduct.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80'
+            image: newProduct.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80',
+            isDeliverable,
+            fulfillmentType
           }
           : p
       );
@@ -1048,7 +1069,9 @@ export default function FarmDetails() {
         unit: displayUnit,
         rawUnit: unitStr,
         image: newProduct.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80',
-        vendor: farm?.farmName || 'Farm Direct'
+        vendor: farm?.farmName || 'Farm Direct',
+        isDeliverable,
+        fulfillmentType
       };
       updatedProducts = [...currentProducts, prodObj];
     }
@@ -1066,7 +1089,7 @@ export default function FarmDetails() {
     }
 
     setShowAddProductModal(false);
-    setNewProduct({ name: '', category: 'Vegetables', subCategory: 'Organic Spinach', price: '', quantity: '1', unit: 'kg', image: '' });
+    setNewProduct({ name: '', category: 'Vegetables', subCategory: 'Organic Spinach', price: '', quantity: '1', unit: 'kg', image: '', isDeliverable: true, fulfillmentType: 'deliverable' });
   };
 
   const handleRemoveProductItem = async (prodId) => {
@@ -2389,15 +2412,29 @@ export default function FarmDetails() {
                       )}
                       <div className="relative h-32 bg-slate-50 rounded-xl overflow-hidden mb-3 flex items-center justify-center p-2">
                         <img src={product.image} alt={product.name} className="max-h-full object-contain group-hover:scale-108 transition-transform duration-300" />
-                        <span className="absolute bottom-2 left-2 bg-emerald-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md font-headings shadow-xs">
-                          Direct Harvest
+                        <span className={`absolute bottom-2 left-2 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md font-headings shadow-xs ${
+                          product.isDeliverable === false || product.fulfillmentType === 'non_deliverable'
+                            ? 'bg-amber-600'
+                            : 'bg-emerald-600'
+                        }`}>
+                          {product.isDeliverable === false || product.fulfillmentType === 'non_deliverable' ? '🚜 Farm Pickup Only' : 'Direct Harvest 🚚'}
                         </span>
                       </div>
                       <div className="space-y-2 text-left">
                         <h4 className="font-bold text-slate-800 text-xs font-headings line-clamp-1 group-hover:text-emerald-600 transition-colors">{product.name}</h4>
                         <div className="pt-1 flex items-center justify-between">
                           <span className="font-extrabold text-slate-900 text-sm font-sans">₹{product.price} <span className="text-[10px] text-slate-400">/{product.unit}</span></span>
-                          <span className="text-[10px] font-bold text-emerald-600 group-hover:underline">View Product →</span>
+                          {isFarmOwner ? (
+                            <span className="text-[9px] font-bold text-slate-500 italic bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                              Owner View
+                            </span>
+                          ) : product.isDeliverable === false || product.fulfillmentType === 'non_deliverable' ? (
+                            <span className="text-[9px] font-extrabold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                              🚜 Visit Farm to Buy
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-emerald-600 group-hover:underline">View Product →</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2553,28 +2590,11 @@ export default function FarmDetails() {
                   <p className="text-xs text-slate-400 font-medium font-body">Real feedback & photos from visitors who experienced this farm</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!user) {
-                    navigate('/auth?redirect=visit-farms');
-                    return;
-                  }
-                  setShowAddReviewModal(true);
-                }}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
-              >
-                <Plus size={14} /> + Leave a Review
-              </button>
-            </div>
-
-            {reviewsList.length === 0 ? (
-              <div className="py-8 text-center bg-white/50 border border-dashed border-slate-200 rounded-2xl p-6">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-2 text-xl font-bold">
-                  🌟
-                </div>
-                <h4 className="font-bold text-slate-800 text-xs font-headings">No Guest Reviews Yet</h4>
-                <p className="text-xs text-slate-400 font-medium max-w-sm mx-auto mt-1 mb-3">Be the first verified visitor to leave a star rating and share your farm photos!</p>
+              {isFarmOwner ? (
+                <span className="text-[11px] font-bold text-slate-500 italic bg-slate-100 px-3.5 py-1.5 rounded-xl border border-slate-200">
+                  As the farm owner, you cannot review your own farm.
+                </span>
+              ) : (
                 <button
                   type="button"
                   onClick={() => {
@@ -2584,10 +2604,39 @@ export default function FarmDetails() {
                     }
                     setShowAddReviewModal(true);
                   }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings inline-flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
                 >
-                  <Plus size={14} /> Write First Review
+                  <Plus size={14} /> + Leave a Review
                 </button>
+              )}
+            </div>
+
+            {reviewsList.length === 0 ? (
+              <div className="py-8 text-center bg-white/50 border border-dashed border-slate-200 rounded-2xl p-6">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-2 text-xl font-bold">
+                  🌟
+                </div>
+                <h4 className="font-bold text-slate-800 text-xs font-headings">No Guest Reviews Yet</h4>
+                <p className="text-xs text-slate-400 font-medium max-w-sm mx-auto mt-1 mb-3">Be the first verified visitor to leave a star rating and share your farm photos!</p>
+                {isFarmOwner ? (
+                  <span className="text-[11px] font-bold text-slate-500 italic bg-slate-100 px-3.5 py-1.5 rounded-xl border border-slate-200 inline-block">
+                    As the farm owner, you cannot review your own farm.
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!user) {
+                        navigate('/auth?redirect=visit-farms');
+                        return;
+                      }
+                      setShowAddReviewModal(true);
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold font-headings inline-flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                  >
+                    <Plus size={14} /> Write First Review
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2876,12 +2925,28 @@ export default function FarmDetails() {
                 </div>
               )}
 
-              <button
-                onClick={() => setShowBookingModal(true)}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs py-3.5 rounded-2xl transition-all shadow-lg shadow-emerald-900/10 active:scale-98 flex items-center justify-center gap-2 font-headings"
-              >
-                <Calendar size={16} /> Book Visit Slot Now
-              </button>
+              {isFarmOwner ? (
+                <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 text-center space-y-2">
+                  <span className="bg-emerald-600 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md font-mono shadow-2xs">
+                    Your Registered Farm
+                  </span>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">As the owner of this farm, booking visit slots for your own farm is disabled.</p>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 font-headings cursor-pointer"
+                  >
+                    <Pencil size={14} /> Manage & Edit Farm Page
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowBookingModal(true)}
+                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs py-3.5 rounded-2xl transition-all shadow-lg shadow-emerald-900/10 active:scale-98 flex items-center justify-center gap-2 font-headings cursor-pointer"
+                >
+                  <Calendar size={16} /> Book Visit Slot Now
+                </button>
+              )}
 
               {/* Interactive Leaflet Map Box */}
               <div className="pt-4 border-t border-slate-100 space-y-2">
@@ -3156,6 +3221,46 @@ export default function FarmDetails() {
                   placeholder="https://images.unsplash.com/photo-..."
                   className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-body"
                 />
+              </div>
+
+              {/* Fulfillment / Delivery Option */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                  Fulfillment / Delivery Option *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewProduct(prev => ({ ...prev, isDeliverable: true, fulfillmentType: 'deliverable' }))}
+                    className={`p-2.5 rounded-2xl border text-xs font-bold transition-all text-left flex items-center gap-2 cursor-pointer ${
+                      newProduct.isDeliverable !== false && newProduct.fulfillmentType !== 'non_deliverable'
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-900 shadow-2xs'
+                        : 'border-slate-200 text-slate-600 bg-slate-50/50'
+                    }`}
+                  >
+                    <Truck size={15} className="text-emerald-600 shrink-0" />
+                    <div>
+                      <span className="block font-headings text-xs font-bold">Deliverable 🚚</span>
+                      <span className="text-[10px] text-slate-400 font-normal block font-body">Home Delivery</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewProduct(prev => ({ ...prev, isDeliverable: false, fulfillmentType: 'non_deliverable' }))}
+                    className={`p-2.5 rounded-2xl border text-xs font-bold transition-all text-left flex items-center gap-2 cursor-pointer ${
+                      newProduct.isDeliverable === false || newProduct.fulfillmentType === 'non_deliverable'
+                        ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-2xs'
+                        : 'border-slate-200 text-slate-600 bg-slate-50/50'
+                    }`}
+                  >
+                    <Store size={15} className="text-amber-600 shrink-0" />
+                    <div>
+                      <span className="block font-headings text-xs font-bold">Non-Deliverable 🚜</span>
+                      <span className="text-[10px] text-slate-400 font-normal block font-body">Farm Pickup Only</span>
+                    </div>
+                  </button>
+                </div>
               </div>
 
               <div className="pt-2 flex justify-end gap-2">

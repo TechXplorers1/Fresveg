@@ -512,7 +512,6 @@ export default function Profile() {
     const [fruitInputText, setFruitInputText] = useState('');
     const [livestockInputText, setLivestockInputText] = useState('');
     const [accInputText, setAccInputText] = useState('');
-
     const [showAddFarmProductModal, setShowAddFarmProductModal] = useState(false);
     const [editingModalProductIndex, setEditingModalProductIndex] = useState(null);
     const [newFarmProductForm, setNewFarmProductForm] = useState({
@@ -522,7 +521,9 @@ export default function Profile() {
         price: '',
         unit: 'kg',
         customUnit: '',
-        image: ''
+        image: '',
+        isDeliverable: true,
+        fulfillmentType: 'deliverable'
     });
     const [farmProductList, setFarmProductList] = useState([]);
 
@@ -532,6 +533,7 @@ export default function Profile() {
         setEditingModalProductIndex(idx);
         const cat = product.category || 'Vegetables';
         const subCatList = SUB_CATEGORIES_MAP[cat] || SUB_CATEGORIES_MAP['Vegetables'];
+        const isDeliv = product.isDeliverable !== false && product.fulfillmentType !== 'non_deliverable';
         setNewFarmProductForm({
             name: product.name || '',
             category: cat,
@@ -539,7 +541,9 @@ export default function Profile() {
             price: product.price || '',
             unit: product.unit || 'kg',
             customUnit: '',
-            image: product.image || ''
+            image: product.image || '',
+            isDeliverable: isDeliv,
+            fulfillmentType: isDeliv ? 'deliverable' : 'non_deliverable'
         });
         setShowAddFarmProductModal(true);
     };
@@ -553,6 +557,8 @@ export default function Profile() {
         const finalUnit = newFarmProductForm.unit === 'Other...'
             ? (newFarmProductForm.customUnit.trim() || 'unit')
             : newFarmProductForm.unit;
+        const isDeliverable = newFarmProductForm.isDeliverable !== false && newFarmProductForm.fulfillmentType !== 'non_deliverable';
+        const fulfillmentType = isDeliverable ? 'deliverable' : 'non_deliverable';
 
         let updatedList = [];
         if (editingModalProductIndex !== null && editingModalProductIndex >= 0) {
@@ -565,7 +571,9 @@ export default function Profile() {
                         subCategory: newFarmProductForm.subCategory || '',
                         price: Number(newFarmProductForm.price) || 0,
                         unit: finalUnit,
-                        image: newFarmProductForm.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80'
+                        image: newFarmProductForm.image.trim() || 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80',
+                        isDeliverable,
+                        fulfillmentType
                     }
                     : p
             );

@@ -18,7 +18,7 @@ export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
   const [address, setAddress] = useState('');
   const [snackbarItem, setSnackbarItem] = useState(null);
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
 
   useEffect(() => {
     if (user) {
@@ -99,7 +99,33 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  const isProductOwnedByUser = (product) => {
+    if (!user || !userProfile || !product) return false;
+    if (userProfile.role !== 'vendor') return false;
+
+    const matchesVendorId = Boolean(product.vendorId && String(product.vendorId) === String(user.uid));
+    const matchesVendorEmail = Boolean(product.vendorEmail && user.email && product.vendorEmail.toLowerCase() === user.email.toLowerCase());
+    const matchesVendorName = Boolean(product.vendor && userProfile.displayName && product.vendor.trim().toLowerCase() === userProfile.displayName.trim().toLowerCase());
+
+    const userShops = userProfile.shops || [];
+    const matchesShop = Boolean(userShops.some(s => s.shopName && product.vendor && s.shopName.trim().toLowerCase() === product.vendor.trim().toLowerCase()));
+
+    return matchesVendorId || matchesVendorEmail || matchesVendorName || matchesShop;
+  };
+
   const addToCart = (product) => {
+    // 1. Guard: Vendor cannot order own products
+    if (isProductOwnedByUser(product)) {
+      alert("As the farm owner, you cannot order your own farm products.");
+      return false;
+    }
+
+    // 2. Guard: Non-deliverable products cannot be added to home delivery cart
+    if (product.isDeliverable === false || product.fulfillmentType === 'non_deliverable') {
+      alert("🚜 Farm Pickup Only: This harvest product is non-deliverable. Please visit the farm in-person to purchase!");
+      return false;
+    }
+
     setCartItems(prev => {
       const existing = prev.find(item => item.id === product.id);
       let newItems;
@@ -126,6 +152,7 @@ export const CartProvider = ({ children }) => {
     setTimeout(() => {
        setSnackbarItem(null);
     }, 3000);
+    return true;
   };
 
   const removeFromCart = (id) => {

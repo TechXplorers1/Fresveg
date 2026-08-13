@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Truck, Store } from 'lucide-react';
 import ImageUploadField from '../../../components/common/ImageUploadField';
 import { SUB_CATEGORIES_MAP, STANDARD_UNITS } from '../constants/profileConstants';
 
@@ -153,6 +153,44 @@ export default function AddFarmProductModal({
                             accentColor="emerald"
                             id="farm-product-image-input"
                         />
+                    </div>
+
+                    {/* Fulfillment / Delivery Option */}
+                    <div>
+                        <label className={labelCls}>Fulfillment / Delivery Option <span className="text-emerald-600 font-bold">*</span></label>
+                        <div className="grid grid-cols-2 gap-2 mt-1">
+                            <button
+                                type="button"
+                                onClick={() => setNewFarmProductForm(prev => ({ ...prev, isDeliverable: true, fulfillmentType: 'deliverable' }))}
+                                className={`p-2.5 rounded-2xl border text-xs font-bold transition-all text-left flex items-center gap-2 cursor-pointer font-headings ${
+                                    newFarmProductForm.isDeliverable !== false && newFarmProductForm.fulfillmentType !== 'non_deliverable'
+                                        ? 'border-emerald-500 bg-emerald-50 text-emerald-900 shadow-2xs'
+                                        : 'border-slate-200 text-slate-600 bg-slate-50/50'
+                                }`}
+                            >
+                                <Truck size={16} className="text-emerald-600 shrink-0" />
+                                <div>
+                                    <span className="block font-bold">Deliverable 🚚</span>
+                                    <span className="text-[10px] text-slate-400 font-normal block font-body">Home Delivery</span>
+                                </div>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setNewFarmProductForm(prev => ({ ...prev, isDeliverable: false, fulfillmentType: 'non_deliverable' }))}
+                                className={`p-2.5 rounded-2xl border text-xs font-bold transition-all text-left flex items-center gap-2 cursor-pointer font-headings ${
+                                    newFarmProductForm.isDeliverable === false || newFarmProductForm.fulfillmentType === 'non_deliverable'
+                                        ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-2xs'
+                                        : 'border-slate-200 text-slate-600 bg-slate-50/50'
+                                }`}
+                            >
+                                <Store size={16} className="text-amber-600 shrink-0" />
+                                <div>
+                                    <span className="block font-bold">Non-Deliverable 🚜</span>
+                                    <span className="text-[10px] text-slate-400 font-normal block font-body">Farm Pickup Only</span>
+                                </div>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Buttons */}
