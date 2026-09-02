@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { User, ArrowRight, Lock, Mail, ShoppingBag, Store, AlertCircle, Bike, ShieldCheck, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { User, ArrowRight, Lock, Mail, ShoppingBag, Store, Bike, ShieldCheck, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export default function Auth() {
-  const { login, register, loading, saveRole } = useAuth();
+  const { login, register, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectParam = searchParams.get('redirect');
   const redirect = redirectParam ? (redirectParam.startsWith('/') ? redirectParam : `/${redirectParam}`) : '/';
 
   const [isLogin, setIsLogin] = useState(true);
-  const [step, setStep] = useState(1); // 1: details, 2: role selection for signup
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -32,25 +32,24 @@ export default function Auth() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSubmitting(true);
     
     try {
       if (isLogin) {
-        // Login with email and password
+        // PostgreSQL + JWT Login
         await login(formData.email, formData.password);
         navigate(redirect);
       } else {
-        if (step === 1) {
-          // Signup: Create account
-          await register(formData.email, formData.password, `${formData.firstName} ${formData.lastName}`);
-          setStep(2);
-        } else if (step === 2) {
-          // Save role and redirect to home
-          await saveRole(formData.role);
-          navigate(redirect);
-        }
+        // PostgreSQL + JWT Registration
+        const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim() || 'User';
+        await register(formData.email, formData.password, fullName, formData.role);
+        navigate(redirect);
       }
     } catch (err) {
-      setError(err.message);
+      console.error("Auth submit error:", err);
+      setError(err.message || 'Authentication failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -60,12 +59,12 @@ export default function Auth() {
         <div className="p-8 sm:p-10">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">
-              {isLogin ? 'Welcome Back' : (step === 1 ? 'Create Account' : 'Choose Role')}
+              {isLogin ? 'Welcome Back' : 'Create Account'}
             </h2>
             <p className="text-gray-400 text-sm">
               {isLogin 
                 ? 'Sign in to access your FresVeg account' 
-                : (step === 1 ? 'Join FresVeg and start your journey' : 'Choose your role to get started')
+                : 'Join FresVeg and start your direct harvest journey'
               }
             </p>
           </div>
@@ -77,141 +76,136 @@ export default function Auth() {
           )}
 
           <form className="space-y-5 text-left" onSubmit={handleSubmit}>
-            {/* Step 1: Login or Signup Details */}
-            {(isLogin || (!isLogin && step === 1)) && (
-              <>
-                {!isLogin && (
-                  <>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 pl-1">First Name</label>
-                      <div className="relative">
-                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                        <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required className="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200/80 focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none text-sm" placeholder="John" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 pl-1">Last Name</label>
-                      <div className="relative">
-                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                        <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required className="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200/80 focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none text-sm" placeholder="Doe" />
-                      </div>
-                    </div>
-                  </>
-                )}
-                
+            {!isLogin && (
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 pl-1">Email Address</label>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 pl-1">First Name</label>
                   <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                    <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200/80 focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none text-sm" placeholder="john@example.com" />
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required className="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200/80 focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none text-sm" placeholder="John" />
                   </div>
                 </div>
-
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 pl-1">Password</label>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 pl-1">Last Name</label>
                   <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      required
-                      className="w-full pl-11 pr-11 py-3 rounded-2xl border border-gray-200/80 focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none text-sm"
-                      placeholder="••••••••"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 p-1 transition-colors focus:outline-none"
-                      title={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required className="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200/80 focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none text-sm" placeholder="Doe" />
                   </div>
                 </div>
-              </>
+              </div>
             )}
+            
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 pl-1">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200/80 focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none text-sm" placeholder="john@example.com" />
+              </div>
+            </div>
 
-            {/* Step 2: Role Selection (Signup only) */}
-            {!isLogin && step === 2 && (
-              <div className="grid grid-cols-4 gap-2">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 pl-1">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  className="w-full pl-11 pr-11 py-3 rounded-2xl border border-gray-200/80 focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none text-sm"
+                  placeholder="••••••••"
+                />
                 <button
                   type="button"
-                  onClick={() => setFormData({ ...formData, role: 'customer' })}
-                  className={`p-3.5 border-2 rounded-2xl flex flex-col items-center gap-2 transition-all duration-300 ${
-                    formData.role === 'customer' 
-                      ? 'border-brand bg-brand-light/35 scale-[1.02] shadow-md shadow-brand/5' 
-                      : 'border-gray-200/80 hover:border-brand/40 bg-white'
-                  }`}
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 p-1 transition-colors focus:outline-none"
+                  title={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  <ShoppingBag size={20} className={formData.role === 'customer' ? 'text-brand' : 'text-gray-400'} />
-                  <span className={`font-extrabold text-[9px] uppercase tracking-wider ${formData.role === 'customer' ? 'text-brand-dark' : 'text-gray-500'}`}>Customer</span>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, role: 'vendor' })}
-                  className={`p-3.5 border-2 rounded-2xl flex flex-col items-center gap-2 transition-all duration-300 ${
-                    formData.role === 'vendor' 
-                      ? 'border-brand bg-brand-light/35 scale-[1.02] shadow-md shadow-brand/5' 
-                      : 'border-gray-200/80 hover:border-brand/40 bg-white'
-                  }`}
-                >
-                  <Store size={20} className={formData.role === 'vendor' ? 'text-brand' : 'text-gray-400'} />
-                  <span className={`font-extrabold text-[9px] uppercase tracking-wider ${formData.role === 'vendor' ? 'text-brand-dark' : 'text-gray-500'}`}>Vendor</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, role: 'delivery_person' })}
-                  className={`p-3.5 border-2 rounded-2xl flex flex-col items-center gap-2 transition-all duration-300 ${
-                    formData.role === 'delivery_person' 
-                      ? 'border-brand bg-brand-light/35 scale-[1.02] shadow-md shadow-brand/5' 
-                      : 'border-gray-200/80 hover:border-brand/40 bg-white'
-                  }`}
-                >
-                  <Bike size={20} className={formData.role === 'delivery_person' ? 'text-brand' : 'text-gray-400'} />
-                  <span className={`font-extrabold text-[9px] uppercase tracking-wider ${formData.role === 'delivery_person' ? 'text-brand-dark' : 'text-gray-500'}`}>Delivery</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, role: 'admin' })}
-                  className={`p-3.5 border-2 rounded-2xl flex flex-col items-center gap-2 transition-all duration-300 ${
-                    formData.role === 'admin' 
-                      ? 'border-brand bg-brand-light/35 scale-[1.02] shadow-md shadow-brand/5' 
-                      : 'border-gray-200/80 hover:border-brand/40 bg-white'
-                  }`}
-                >
-                  <ShieldCheck size={20} className={formData.role === 'admin' ? 'text-brand' : 'text-gray-400'} />
-                  <span className={`font-extrabold text-[9px] uppercase tracking-wider ${formData.role === 'admin' ? 'text-brand-dark' : 'text-gray-500'}`}>Admin</span>
-                </button>
+              </div>
+            </div>
+
+            {/* Role Selection on Signup */}
+            {!isLogin && (
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 pl-1">Select Account Type</label>
+                <div className="grid grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, role: 'customer' })}
+                    className={`p-3 border-2 rounded-2xl flex flex-col items-center gap-1.5 transition-all duration-300 ${
+                      formData.role === 'customer' 
+                        ? 'border-brand bg-brand-light/35 scale-[1.02] shadow-md shadow-brand/5' 
+                        : 'border-gray-200/80 hover:border-brand/40 bg-white'
+                    }`}
+                  >
+                    <ShoppingBag size={18} className={formData.role === 'customer' ? 'text-brand' : 'text-gray-400'} />
+                    <span className={`font-extrabold text-[9px] uppercase tracking-wider ${formData.role === 'customer' ? 'text-brand-dark' : 'text-gray-500'}`}>Customer</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, role: 'vendor' })}
+                    className={`p-3 border-2 rounded-2xl flex flex-col items-center gap-1.5 transition-all duration-300 ${
+                      formData.role === 'vendor' 
+                        ? 'border-brand bg-brand-light/35 scale-[1.02] shadow-md shadow-brand/5' 
+                        : 'border-gray-200/80 hover:border-brand/40 bg-white'
+                    }`}
+                  >
+                    <Store size={18} className={formData.role === 'vendor' ? 'text-brand' : 'text-gray-400'} />
+                    <span className={`font-extrabold text-[9px] uppercase tracking-wider ${formData.role === 'vendor' ? 'text-brand-dark' : 'text-gray-500'}`}>Vendor</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, role: 'delivery_person' })}
+                    className={`p-3 border-2 rounded-2xl flex flex-col items-center gap-1.5 transition-all duration-300 ${
+                      formData.role === 'delivery_person' 
+                        ? 'border-brand bg-brand-light/35 scale-[1.02] shadow-md shadow-brand/5' 
+                        : 'border-gray-200/80 hover:border-brand/40 bg-white'
+                    }`}
+                  >
+                    <Bike size={18} className={formData.role === 'delivery_person' ? 'text-brand' : 'text-gray-400'} />
+                    <span className={`font-extrabold text-[9px] uppercase tracking-wider ${formData.role === 'delivery_person' ? 'text-brand-dark' : 'text-gray-500'}`}>Delivery</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, role: 'admin' })}
+                    className={`p-3 border-2 rounded-2xl flex flex-col items-center gap-1.5 transition-all duration-300 ${
+                      formData.role === 'admin' 
+                        ? 'border-brand bg-brand-light/35 scale-[1.02] shadow-md shadow-brand/5' 
+                        : 'border-gray-200/80 hover:border-brand/40 bg-white'
+                    }`}
+                  >
+                    <ShieldCheck size={18} className={formData.role === 'admin' ? 'text-brand' : 'text-gray-400'} />
+                    <span className={`font-extrabold text-[9px] uppercase tracking-wider ${formData.role === 'admin' ? 'text-brand-dark' : 'text-gray-500'}`}>Admin</span>
+                  </button>
+                </div>
               </div>
             )}
 
-            <button type="submit" disabled={loading} className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-all shadow-md shadow-brand/10 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 text-sm tracking-wide mt-2">
-              {loading ? (
+            <button type="submit" disabled={loading || submitting} className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-all shadow-md shadow-brand/10 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 text-sm tracking-wide mt-2">
+              {submitting || loading ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
                   <span>Processing...</span>
                 </>
               ) : (
                 <>
-                  <span>{isLogin ? 'Sign In' : (step === 1 ? 'Continue' : 'Complete Signup')}</span>
+                  <span>{isLogin ? 'Sign In' : 'Create Account'}</span>
                   <ArrowRight size={16} />
                 </>
               )}
             </button>
           </form>
 
-          {step === 1 && (
-            <div className="mt-8 text-center text-xs font-semibold text-gray-400">
-              {isLogin ? "Don't have an account? " : "Already have an account? "}
-              <button onClick={() => { setIsLogin(!isLogin); setStep(1); setError(''); }} className="text-brand font-bold hover:underline">
-                {isLogin ? 'Register now' : 'Sign in'}
-              </button>
-            </div>
-          )}
+          <div className="mt-8 text-center text-xs font-semibold text-gray-400">
+            {isLogin ? "Don't have an account? " : "Already have an account? "}
+            <button onClick={() => { setIsLogin(!isLogin); setError(''); }} className="text-brand font-bold hover:underline">
+              {isLogin ? 'Register now' : 'Sign in'}
+            </button>
+          </div>
 
-          <div id="recaptcha-container"></div>
         </div>
       </div>
     </div>

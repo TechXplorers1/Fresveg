@@ -1,17 +1,25 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ref, set, get, child } from 'firebase/database';
-import { realtimeDb } from '../firebase';
 import { useAuth } from './AuthContext';
-import { CheckCircle, ShoppingBag } from 'lucide-react';
+import { api } from '../services/api';
+import { CheckCircle } from 'lucide-react';
 
-const CartContext = createContext();
+const defaultCartContext = {
+  cartItems: [],
+  address: '',
+  setAddress: () => {},
+  addToCart: () => false,
+  removeFromCart: () => {},
+  updateQuantity: () => {},
+  clearCart: () => {},
+  getTotal: () => 0,
+  placeOrder: async () => {}
+};
+
+const CartContext = createContext(defaultCartContext);
 
 export const useCart = () => {
   const context = useContext(CartContext);
-  if (!context) {
-    throw new Error('useCart must be used within a CartProvider');
-  }
-  return context;
+  return context || defaultCartContext;
 };
 
 export const CartProvider = ({ children }) => {
@@ -22,7 +30,7 @@ export const CartProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      loadCartFromRTDB();
+      loadCartFromDB();
     } else {
       // Load guest cart from localStorage
       const localCart = localStorage.getItem('guest_cart');
@@ -40,18 +48,12 @@ export const CartProvider = ({ children }) => {
     }
   }, [user]);
 
-  const loadCartFromRTDB = async () => {
+  const loadCartFromDB = async () => {
     if (!user) return;
     try {
-      const cartRef = ref(realtimeDb);
-      const snapshot = await get(child(cartRef, `carts/${user.uid}`));
-      let dbItems = [];
-      let dbAddress = '';
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        dbItems = data.items || [];
-        dbAddress = data.address || '';
-      }
+      const data = await api.getCart(user.uid);
+      const dbItems = data.items || [];
+      const dbAddress = data.address || '';
 
       // Sync guest cart if there are items in localStorage
       const localCart = localStorage.getItem('guest_cart');
@@ -68,7 +70,7 @@ export const CartProvider = ({ children }) => {
                 mergedItems.push(gItem);
               }
             });
-            await saveCartToRTDB(mergedItems, dbAddress);
+            await saveCartToDB(mergedItems, dbAddress);
             setCartItems(mergedItems);
             localStorage.removeItem('guest_cart');
           } else {
@@ -83,19 +85,16 @@ export const CartProvider = ({ children }) => {
       }
       setAddress(dbAddress);
     } catch (error) {
-      console.error('Error loading cart from RTDB:', error);
-      console.warn('Cart data may not be synced. Check your internet connection.');
+      console.error('Error loading cart from PostgreSQL:', error);
     }
   };
 
-  const saveCartToRTDB = async (items, addr) => {
+  const saveCartToDB = async (items, addr) => {
     if (!user) return;
     try {
-      const cartRef = ref(realtimeDb, `carts/${user.uid}`);
-      await set(cartRef, { items, address: addr });
+      await api.saveCart(user.uid, items, addr);
     } catch (error) {
-      console.error('Error saving cart to RTDB:', error);
-      console.warn('Cart changes may not be saved. Check your internet connection.');
+      console.error('Error saving cart to PostgreSQL:', error);
     }
   };
 
@@ -114,13 +113,11 @@ export const CartProvider = ({ children }) => {
   };
 
   const addToCart = (product) => {
-    // 1. Guard: Vendor cannot order own products
     if (isProductOwnedByUser(product)) {
       alert("As the farm owner, you cannot order your own farm products.");
       return false;
     }
 
-    // 2. Guard: Non-deliverable products cannot be added to home delivery cart
     if (product.isDeliverable === false || product.fulfillmentType === 'non_deliverable') {
       alert("🚜 Farm Pickup Only: This harvest product is non-deliverable. Please visit the farm in-person to purchase!");
       return false;
@@ -140,14 +137,13 @@ export const CartProvider = ({ children }) => {
       }
       
       if (user) {
-        saveCartToRTDB(newItems, address);
+        saveCartToDB(newItems, address);
       } else {
         localStorage.setItem('guest_cart', JSON.stringify(newItems));
       }
       return newItems;
     });
     
-    // Trigger snackbar
     setSnackbarItem(product);
     setTimeout(() => {
        setSnackbarItem(null);
@@ -159,7 +155,7 @@ export const CartProvider = ({ children }) => {
     const newItems = cartItems.filter(item => item.id !== id);
     setCartItems(newItems);
     if (user) {
-      saveCartToRTDB(newItems, address);
+      saveCartToDB(newItems, address);
     } else {
       localStorage.setItem('guest_cart', JSON.stringify(newItems));
     }
@@ -175,7 +171,7 @@ export const CartProvider = ({ children }) => {
     );
     setCartItems(newItems);
     if (user) {
-      saveCartToRTDB(newItems, address);
+      saveCartToDB(newItems, address);
     } else {
       localStorage.setItem('guest_cart', JSON.stringify(newItems));
     }
@@ -184,7 +180,7 @@ export const CartProvider = ({ children }) => {
   const clearCart = () => {
     setCartItems([]);
     if (user) {
-      saveCartToRTDB([], address);
+      saveCartToDB([], address);
     } else {
       localStorage.removeItem('guest_cart');
     }
@@ -193,7 +189,7 @@ export const CartProvider = ({ children }) => {
   const updateAddress = (newAddress) => {
     setAddress(newAddress);
     if (user) {
-      saveCartToRTDB(cartItems, newAddress);
+      saveCartToDB(cartItems, newAddress);
     }
   };
 
@@ -204,10 +200,7 @@ export const CartProvider = ({ children }) => {
     }
     
     try {
-      // Generate a unique order ID
       const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      const orderRef = ref(realtimeDb, `orders/${orderId}`);
-      
       const customerPhone = user?.phoneNumber || user?.phone || '+91 98765 43210';
       const firstItem = cartItems[0] || {};
       const vendorPhone = firstItem.vendorPhone || firstItem.phone || '+91 98765 43210';
@@ -223,18 +216,16 @@ export const CartProvider = ({ children }) => {
         total: getTotal(),
         address: address,
         paymentMethod: paymentMethod,
-        status: 'pending',
-        timestamp: new Date().toISOString()
+        status: 'pending'
       };
       
-      console.log('Attempting to place order in RTDB:', orderId);
-      await set(orderRef, orderData);
-      console.log('Order successfully placed in Realtime Database');
+      const res = await api.placeOrder(orderData);
+      console.log('Order successfully placed in PostgreSQL database:', res.orderId);
       
       clearCart();
       return orderId;
     } catch (error) {
-      console.error('CRITICAL: Error placing order in Realtime Database:', error);
+      console.error('CRITICAL: Error placing order in PostgreSQL:', error);
       throw error;
     }
   };

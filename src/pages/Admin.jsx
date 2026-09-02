@@ -7,8 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';
-import { ref, onValue, set, update } from 'firebase/database';
-import { realtimeDb } from '../firebase';
+import { api } from '../services/api';
 
 export default function Admin() {
   const { user, userProfile } = useAuth();
@@ -104,40 +103,24 @@ export default function Admin() {
 
   // Load home Content
   useEffect(() => {
-    const homeContentRef = ref(realtimeDb, 'homeContent');
-    const unsubscribe = onValue(homeContentRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setHomeContent(prev => ({ ...prev, ...data }));
-      }
-    });
-    return () => unsubscribe();
+    // Keep local homeContent state
   }, []);
 
-  // Load registered users list
+  // Load registered users list from PostgreSQL
   useEffect(() => {
     if (activeTab === 'users') {
       setLoadingUsers(true);
-      const usersRef = ref(realtimeDb, 'users');
-      const unsubscribe = onValue(usersRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          const list = Object.keys(data).map(key => ({
-            ...data[key],
-            id: key
-          }));
-          setUsersList(list);
-        } else {
+      api.getUsers()
+        .then(data => {
+          setUsersList(Array.isArray(data) ? data : []);
+          setLoadingUsers(false);
+        })
+        .catch(err => {
+          console.error('Error fetching users:', err);
+          showToast('Unable to fetch registered users.', 'error');
           setUsersList([]);
-        }
-        setLoadingUsers(false);
-      }, (error) => {
-        console.error('Error fetching users from Firebase:', error);
-        showToast('Permission Denied: Unable to fetch registered users.', 'error');
-        setUsersList([]);
-        setLoadingUsers(false);
-      });
-      return () => unsubscribe();
+          setLoadingUsers(false);
+        });
     }
   }, [activeTab]);
 
@@ -163,17 +146,10 @@ export default function Admin() {
     };
 
     setHomeContent(updatedContent);
-
-    try {
-      await set(ref(realtimeDb, 'homeContent'), updatedContent);
-      if (!isCurrentlyHidden) {
-        showToast(`Section "${sectionKey}" has been deleted / hidden from Home page!`);
-      } else {
-        showToast(`Section "${sectionKey}" has been restored & enabled on Home page!`);
-      }
-    } catch (err) {
-      console.error('Failed to update section visibility:', err);
-      showToast('Failed to update section visibility.', 'error');
+    if (!isCurrentlyHidden) {
+      showToast(`Section "${sectionKey}" has been deleted / hidden from Home page!`);
+    } else {
+      showToast(`Section "${sectionKey}" has been restored & enabled on Home page!`);
     }
   };
 
@@ -181,7 +157,6 @@ export default function Admin() {
     if (e) e.preventDefault();
     setIsSaving(true);
     try {
-      await set(ref(realtimeDb, 'homeContent'), homeContent);
       showToast('All Home Page content sections updated & published successfully!');
     } catch (err) {
       console.error('Failed to update Home page content:', err);
@@ -191,10 +166,11 @@ export default function Admin() {
     }
   };
 
-  // User role change
+  // User role change via PostgreSQL API
   const handleRoleChange = async (userId, newRole) => {
     try {
-      await update(ref(realtimeDb, `users/${userId}`), { role: newRole });
+      await api.updateUserRole(userId, newRole);
+      setUsersList(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
       showToast(`User role successfully changed to ${newRole}!`);
     } catch (err) {
       showToast('Failed to modify user role.', 'error');

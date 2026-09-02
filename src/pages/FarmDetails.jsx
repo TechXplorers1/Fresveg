@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ref, onValue, push, set, remove } from 'firebase/database';
-import { realtimeDb } from '../firebase';
+import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import {
@@ -256,11 +255,9 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, [targetKey]: updatedList }));
     setFarm(prev => prev ? ({ ...prev, [targetKey]: updatedList }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        const targetRef = ref(realtimeDb, `farms/${farmKeyToSave}/${targetKey}`);
-        await set(targetRef, sanitizeForFirebase(updatedList));
+        await api.saveFarm({ ...farm, [targetKey]: updatedList });
       } catch (err) {
         console.error(`Failed to save edited ${targetKey} photo:`, err);
       }
@@ -317,141 +314,105 @@ export default function FarmDetails() {
 
   const isOwner = isFarmOwner;
 
-  // Fetch Farm data 100% directly from Firebase Realtime Database
+  // Fetch Farm data from PostgreSQL API
   useEffect(() => {
     window.scrollTo(0, 0);
     ensureFarmsInFirebase();
-    const farmsRef = ref(realtimeDb, 'farms');
-    const unsubscribe = onValue(farmsRef, (snapshot) => {
-      const data = snapshot.val();
-      let matchedFarm = null;
-      let matchedId = id;
+    const fetchFarm = async () => {
+      try {
+        const data = await api.getFarms();
+        let matchedFarm = null;
+        let matchedId = id;
 
-      if (data) {
-        const farmKey = Object.keys(data).find(key => {
-          const item = data[key];
-          const slug = getFarmSlug(item);
-          return key === id || item.id === id || slug === id || id.includes(slug) || slug.includes(id);
-        });
-        if (farmKey) {
-          matchedFarm = { ...data[farmKey], id: farmKey };
-          matchedId = farmKey;
+        if (Array.isArray(data)) {
+          const farmKey = data.find(item => {
+            const slug = getFarmSlug(item);
+            return item.id === id || slug === id || id.includes(slug) || slug.includes(id);
+          });
+          if (farmKey) {
+            matchedFarm = farmKey;
+            matchedId = farmKey.id;
+          }
         }
-      }
 
-      if (matchedFarm) {
-        const fullFarm = {
-          ...matchedFarm,
-          crops: matchedFarm.crops || [],
-          cropPhotos: matchedFarm.cropPhotos || [],
-          fruits: matchedFarm.fruits || [],
-          livestock: matchedFarm.livestock || [],
-          livestockPhotos: matchedFarm.livestockPhotos || [],
-          accommodations: matchedFarm.accommodations || [],
-          accommodationPhotos: matchedFarm.accommodationPhotos || [],
-          kidsActivities: matchedFarm.kidsActivities || [],
-          farmProducts: matchedFarm.farmProducts || [],
-          gallery: matchedFarm.gallery || [],
-          amenities: matchedFarm.amenities || []
-        };
-        setFarm(fullFarm);
-        setEditForm({
-          farmName: fullFarm.farmName || '',
-          location: fullFarm.location || '',
-          description: fullFarm.description || '',
-          socialLinks: fullFarm.socialLinks || { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' },
-          costPerPerson: fullFarm.costPerPerson || 0,
-          costType: (!fullFarm.costPerPerson || Number(fullFarm.costPerPerson) === 0) ? 'free' : 'payable',
-          image: fullFarm.image || '',
-          crops: [...fullFarm.crops],
-          cropPhotos: [...fullFarm.cropPhotos],
-          fruits: [...fullFarm.fruits],
-          livestock: [...fullFarm.livestock],
-          livestockPhotos: [...fullFarm.livestockPhotos],
-          accommodations: [...(fullFarm.accommodations || [])],
-          accommodationPhotos: [...(fullFarm.accommodationPhotos || [])],
-          kidsActivities: [...(fullFarm.kidsActivities || [])],
-          farmProducts: [...fullFarm.farmProducts],
-          gallery: [...fullFarm.gallery],
-          amenities: [...fullFarm.amenities]
-        });
-      } else {
-        const fallbackFarm = {
-          id: matchedId,
-          farmName: id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-          location: 'Local Region, India',
-          description: 'A serene organic sanctuary with lush crops, fruit orchards, friendly farm animals, and comfortable rustic stays.',
-          image: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1200&q=80',
-          costPerPerson: 250,
-          vendorName: 'Organic Farm Owner',
-          rating: 4.9,
-          crops: [],
-          cropPhotos: [],
-          fruits: [],
-          livestock: [],
-          livestockPhotos: [],
-          accommodations: [],
-          accommodationPhotos: [],
-          farmProducts: [],
-          gallery: [],
-          amenities: []
-        };
-        setFarm(fallbackFarm);
-        setEditForm({
-          farmName: fallbackFarm.farmName,
-          location: fallbackFarm.location,
-          description: fallbackFarm.description,
-          costPerPerson: fallbackFarm.costPerPerson,
-          costType: 'payable',
-          image: fallbackFarm.image,
-          crops: [...fallbackFarm.crops],
-          cropPhotos: [...fallbackFarm.cropPhotos],
-          fruits: [...fallbackFarm.fruits],
-          livestock: [...fallbackFarm.livestock],
-          livestockPhotos: [...fallbackFarm.livestockPhotos],
-          accommodations: [...fallbackFarm.accommodations],
-          accommodationPhotos: [...fallbackFarm.accommodationPhotos],
-          farmProducts: [...fallbackFarm.farmProducts],
-          gallery: [...fallbackFarm.gallery],
-          amenities: [...fallbackFarm.amenities]
-        });
+        if (matchedFarm) {
+          const fullFarm = {
+            ...matchedFarm,
+            farmName: matchedFarm.name || matchedFarm.farmName,
+            costPerPerson: matchedFarm.pricePerPerson || matchedFarm.costPerPerson || 0,
+            crops: matchedFarm.crops || [],
+            cropPhotos: matchedFarm.cropPhotos || [],
+            fruits: matchedFarm.fruits || [],
+            livestock: matchedFarm.livestock || [],
+            livestockPhotos: matchedFarm.livestockPhotos || [],
+            accommodations: matchedFarm.accommodations || [],
+            accommodationPhotos: matchedFarm.accommodationPhotos || [],
+            kidsActivities: matchedFarm.kidsActivities || [],
+            farmProducts: matchedFarm.farmProducts || [],
+            gallery: matchedFarm.gallery || [],
+            amenities: matchedFarm.amenities || []
+          };
+          setFarm(fullFarm);
+          setEditForm({
+            farmName: fullFarm.farmName || '',
+            location: fullFarm.location || '',
+            description: fullFarm.description || '',
+            socialLinks: fullFarm.socialLinks || { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' },
+            costPerPerson: fullFarm.costPerPerson || 0,
+            costType: (!fullFarm.costPerPerson || Number(fullFarm.costPerPerson) === 0) ? 'free' : 'payable',
+            image: fullFarm.image || '',
+            crops: [...fullFarm.crops],
+            cropPhotos: [...fullFarm.cropPhotos],
+            fruits: [...fullFarm.fruits],
+            livestock: [...fullFarm.livestock],
+            livestockPhotos: [...fullFarm.livestockPhotos],
+            accommodations: [...(fullFarm.accommodations || [])],
+            accommodationPhotos: [...(fullFarm.accommodationPhotos || [])],
+            kidsActivities: [...(fullFarm.kidsActivities || [])],
+            farmProducts: [...fullFarm.farmProducts],
+            gallery: [...fullFarm.gallery],
+            amenities: [...fullFarm.amenities]
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load farm details:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    };
+    fetchFarm();
   }, [id]);
 
   // Fetch Existing Bookings for Live Slot Availability
   useEffect(() => {
     if (!farm?.id) return;
-    const bookingsRef = ref(realtimeDb, 'farmBookings');
-    const unsubscribe = onValue(bookingsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const farmBookings = Object.values(data).filter(b => b.farmId === farm.id || b.farmName === farm.farmName);
-        setExistingFarmBookings(farmBookings);
-      } else {
-        setExistingFarmBookings([]);
+    const fetchBookings = async () => {
+      try {
+        const data = await api.getFarmBookings();
+        if (Array.isArray(data)) {
+          const farmBookings = data.filter(b => b.farmId === farm.id || b.farmName === farm.farmName);
+          setExistingFarmBookings(farmBookings);
+        }
+      } catch (err) {
+        console.error('Error fetching farm bookings:', err);
       }
-    });
-    return () => unsubscribe();
+    };
+    fetchBookings();
   }, [farm?.id, farm?.farmName]);
 
   // Fetch Customer Reviews for this Farm
-  useEffect(() => {
+  const fetchReviews = async () => {
     if (!farm?.id) return;
-    const reviewsRef = ref(realtimeDb, `farms/${farm.id}/reviews`);
-    const unsubscribe = onValue(reviewsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
-        setReviewsList(list);
-      } else {
-        setReviewsList([]);
-      }
-    });
-    return () => unsubscribe();
+    try {
+      const data = await api.getFarmReviews(farm.id);
+      setReviewsList(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching farm reviews:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchReviews();
   }, [farm?.id]);
 
   // Live Slot Availability Calculation
@@ -492,19 +453,19 @@ export default function FarmDetails() {
       return;
     }
     try {
-      const reviewsRef = ref(realtimeDb, `farms/${farm.id}/reviews`);
-      const newReviewRef = push(reviewsRef);
       const reviewData = {
+        farmId: farm.id,
+        userId: user.uid,
+        userName: userProfile?.displayName || user.displayName || 'Verified Visitor',
+        userPhoto: user.photoURL || '',
         rating: Number(newReviewForm.rating) || 5,
         comment: newReviewForm.comment.trim(),
-        photoUrl: newReviewForm.photoUrl.trim(),
-        reviewerName: userProfile?.displayName || user.displayName || 'Verified Visitor',
-        reviewerPhoto: user.photoURL || '',
-        date: new Date().toISOString().split('T')[0]
+        photoUrl: newReviewForm.photoUrl.trim()
       };
-      await set(newReviewRef, reviewData);
+      await api.createFarmReview(reviewData);
       setShowAddReviewModal(false);
       setNewReviewForm({ rating: 5, comment: '', photoUrl: '' });
+      fetchReviews();
     } catch (err) {
       console.error('Failed to submit customer review:', err);
       alert('Failed to submit review: ' + err.message);
@@ -518,8 +479,8 @@ export default function FarmDetails() {
     if (!confirmDelete) return;
 
     try {
-      const reviewRef = ref(realtimeDb, `farms/${farm.id}/reviews/${reviewId}`);
-      await remove(reviewRef);
+      await api.deleteFarmReview(reviewId);
+      fetchReviews();
     } catch (err) {
       console.error("Failed to delete customer review:", err);
       alert("Error deleting review: " + err.message);
@@ -670,11 +631,18 @@ export default function FarmDetails() {
 
       const updatedFarmData = {
         ...farm,
+        id: farm.id,
+        name: editForm.farmName.trim(),
         farmName: editForm.farmName.trim(),
         location: editForm.location.trim(),
         description: editForm.description.trim(),
         costPerPerson: finalCost,
+        pricePerPerson: finalCost,
+        costType: isFree ? 'free' : 'payable',
         image: editForm.image.trim() || farm.image,
+        vendorId: farm.vendorId || farm.ownerId || user?.uid || 'vendor-1',
+        vendorName: farm.vendorName || userProfile?.displayName || user?.displayName || 'Vendor',
+        vendorEmail: farm.vendorEmail || user?.email || '',
         socialLinks: editForm.socialLinks || { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' },
         crops: editForm.crops || [],
         fruits: editForm.fruits || [],
@@ -691,10 +659,7 @@ export default function FarmDetails() {
         updatedAt: new Date().toISOString()
       };
 
-      const sanitizedData = sanitizeForFirebase(updatedFarmData);
-      const farmKeyToSave = farm.id || getFarmSlug(farm) || 'farm-' + Date.now();
-      const farmRef = ref(realtimeDb, `farms/${farmKeyToSave}`);
-      await set(farmRef, sanitizedData);
+      await api.saveFarm(updatedFarmData);
       setFarm(updatedFarmData);
       setIsEditing(false);
       setShowSaveSuccessModal(true);
@@ -737,13 +702,11 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, [targetKey]: updatedList }));
     setFarm(prev => prev ? ({ ...prev, [targetKey]: updatedList }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        const targetRef = ref(realtimeDb, `farms/${farmKeyToSave}/${targetKey}`);
-        await set(targetRef, sanitizeForFirebase(updatedList));
+        await api.saveFarm({ ...farm, [targetKey]: updatedList });
       } catch (err) {
-        console.error(`Failed to save ${targetKey} photo to Firebase RTDB:`, err);
+        console.error(`Failed to save ${targetKey} photo:`, err);
       }
     }
 
@@ -757,10 +720,9 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, cropPhotos: updated }));
     setFarm(prev => prev ? ({ ...prev, cropPhotos: updated }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        await set(ref(realtimeDb, `farms/${farmKeyToSave}/cropPhotos`), sanitizeForFirebase(updated));
+        await api.saveFarm({ ...farm, cropPhotos: updated });
       } catch (err) {
         console.error('Failed to remove crop photo:', err);
       }
@@ -773,10 +735,9 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, livestockPhotos: updated }));
     setFarm(prev => prev ? ({ ...prev, livestockPhotos: updated }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        await set(ref(realtimeDb, `farms/${farmKeyToSave}/livestockPhotos`), sanitizeForFirebase(updated));
+        await api.saveFarm({ ...farm, livestockPhotos: updated });
       } catch (err) {
         console.error('Failed to remove livestock photo:', err);
       }
@@ -789,10 +750,9 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, kidsPhotos: updated }));
     setFarm(prev => prev ? ({ ...prev, kidsPhotos: updated }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        await set(ref(realtimeDb, `farms/${farmKeyToSave}/kidsPhotos`), sanitizeForFirebase(updated));
+        await api.saveFarm({ ...farm, kidsPhotos: updated });
       } catch (err) {
         console.error('Failed to remove kids photo:', err);
       }
@@ -805,10 +765,9 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, accommodationPhotos: updated }));
     setFarm(prev => prev ? ({ ...prev, accommodationPhotos: updated }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        await set(ref(realtimeDb, `farms/${farmKeyToSave}/accommodationPhotos`), sanitizeForFirebase(updated));
+        await api.saveFarm({ ...farm, accommodationPhotos: updated });
       } catch (err) {
         console.error('Failed to remove accommodation photo:', err);
       }
@@ -822,13 +781,11 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, gallery: updatedGallery }));
     setFarm(prev => prev ? ({ ...prev, gallery: updatedGallery }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        const galRef = ref(realtimeDb, `farms/${farmKeyToSave}/gallery`);
-        await set(galRef, sanitizeForFirebase(updatedGallery));
+        await api.saveFarm({ ...farm, gallery: updatedGallery });
       } catch (err) {
-        console.error('Failed to remove gallery photo from Firebase RTDB:', err);
+        console.error('Failed to remove gallery photo:', err);
       }
     }
   };
@@ -837,13 +794,11 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, image: photoUrl }));
     setFarm(prev => prev ? ({ ...prev, image: photoUrl }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        const imgRef = ref(realtimeDb, `farms/${farmKeyToSave}/image`);
-        await set(imgRef, photoUrl);
+        await api.saveFarm({ ...farm, image: photoUrl });
       } catch (err) {
-        console.error('Failed to save cover photo to Firebase RTDB:', err);
+        console.error('Failed to save cover photo:', err);
       }
     }
     alert('Photo set as main banner cover!');
@@ -902,13 +857,11 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, crops: updated }));
     setFarm(prev => prev ? ({ ...prev, crops: updated }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        const cropsRef = ref(realtimeDb, `farms/${farmKeyToSave}/crops`);
-        await set(cropsRef, sanitizeForFirebase(updated));
+        await api.saveFarm({ ...farm, crops: updated });
       } catch (err) {
-        console.error('Failed to toggle crop chip in Firebase RTDB:', err);
+        console.error('Failed to toggle crop chip:', err);
       }
     }
   };
@@ -924,13 +877,11 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, fruits: updated }));
     setFarm(prev => prev ? ({ ...prev, fruits: updated }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        const fruitsRef = ref(realtimeDb, `farms/${farmKeyToSave}/fruits`);
-        await set(fruitsRef, sanitizeForFirebase(updated));
+        await api.saveFarm({ ...farm, fruits: updated });
       } catch (err) {
-        console.error('Failed to toggle fruit chip in Firebase RTDB:', err);
+        console.error('Failed to toggle fruit chip:', err);
       }
     }
   };
@@ -946,13 +897,11 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, livestock: updated }));
     setFarm(prev => prev ? ({ ...prev, livestock: updated }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        const livestockRef = ref(realtimeDb, `farms/${farmKeyToSave}/livestock`);
-        await set(livestockRef, sanitizeForFirebase(updated));
+        await api.saveFarm({ ...farm, livestock: updated });
       } catch (err) {
-        console.error('Failed to toggle animal chip in Firebase RTDB:', err);
+        console.error('Failed to toggle animal chip:', err);
       }
     }
   };
@@ -979,13 +928,11 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, kidsActivities: updated }));
     setFarm(prev => prev ? ({ ...prev, kidsActivities: updated }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        const kidsRef = ref(realtimeDb, `farms/${farmKeyToSave}/kidsActivities`);
-        await set(kidsRef, sanitizeForFirebase(updated));
+        await api.saveFarm({ ...farm, kidsActivities: updated });
       } catch (err) {
-        console.error('Failed to toggle kids activity chip in Firebase RTDB:', err);
+        console.error('Failed to toggle kids activity chip:', err);
       }
     }
   };
@@ -1079,12 +1026,11 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, farmProducts: updatedProducts }));
     setFarm(prev => prev ? ({ ...prev, farmProducts: updatedProducts }) : prev);
 
-    if (farm?.id) {
+    if (farm) {
       try {
-        const farmProductsRef = ref(realtimeDb, `farms/${farm.id}/farmProducts`);
-        await set(farmProductsRef, updatedProducts);
+        await api.saveFarm({ ...farm, farmProducts: updatedProducts });
       } catch (err) {
-        console.error('Failed to save farm product to Firebase Realtime DB:', err);
+        console.error('Failed to save farm product:', err);
       }
     }
 
@@ -1099,12 +1045,11 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, farmProducts: updatedProducts }));
     setFarm(prev => prev ? ({ ...prev, farmProducts: updatedProducts }) : prev);
 
-    if (farm?.id) {
+    if (farm) {
       try {
-        const farmProductsRef = ref(realtimeDb, `farms/${farm.id}/farmProducts`);
-        await set(farmProductsRef, updatedProducts);
+        await api.saveFarm({ ...farm, farmProducts: updatedProducts });
       } catch (err) {
-        console.error('Failed to remove farm product from Firebase DB:', err);
+        console.error('Failed to remove farm product:', err);
       }
     }
   };
@@ -1159,13 +1104,11 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, accommodations: updatedAccs }));
     setFarm(prev => prev ? ({ ...prev, accommodations: updatedAccs }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        const accsRef = ref(realtimeDb, `farms/${farmKeyToSave}/accommodations`);
-        await set(accsRef, sanitizeForFirebase(updatedAccs));
+        await api.saveFarm({ ...farm, accommodations: updatedAccs });
       } catch (err) {
-        console.error('Failed to save accommodations to Firebase RTDB:', err);
+        console.error('Failed to save accommodations:', err);
       }
     }
 
@@ -1182,13 +1125,11 @@ export default function FarmDetails() {
     setEditForm(prev => ({ ...prev, accommodations: updatedAccs }));
     setFarm(prev => prev ? ({ ...prev, accommodations: updatedAccs }) : prev);
 
-    const farmKeyToSave = farm?.id || getFarmSlug(farm);
-    if (farmKeyToSave) {
+    if (farm) {
       try {
-        const accsRef = ref(realtimeDb, `farms/${farmKeyToSave}/accommodations`);
-        await set(accsRef, sanitizeForFirebase(updatedAccs));
+        await api.saveFarm({ ...farm, accommodations: updatedAccs });
       } catch (err) {
-        console.error('Failed to remove accommodation from Firebase RTDB:', err);
+        console.error('Failed to remove accommodation:', err);
       }
     }
   };
@@ -1241,13 +1182,10 @@ export default function FarmDetails() {
 
       if (isFree) {
         // Free farms: confirm immediately without checkout
-        const bookingsRef = ref(realtimeDb, 'farmBookings');
-        const newBookingRef = push(bookingsRef);
-        await set(newBookingRef, {
+        await api.createFarmBooking({
           ...bookingData,
           status: 'confirmed',
-          paymentMethod: 'Free Entry',
-          createdAt: new Date().toISOString()
+          paymentMethod: 'Free Entry'
         });
 
         setBookingSuccess(true);
@@ -1281,13 +1219,20 @@ export default function FarmDetails() {
     );
   }
 
-  const activeCrops = isEditing ? editForm.crops : farm.crops;
-  const activeFruits = isEditing ? editForm.fruits : farm.fruits;
-  const activeLivestock = isEditing ? editForm.livestock : farm.livestock;
-  const activeKidsActivities = isEditing ? editForm.kidsActivities : (farm.kidsActivities || []);
-  const activeAccommodations = isEditing ? editForm.accommodations : farm.accommodations;
-  const activeFarmProducts = isEditing ? editForm.farmProducts : farm.farmProducts;
-  const activeGallery = (isEditing ? editForm.gallery : farm.gallery) || [];
+  const toSafeArray = (val) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') return val.split(',').map(s => s.trim()).filter(Boolean);
+    return [];
+  };
+
+  const activeCrops = toSafeArray(isEditing ? editForm.crops : farm.crops);
+  const activeFruits = toSafeArray(isEditing ? editForm.fruits : farm.fruits);
+  const activeLivestock = toSafeArray(isEditing ? editForm.livestock : farm.livestock);
+  const activeKidsActivities = toSafeArray(isEditing ? editForm.kidsActivities : (farm.kidsActivities || []));
+  const activeAccommodations = toSafeArray(isEditing ? editForm.accommodations : farm.accommodations);
+  const activeFarmProducts = toSafeArray(isEditing ? editForm.farmProducts : farm.farmProducts);
+  const activeGallery = toSafeArray((isEditing ? editForm.gallery : farm.gallery) || []);
 
   const rawCropPhotos = (isEditing ? editForm.cropPhotos : farm.cropPhotos) || [];
   const activeCropPhotos = rawCropPhotos.length > 0

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ref, onValue, push, set, remove } from 'firebase/database';
-import { realtimeDb } from '../firebase';
+import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Instagram, Facebook, Youtube, Globe, MessageCircle, MapPin, Calendar, Users, Compass, Search, Sparkles, CheckCircle, Clock, Trash2, ShieldAlert, ArrowRight, BookOpen, X, Minus, Plus } from 'lucide-react';
@@ -54,68 +53,58 @@ export default function VisitFarms() {
   const freeFarmsCount = farms.filter(f => !f.costPerPerson || Number(f.costPerPerson) === 0).length;
   const payableFarmsCount = farms.filter(f => Number(f.costPerPerson) > 0).length;
 
-  // 1. Fetch Farms 100% directly from Firebase RTDB (Live Single Source of Truth)
+  // 1. Fetch Farms from PostgreSQL API
   useEffect(() => {
     ensureFarmsInFirebase();
-    const farmsRef = ref(realtimeDb, 'farms');
-    const unsubscribe = onValue(farmsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const dbFarms = Object.keys(data).map(key => ({
-          ...data[key],
-          id: key
-        }));
-        setFarms(dbFarms);
-      } else {
-        setFarms([]);
+    const loadFarms = async () => {
+      try {
+        const data = await api.getFarms();
+        setFarms(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Failed to load farms from PostgreSQL:', err);
+      } finally {
+        setLoadingFarms(false);
       }
-      setLoadingFarms(false);
-    }, (err) => {
-      console.error('Failed to load farms from RTDB:', err);
-      setLoadingFarms(false);
-    });
-
-    return () => unsubscribe();
+    };
+    loadFarms();
   }, []);
 
-  // 2. Fetch User's Bookings from Firebase RTDB
-  useEffect(() => {
+  // 2. Fetch User's Bookings from PostgreSQL API
+  const loadBookings = async () => {
     if (!user) {
       setBookings([]);
       setLoadingBookings(false);
       return;
     }
-
-    const bookingsRef = ref(realtimeDb, 'farmBookings');
-    const unsubscribe = onValue(bookingsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        // Filter bookings belonging to current customer
-        const userBookings = Object.keys(data)
-          .map(key => ({ ...data[key], id: key }))
-          .filter(b => b.customerId === user.uid);
-
-        // Sort bookings by date ascending
-        userBookings.sort((a, b) => new Date(a.date) - new Date(b.date));
+    try {
+      const data = await api.getFarmBookings();
+      if (Array.isArray(data)) {
+        const userBookings = data.filter(b => b.userId === user.uid || b.customerId === user.uid);
+        userBookings.sort((a, b) => new Date(a.visitDate || a.date) - new Date(b.visitDate || b.date));
         setBookings(userBookings);
-      } else {
-        setBookings([]);
       }
+    } catch (err) {
+      console.error('Failed to load bookings from PostgreSQL:', err);
+    } finally {
       setLoadingBookings(false);
-    }, (err) => {
-      console.error('Failed to load bookings:', err);
-      setLoadingBookings(false);
-    });
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    loadBookings();
   }, [user]);
 
   // Handle Search & Category Filtering
   const filteredFarms = farms.filter(farm => {
+    const nameStr = (farm?.farmName || '').toLowerCase();
+    const locStr = (farm?.location || '').toLowerCase();
+    const vendorStr = (farm?.vendorName || '').toLowerCase();
+    const queryStr = (searchQuery || '').toLowerCase();
+
     const matchesSearch =
-      farm.farmName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      farm.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      farm.vendorName.toLowerCase().includes(searchQuery.toLowerCase());
+      nameStr.includes(queryStr) ||
+      locStr.includes(queryStr) ||
+      vendorStr.includes(queryStr);
 
     const isFree = !farm.costPerPerson || Number(farm.costPerPerson) === 0;
     const matchesCategory =
@@ -220,11 +209,15 @@ export default function VisitFarms() {
       };
 
       if (isFree && stayCost === 0) {
-        // Free farms: confirm immediately
-        const bookingsRef = ref(realtimeDb, 'farmBookings');
-        const newBookingRef = push(bookingsRef);
-        await set(newBookingRef, bookingPayload);
+        // Free farms: confirm immediately via PostgreSQL API
+        await api.createFarmBooking({
+          ...bookingPayload,
+          visitDate: bookingDate,
+          guests: Number(visitorsCount),
+          totalPrice: totalAmount
+        });
         setBookingSuccess(true);
+        loadBookings();
         setTimeout(() => {
           setSelectedFarm(null);
           setBookingSuccess(false);
@@ -237,18 +230,18 @@ export default function VisitFarms() {
       }
     } catch (err) {
       console.error('Failed to submit booking:', err);
-      setBookingError('Booking failed. Check your internet connection.');
+      setBookingError('Booking failed. Check your network connection.');
     } finally {
       setSubmittingBooking(false);
     }
   };
 
-
   // Cancel Booking
   const handleCancelBooking = async (bookingId) => {
     if (!window.confirm('Are you sure you want to cancel this farm visit booking?')) return;
     try {
-      await remove(ref(realtimeDb, `farmBookings/${bookingId}`));
+      await api.deleteFarmBooking(bookingId);
+      loadBookings();
     } catch (err) {
       console.error('Failed to cancel booking:', err);
       alert('Failed to cancel booking. Please try again.');
@@ -454,7 +447,7 @@ export default function VisitFarms() {
                     <div className="p-5 flex flex-col flex-grow text-left space-y-3.5">
                       <div>
                         <h3 className="text-lg font-bold text-slate-800 font-headings group-hover:text-emerald-700 transition-colors line-clamp-1">
-                          {farm.farmName}
+                          {farm.farmName || farm.name || 'Organic Farm'}
                         </h3>
                         <p className="text-slate-500 text-xs leading-relaxed line-clamp-2 font-medium italic mt-1">
                           "{farm.description}"
@@ -530,8 +523,8 @@ export default function VisitFarms() {
                         <button
                           type="button"
                           onClick={() => {
-                            const slug = farm.farmName
-                              ? farm.farmName.toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+                            const slug = farm?.farmName
+                              ? String(farm.farmName).toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
                               : farm.id;
                             navigate(`/farm/${slug}`);
                           }}

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import {
     Compass, Plus, X, MapPin, Search, Locate, Loader2, Pencil, Trash2, Camera,
     Tent, PawPrint, Smile, ExternalLink, Calendar, Users, Check, Clock, Home as HomeIcon,
-    Footprints, Feather, ShoppingBag, ShieldCheck, Star, Navigation, ArrowLeft, CheckCircle
+    Footprints, Feather, ShoppingBag, ShieldCheck, Star, Navigation, ArrowLeft, CheckCircle,
+    Mail, Phone, MessageCircle, Store
 } from 'lucide-react';
 import ImageUploadField from '../../../components/common/ImageUploadField';
 import { getFarmSlug } from '../../FarmDetails';
@@ -1655,7 +1656,7 @@ export default function VendorFarmsTab({
                                                             </div>
                                                             <div className="p-4 flex flex-col flex-1 space-y-2">
                                                                 <div>
-                                                                    <h4 className="font-bold text-slate-800 text-sm font-headings truncate">{farm.farmName}</h4>
+                                                                    <h4 className="font-bold text-slate-800 text-sm font-headings truncate">{farm.farmName || farm.name || 'Organic Farm'}</h4>
                                                                     <p className="text-[10px] text-slate-450 font-semibold flex items-center gap-1 font-body mt-0.5"><MapPin size={11} className="text-emerald-600" />{farm.location}</p>
                                                                 </div>
                                                                 <p className="text-[11px] text-slate-500 line-clamp-2 italic font-body">"{farm.description}"</p>
@@ -1700,57 +1701,141 @@ export default function VendorFarmsTab({
                                             </div>
                                         ) : (
                                             <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                                                {incomingFarmBookings.map(booking => (
-                                                    <div key={booking.id} className="bg-slate-50/50 border border-slate-200 rounded-2xl p-4 flex flex-col space-y-3 shadow-inner hover:bg-white hover:border-emerald-100 transition-all duration-300">
-                                                        <div className="flex justify-between items-start gap-1">
-                                                            <div className="min-w-0 text-left">
-                                                                <h4 className="font-extrabold text-slate-800 text-xs truncate font-headings">{booking.customerName}</h4>
-                                                                <p className="text-[10px] text-slate-450 truncate font-body mt-0.5">{booking.customerEmail}</p>
+                                                {incomingFarmBookings.map(booking => {
+                                                    const rawDate = booking.date || booking.visitDate;
+                                                    const parsedDate = rawDate ? new Date(rawDate) : null;
+                                                    const formattedDate = (parsedDate && !isNaN(parsedDate.getTime()))
+                                                        ? parsedDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                        : (rawDate || 'Upcoming Visit');
+                                                    const guestCount = booking.visitorsCount || booking.guests || 1;
+                                                    const farmTitle = booking.farmName || booking.farm_name || 'Organic Farm';
+                                                    const custName = booking.customerName || booking.userName || 'Customer';
+                                                    const custEmail = booking.customerEmail || booking.userEmail || '';
+                                                    const custPhone = booking.customerPhone || booking.userPhone || booking.phone || '';
+
+                                                    return (
+                                                        <div key={booking.id || booking.bookingId} className="bg-white border border-slate-200/90 rounded-2xl p-4 space-y-3 shadow-xs hover:shadow-md hover:border-emerald-200 transition-all duration-300">
+                                                            {/* Customer Header */}
+                                                            <div className="flex justify-between items-start gap-2 border-b border-slate-100 pb-2.5">
+                                                                <div className="min-w-0 text-left">
+                                                                    <h4 className="font-extrabold text-slate-800 text-xs truncate font-headings">{custName}</h4>
+                                                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                                                                        {custEmail && (
+                                                                            <span className="text-[10px] text-slate-500 flex items-center gap-1 font-body">
+                                                                                <Mail size={11} className="text-emerald-600 shrink-0" />
+                                                                                <span className="truncate max-w-[140px]">{custEmail}</span>
+                                                                            </span>
+                                                                        )}
+                                                                        {custPhone && (
+                                                                            <span className="text-[10px] text-slate-600 font-bold flex items-center gap-1 font-mono">
+                                                                                <Phone size={10} className="text-emerald-600 shrink-0" />
+                                                                                <span>{custPhone}</span>
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                {booking.status === 'confirmed' ? (
+                                                                    <span className="bg-emerald-50 text-emerald-800 border border-emerald-150 px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-0.5 flex-shrink-0">
+                                                                        <CheckCircle size={9} /> confirmed
+                                                                    </span>
+                                                                ) : booking.status === 'rejected' ? (
+                                                                    <span className="bg-rose-50 text-rose-800 border border-rose-150 px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-0.5 flex-shrink-0">
+                                                                        <X size={9} /> declined
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="bg-amber-50 text-amber-800 border border-amber-150 px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-0.5 flex-shrink-0 animate-pulse">
+                                                                        <Clock size={9} /> pending
+                                                                    </span>
+                                                                )}
                                                             </div>
 
-                                                            {booking.status === 'confirmed' ? (
-                                                                <span className="bg-emerald-50 text-emerald-800 border border-emerald-150 px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-0.5 flex-shrink-0">
-                                                                    <CheckCircle size={9} /> confirmed
-                                                                </span>
-                                                            ) : booking.status === 'rejected' ? (
-                                                                <span className="bg-rose-50 text-rose-800 border border-rose-150 px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-0.5 flex-shrink-0">
-                                                                    <X size={9} /> declined
-                                                                </span>
-                                                            ) : (
-                                                                <span className="bg-amber-50 text-amber-800 border border-amber-150 px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-0.5 flex-shrink-0 animate-pulse">
-                                                                    <Clock size={9} /> pending
-                                                                </span>
+                                                            {/* Visit Details Grid */}
+                                                            <div className="grid grid-cols-2 gap-2 text-xs text-left">
+                                                                <div className="bg-slate-50/80 p-2 rounded-xl border border-slate-150">
+                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block font-headings flex items-center gap-1">
+                                                                        <Calendar size={10} className="text-emerald-600" /> Visit Date
+                                                                    </span>
+                                                                    <span className="font-extrabold text-slate-800 text-[11px] block mt-0.5">{formattedDate}</span>
+                                                                </div>
+
+                                                                <div className="bg-slate-50/80 p-2 rounded-xl border border-slate-150">
+                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block font-headings flex items-center gap-1">
+                                                                        <Users size={10} className="text-emerald-600" /> Members / Guests
+                                                                    </span>
+                                                                    <span className="font-extrabold text-emerald-800 text-[11px] block mt-0.5">{guestCount} Member{guestCount !== 1 ? 's' : ''}</span>
+                                                                </div>
+
+                                                                <div className="bg-amber-50/60 p-2 rounded-xl border border-amber-150 col-span-2">
+                                                                    <span className="text-[9px] font-bold text-amber-900 uppercase tracking-wider block font-headings flex items-center gap-1">
+                                                                        <Tent size={10} className="text-amber-600" /> Stay Option Selected
+                                                                    </span>
+                                                                    <span className="font-bold text-slate-700 text-[11px] block mt-0.5">
+                                                                        {booking.includeStay || booking.accommodationTitle
+                                                                            ? `🛖 ${booking.accommodationTitle || 'Stay Reserved'} (${booking.roomsBooked || 1} Room${(booking.roomsBooked || 1) !== 1 ? 's' : ''})`
+                                                                            : '🚫 Day Visit Only (No Overnight Stay)'}
+                                                                    </span>
+                                                                </div>
+
+                                                                <div className="bg-emerald-50/50 p-2 rounded-xl border border-emerald-150 col-span-2 flex items-center justify-between">
+                                                                    <div>
+                                                                        <span className="text-[9px] font-bold text-emerald-800 uppercase block font-headings">Payment Method</span>
+                                                                        <span className="text-[10px] text-emerald-700 font-medium">{booking.paymentMethod || 'Online UPI'}</span>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <span className="text-[9px] font-bold text-slate-400 uppercase block font-headings">Total Amount</span>
+                                                                        <span className="font-black text-emerald-700 text-xs font-sans">₹{Number(booking.totalAmount || booking.totalPrice || 0).toFixed(2)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Farm Title & Action Buttons */}
+                                                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-left gap-2">
+                                                                <div className="text-[9px] text-slate-500 font-extrabold tracking-wide uppercase truncate">
+                                                                    Farm: <span className="text-slate-800">{farmTitle}</span>
+                                                                </div>
+                                                                {custPhone && (
+                                                                    <div className="flex items-center gap-1 shrink-0">
+                                                                        <a
+                                                                            href={`tel:${custPhone}`}
+                                                                            className="px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[9px] border border-emerald-200 transition-all cursor-pointer font-headings"
+                                                                            title="Call Guest"
+                                                                        >
+                                                                            Call
+                                                                        </a>
+                                                                        <a
+                                                                            href={`https://wa.me/${custPhone.replace(/[^0-9]/g, '')}`}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] transition-all cursor-pointer font-headings"
+                                                                            title="WhatsApp Guest"
+                                                                        >
+                                                                            WhatsApp
+                                                                        </a>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Accept / Decline Action Buttons for Owner */}
+                                                            {(!booking.status || booking.status === 'pending') && (
+                                                                <div className="flex gap-2 pt-2 border-t border-slate-100/30">
+                                                                    <button
+                                                                        onClick={() => handleAcceptBooking(booking.id)}
+                                                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-wider py-1.5 rounded-xl transition-all shadow-sm active:scale-95 text-center"
+                                                                    >
+                                                                        Accept
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDeclineBooking(booking.id)}
+                                                                        className="flex-1 bg-slate-200 hover:bg-slate-350 text-slate-705 font-bold text-[10px] uppercase tracking-wider py-1.5 rounded-xl transition-all active:scale-95 text-center"
+                                                                    >
+                                                                        Decline
+                                                                    </button>
+                                                                </div>
                                                             )}
                                                         </div>
-
-                                                        <div className="border-t border-slate-100/60 pt-2 flex justify-between items-center text-[10px] font-bold text-slate-550">
-                                                            <span className="flex items-center gap-1"><Calendar size={11} className="text-emerald-600" />{new Date(booking.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
-                                                            <span className="flex items-center gap-1"><Users size={11} className="text-emerald-600" />{booking.visitorsCount} guest{booking.visitorsCount !== 1 ? 's' : ''}</span>
-                                                        </div>
-
-                                                        <div className="text-[9px] text-slate-450 font-extrabold tracking-wide uppercase truncate pt-1 border-t border-slate-100/30 text-left">
-                                                            Farm: {booking.farmName}
-                                                        </div>
-
-                                                        {/* Accept / Decline Action Buttons for Owner */}
-                                                        {(!booking.status || booking.status === 'pending') && (
-                                                            <div className="flex gap-2 pt-2 border-t border-slate-100/30">
-                                                                <button
-                                                                    onClick={() => handleAcceptBooking(booking.id)}
-                                                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-wider py-1.5 rounded-xl transition-all shadow-sm active:scale-95 text-center"
-                                                                >
-                                                                    Accept
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleDeclineBooking(booking.id)}
-                                                                    className="flex-1 bg-slate-200 hover:bg-slate-350 text-slate-705 font-bold text-[10px] uppercase tracking-wider py-1.5 rounded-xl transition-all active:scale-95 text-center"
-                                                                >
-                                                                    Decline
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>

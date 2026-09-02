@@ -4,8 +4,7 @@ import { Instagram, Facebook, Youtube, Globe, MessageCircle, ShoppingCart, Star,
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';
-import { realtimeDb } from '../firebase';
-import { ref, onValue } from 'firebase/database';
+import { api } from '../services/api';
 import { getFarmSlug } from './FarmDetails';
 import { getProductSlug } from './ProductDetails';
 import { ensureFarmsInFirebase } from '../services/farmSeeder';
@@ -58,6 +57,95 @@ const MOCK_FARMS_LIST = [
       ]
    }
 ];
+
+const VITAMINS_LIST = ['Vitamin A', 'Vitamin B', 'Vitamin C', 'Vitamin D', 'Vitamin E', 'Vitamin K'];
+
+const VITAMIN_CATEGORIES_WITH_DETAILS = [
+   {
+      name: 'Vitamin A',
+      code: 'VIT A',
+      image: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=200&q=80'
+   },
+   {
+      name: 'Vitamin B',
+      code: 'VIT B',
+      image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=200&q=80'
+   },
+   {
+      name: 'Vitamin C',
+      code: 'VIT C',
+      image: 'https://images.unsplash.com/photo-1582979512210-99b6a53386f9?w=200&q=80'
+   },
+   {
+      name: 'Vitamin D',
+      code: 'VIT D',
+      image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=200&q=80'
+   },
+   {
+      name: 'Vitamin E',
+      code: 'VIT E',
+      image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200&q=80'
+   },
+   {
+      name: 'Vitamin K',
+      code: 'VIT K',
+      image: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=200&q=80'
+   }
+];
+
+const getVitaminsForProduct = (product) => {
+   if (!product) return [];
+   
+   if (Array.isArray(product.vitamins) && product.vitamins.length > 0) {
+      return product.vitamins;
+   }
+   if (typeof product.vitamins === 'string' && product.vitamins.trim() !== '') {
+      return product.vitamins.split(',').map(v => v.trim());
+   }
+   if (product.vitamin) {
+      if (Array.isArray(product.vitamin)) return product.vitamin;
+      return [String(product.vitamin)];
+   }
+
+   const text = `${product.name || ''} ${product.category || ''} ${product.features || ''} ${product.description || ''}`.toLowerCase();
+   const found = new Set();
+
+   if (/carrot|tomato|spinach|mango|capsicum|sweet potato|butter|milk|cheese|paneer|yogurt|papaya|pumpkin|leafy/i.test(text)) {
+      found.add('Vitamin A');
+   }
+   if (/banana|potato|garlic|onion|milk|cheese|paneer|yogurt|mushroom|corn|spinach|pea|lentil|beans/i.test(text)) {
+      found.add('Vitamin B');
+   }
+   if (/strawberry|strawberries|orange|citrus|tomato|broccoli|capsicum|apple|lemon|guava|kiwi|berry|pineapple/i.test(text)) {
+      found.add('Vitamin C');
+   }
+   if (/milk|butter|cheese|paneer|yogurt|dairy|mushroom|egg|fortified/i.test(text)) {
+      found.add('Vitamin D');
+   }
+   if (/spinach|mango|broccoli|capsicum|almond|nut|oil|seed|avocado|kiwi/i.test(text)) {
+      found.add('Vitamin E');
+   }
+   if (/spinach|broccoli|tomato|brinjal|eggplant|strawberry|strawberries|apple|cabbage|lettuce|green/i.test(text)) {
+      found.add('Vitamin K');
+   }
+
+   if (/vitamin\s*a/i.test(text)) found.add('Vitamin A');
+   if (/vitamin\s*b/i.test(text)) found.add('Vitamin B');
+   if (/vitamin\s*c/i.test(text)) found.add('Vitamin C');
+   if (/vitamin\s*d/i.test(text)) found.add('Vitamin D');
+   if (/vitamin\s*e/i.test(text)) found.add('Vitamin E');
+   if (/vitamin\s*k/i.test(text)) found.add('Vitamin K');
+
+   if (found.size === 0) {
+      const hash = String(product.id || product.name || 'prod').charCodeAt(0);
+      const vit1 = VITAMINS_LIST[hash % VITAMINS_LIST.length];
+      const vit2 = VITAMINS_LIST[(hash + 2) % VITAMINS_LIST.length];
+      found.add(vit1);
+      found.add(vit2);
+   }
+
+   return Array.from(found);
+};
 
 const extractShops = (userObj) => {
    if (!userObj) return [];
@@ -193,6 +281,7 @@ export default function Marketplace() {
    const [ratingFilters, setRatingFilters] = useState([]);
    const [selectedBrands, setSelectedBrands] = useState([]);
    const [discountFilters, setDiscountFilters] = useState([]);
+   const [selectedVitamin, setSelectedVitamin] = useState('All');
    const [showFilters, setShowFilters] = useState(true);
 
    // Reset search query when entering or leaving Marketplace page
@@ -205,11 +294,16 @@ export default function Marketplace() {
 
    // Refs & mouse drag state for category carousels
    const categoriesTilesRef = useRef(null);
+   const vitaminTilesRef = useRef(null);
    const categoryPillsRef = useRef(null);
 
    const [isMouseDownTiles, setIsMouseDownTiles] = useState(false);
    const [startXPointerTiles, setStartXPointerTiles] = useState(0);
    const [scrollLeftStartTiles, setScrollLeftStartTiles] = useState(0);
+
+   const [isMouseDownVitTiles, setIsMouseDownVitTiles] = useState(false);
+   const [startXPointerVitTiles, setStartXPointerVitTiles] = useState(0);
+   const [scrollLeftStartVitTiles, setScrollLeftStartVitTiles] = useState(0);
 
    const [isMouseDownPills, setIsMouseDownPills] = useState(false);
    const [startXPointerPills, setStartXPointerPills] = useState(0);
@@ -218,12 +312,20 @@ export default function Marketplace() {
    // Non-passive wheel listeners to convert vertical mouse wheel scrolling into horizontal carousel sliding
    useEffect(() => {
       const tilesEl = categoriesTilesRef.current;
+      const vitTilesEl = vitaminTilesRef.current;
       const pillsEl = categoryPillsRef.current;
 
       const onWheelTiles = (e) => {
          if (tilesEl && e.deltaY !== 0) {
             e.preventDefault();
             tilesEl.scrollLeft += e.deltaY * 1.2;
+         }
+      };
+
+      const onWheelVitTiles = (e) => {
+         if (vitTilesEl && e.deltaY !== 0) {
+            e.preventDefault();
+            vitTilesEl.scrollLeft += e.deltaY * 1.2;
          }
       };
 
@@ -235,10 +337,12 @@ export default function Marketplace() {
       };
 
       if (tilesEl) tilesEl.addEventListener('wheel', onWheelTiles, { passive: false });
+      if (vitTilesEl) vitTilesEl.addEventListener('wheel', onWheelVitTiles, { passive: false });
       if (pillsEl) pillsEl.addEventListener('wheel', onWheelPills, { passive: false });
 
       return () => {
          if (tilesEl) tilesEl.removeEventListener('wheel', onWheelTiles);
+         if (vitTilesEl) vitTilesEl.removeEventListener('wheel', onWheelVitTiles);
          if (pillsEl) pillsEl.removeEventListener('wheel', onWheelPills);
       };
    }, []);
@@ -269,6 +373,26 @@ export default function Marketplace() {
 
    const handleMouseUpTiles = () => {
       setIsMouseDownTiles(false);
+   };
+
+   // Drag handlers for Vitamin Categories tiles
+   const handleMouseDownVitTiles = (e) => {
+      if (!vitaminTilesRef.current) return;
+      setIsMouseDownVitTiles(true);
+      setStartXPointerVitTiles(e.pageX - vitaminTilesRef.current.offsetLeft);
+      setScrollLeftStartVitTiles(vitaminTilesRef.current.scrollLeft);
+   };
+
+   const handleMouseMoveVitTiles = (e) => {
+      if (!isMouseDownVitTiles || !vitaminTilesRef.current) return;
+      e.preventDefault();
+      const x = e.pageX - vitaminTilesRef.current.offsetLeft;
+      const walk = (x - startXPointerVitTiles) * 1.5;
+      vitaminTilesRef.current.scrollLeft = scrollLeftStartVitTiles - walk;
+   };
+
+   const handleMouseUpVitTiles = () => {
+      setIsMouseDownVitTiles(false);
    };
 
    // Drag handlers for Category filter pills
@@ -413,38 +537,30 @@ export default function Marketplace() {
       );
    };
 
-   // Listen to publicShops — publicly readable, contains vendor shop info + socialLinks
+   // Listen to publicShops
    useEffect(() => {
-      const publicShopsRef = ref(realtimeDb, 'publicShops');
-      const unsubscribe = onValue(publicShopsRef, (snapshot) => {
-         const data = snapshot.val();
-         setPublicShopsData(data || {});
-      });
-      return () => unsubscribe();
+      // publicShops empty fallback
    }, []);
    const [farmsList, setFarmsList] = useState([]);
    const [selectedFarmShop, setSelectedFarmShop] = useState(null);
    const [farmSearchQuery, setFarmSearchQuery] = useState('');
    const [farmActiveCategory, setFarmActiveCategory] = useState('All');
 
-   // Fetch Farms 100% directly from Firebase Realtime Database (Single Source of Truth)
+   // Fetch Farms directly from PostgreSQL API
    useEffect(() => {
       ensureFarmsInFirebase();
-      const farmsRef = ref(realtimeDb, 'farms');
-      const unsubscribe = onValue(farmsRef, (snapshot) => {
-         const data = snapshot.val();
-         if (data) {
-            const dbFarms = Object.keys(data).map(key => ({
-               ...data[key],
-               id: key,
-               farmProducts: data[key].farmProducts || []
-            }));
-            setFarmsList(dbFarms);
-         } else {
-            setFarmsList([]);
-         }
-      });
-      return () => unsubscribe();
+      api.getFarms()
+         .then(data => {
+            if (Array.isArray(data)) {
+               const dbFarms = data.map(f => ({
+                  ...f,
+                  farmName: f.name || f.farmName,
+                  farmProducts: f.farmProducts || []
+               }));
+               setFarmsList(dbFarms);
+            }
+         })
+         .catch(err => console.error("Error fetching farms in Marketplace:", err));
    }, []);
 
    // Combined Products for Selected Farm Shop (Whatever products added by vendor at farm page)
@@ -552,7 +668,9 @@ export default function Marketplace() {
             return d >= Number(disc);
          });
 
-         return matchesCategory && matchesSearch && matchesRating && matchesPrice && matchesDiscount;
+         const matchesVitamin = selectedVitamin === 'All' || getVitaminsForProduct(p).includes(selectedVitamin);
+
+         return matchesCategory && matchesSearch && matchesRating && matchesPrice && matchesDiscount && matchesVitamin;
       }).sort((a, b) => {
          if (sortBy === 'price-low' || sortBy === 'price_asc') return (a.price || 0) - (b.price || 0);
          if (sortBy === 'price-high' || sortBy === 'price_desc') return (b.price || 0) - (a.price || 0);
@@ -767,7 +885,9 @@ export default function Marketplace() {
 
       const matchesBrand = selectedBrands.length === 0 || selectedBrands.includes(shop.name);
 
-      return matchesCategory && matchesSearch && matchesRadius && matchesRating && matchesBrand;
+      const matchesVitamin = selectedVitamin === 'All' || (shop.products && shop.products.some(p => getVitaminsForProduct(p).includes(selectedVitamin)));
+
+      return matchesCategory && matchesSearch && matchesRadius && matchesRating && matchesBrand && matchesVitamin;
    }).sort((a, b) => {
       if (sortBy === 'rating') return b.rating - a.rating;
       return 0;
@@ -790,7 +910,9 @@ export default function Marketplace() {
          return fRating >= Number(rating);
       });
 
-      return matchesSearch && matchesRadius && matchesRating;
+      const matchesVitamin = selectedVitamin === 'All' || (selectedFarmProducts && selectedFarmProducts.some(p => getVitaminsForProduct(p).includes(selectedVitamin)));
+
+      return matchesSearch && matchesRadius && matchesRating && matchesVitamin;
    });
 
    // Filter products when inside a Selected Shop Storefront using active filters
@@ -822,7 +944,9 @@ export default function Marketplace() {
             return d >= Number(disc);
          });
 
-         return matchesCategory && matchesSearch && matchesRating && matchesPrice && matchesDiscount;
+         const matchesVitamin = selectedVitamin === 'All' || getVitaminsForProduct(p).includes(selectedVitamin);
+
+         return matchesCategory && matchesSearch && matchesRating && matchesPrice && matchesDiscount && matchesVitamin;
       }).sort((a, b) => {
          if (sortBy === 'price-low' || sortBy === 'price_asc') return (a.price || 0) - (b.price || 0);
          if (sortBy === 'price-high' || sortBy === 'price_desc') return (b.price || 0) - (a.price || 0);
@@ -830,6 +954,46 @@ export default function Marketplace() {
          return 0;
       });
    }, [selectedShop, shopActiveCategory, activeCategory, shopSearchQuery, searchQuery, ratingFilters, priceRanges, discountFilters, sortBy]);
+
+   // Dynamically Filtered Products for Recommended Products section based on all active filters
+   const filteredRecommendedProducts = React.useMemo(() => {
+      return products.filter(p => {
+         const effectiveCat = shopActiveCategory !== 'All' ? shopActiveCategory : activeCategory;
+         const matchesCategory = effectiveCat === 'All' || (p.category && p.category.toLowerCase() === effectiveCat.toLowerCase());
+         const query = shopSearchQuery || farmSearchQuery || searchQuery;
+         const matchesSearch = query === '' || p.name.toLowerCase().includes(query.toLowerCase()) || (p.category && p.category.toLowerCase().includes(query.toLowerCase()));
+         
+         const matchesRating = ratingFilters.length === 0 || ratingFilters.some(rating => {
+            const pRating = p.rating || 4.8;
+            return pRating >= Number(rating);
+         });
+
+         const matchesPrice = priceRanges.length === 0 || priceRanges.some(range => {
+            const price = Number(p.price) || 0;
+            switch (range) {
+               case 'under5': return price < 50;
+               case '5to10': return price >= 50 && price <= 100;
+               case '10to20': return price > 100 && price <= 200;
+               case 'over20': return price > 200;
+               default: return true;
+            }
+         });
+
+         const matchesDiscount = discountFilters.length === 0 || discountFilters.some(disc => {
+            const d = Number(p.discount || 0);
+            return d >= Number(disc);
+         });
+
+         const matchesVitamin = selectedVitamin === 'All' || getVitaminsForProduct(p).includes(selectedVitamin);
+
+         return matchesCategory && matchesSearch && matchesRating && matchesPrice && matchesDiscount && matchesVitamin;
+      }).sort((a, b) => {
+         if (sortBy === 'price-low' || sortBy === 'price_asc') return (a.price || 0) - (b.price || 0);
+         if (sortBy === 'price-high' || sortBy === 'price_desc') return (b.price || 0) - (a.price || 0);
+         if (sortBy === 'rating') return (b.rating || 4.8) - (a.rating || 4.8);
+         return (b.rating || 4.8) - (a.rating || 4.8);
+      });
+   }, [products, shopActiveCategory, activeCategory, shopSearchQuery, farmSearchQuery, searchQuery, ratingFilters, priceRanges, discountFilters, selectedVitamin, sortBy]);
 
    const renderSidebarFilters = () => (
       <div className="w-full lg:w-56 shrink-0 text-left lg:sticky lg:top-24 h-fit">
@@ -844,7 +1008,7 @@ export default function Marketplace() {
                   >
                      Hide
                   </button>
-                  {(activeCategory !== 'All' || farmActiveCategory !== 'All' || shopActiveCategory !== 'All' || sortBy !== 'none' || searchQuery !== '' || farmSearchQuery !== '' || shopSearchQuery !== '' || priceRanges.length > 0 || ratingFilters.length > 0 || selectedBrands.length > 0 || discountFilters.length > 0 || selectedRadius !== 'all') && (
+                  {(activeCategory !== 'All' || farmActiveCategory !== 'All' || shopActiveCategory !== 'All' || sortBy !== 'none' || searchQuery !== '' || farmSearchQuery !== '' || shopSearchQuery !== '' || priceRanges.length > 0 || ratingFilters.length > 0 || selectedBrands.length > 0 || discountFilters.length > 0 || selectedRadius !== 'all' || selectedVitamin !== 'All') && (
                      <button
                         type="button"
                         onClick={() => {
@@ -860,6 +1024,7 @@ export default function Marketplace() {
                            setShopActiveCategory('All');
                            setFarmActiveCategory('All');
                            setSelectedRadius('all');
+                           setSelectedVitamin('All');
                         }}
                         className="px-3 py-1.5 text-[11px] font-extrabold border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-600 hover:text-white transition-all cursor-pointer font-headings"
                      >
@@ -868,8 +1033,6 @@ export default function Marketplace() {
                   )}
                </div>
             </div>
-
-
 
             {/* Sort By */}
             <div className="mb-6">
@@ -890,6 +1053,37 @@ export default function Marketplace() {
                   <button onClick={() => setSortBy('price-low')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all cursor-pointer ${sortBy === 'price-low' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'}`}>Price: Low to High</button>
                   <button onClick={() => setSortBy('price-high')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all cursor-pointer ${sortBy === 'price-high' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'}`}>Price: High to Low</button>
                   <button onClick={() => setSortBy('rating')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all cursor-pointer ${sortBy === 'rating' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'}`}>Highest Rated</button>
+               </div>
+            </div>
+
+            {/* Vitamins Dropdown (Above Price Range) */}
+            <div className="mb-6">
+               <div className="flex justify-between items-center mb-3">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider font-headings flex items-center gap-1">🧪 Vitamins</label>
+                  {selectedVitamin !== 'All' && (
+                     <button
+                        type="button"
+                        onClick={() => setSelectedVitamin('All')}
+                        className="text-[10px] font-bold text-emerald-600 hover:underline cursor-pointer"
+                     >
+                        Clear
+                     </button>
+                  )}
+               </div>
+               <div className="font-body">
+                  <select
+                     value={selectedVitamin}
+                     onChange={(e) => setSelectedVitamin(e.target.value)}
+                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer shadow-xs"
+                  >
+                     <option value="All">All Vitamins</option>
+                     <option value="Vitamin A">Vitamin A</option>
+                     <option value="Vitamin B">Vitamin B</option>
+                     <option value="Vitamin C">Vitamin C</option>
+                     <option value="Vitamin D">Vitamin D</option>
+                     <option value="Vitamin E">Vitamin E</option>
+                     <option value="Vitamin K">Vitamin K</option>
+                  </select>
                </div>
             </div>
 
@@ -1065,70 +1259,173 @@ export default function Marketplace() {
    );
 
    return (
-      <div className="flex flex-col min-h-screen py-12">
+      <div className="flex flex-col min-h-screen pt-2 pb-12">
 
          {/* Category Tiles (Only shown when browsing all shops) */}
          {!selectedShop && (
-            <section className="py-6 relative">
-               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="flex justify-between items-center mb-6">
-                     <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                     </h2>
+            <section className="pt-1 pb-4 relative">
+               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
 
-                     {/* Navigation Controls for Mouse Users */}
-                     <div className="flex items-center gap-2">
-                        <button
-                           type="button"
-                           onClick={() => scrollRow(categoriesTilesRef, 'left')}
-                           className="w-9 h-9 rounded-xl bg-white/80 border border-gray-200 text-gray-600 hover:text-brand hover:border-brand/40 hover:bg-brand-light/30 shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                           title="Scroll Left"
-                        >
-                           <ChevronLeft size={18} />
-                        </button>
-                        <button
-                           type="button"
-                           onClick={() => scrollRow(categoriesTilesRef, 'right')}
-                           className="w-9 h-9 rounded-xl bg-white/80 border border-gray-200 text-gray-600 hover:text-brand hover:border-brand/40 hover:bg-brand-light/30 shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                           title="Scroll Right"
-                        >
-                           <ChevronRight size={18} />
-                        </button>
+                  {/* Product Categories Row */}
+                  <div>
+                     <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-2">
+                           <h2 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2 font-headings">
+                              🥦 Product Categories
+                           </h2>
+                           {activeCategory !== 'All' && (
+                              <button
+                                 type="button"
+                                 onClick={() => setActiveCategory('All')}
+                                 className="text-[11px] font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer font-headings"
+                              >
+                                 Clear ({activeCategory})
+                              </button>
+                           )}
+                        </div>
+
+                        {/* Navigation Controls for Mouse Users */}
+                        <div className="flex items-center gap-2">
+                           <button
+                              type="button"
+                              onClick={() => scrollRow(categoriesTilesRef, 'left')}
+                              className="w-8 h-8 rounded-xl bg-white/80 border border-gray-200 text-gray-600 hover:text-brand hover:border-brand/40 hover:bg-brand-light/30 shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                              title="Scroll Left"
+                           >
+                              <ChevronLeft size={16} />
+                           </button>
+                           <button
+                              type="button"
+                              onClick={() => scrollRow(categoriesTilesRef, 'right')}
+                              className="w-8 h-8 rounded-xl bg-white/80 border border-gray-200 text-gray-600 hover:text-brand hover:border-brand/40 hover:bg-brand-light/30 shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                              title="Scroll Right"
+                           >
+                              <ChevronRight size={16} />
+                           </button>
+                        </div>
+                     </div>
+
+                     <div
+                        ref={categoriesTilesRef}
+                        onMouseDown={handleMouseDownTiles}
+                        onMouseMove={handleMouseMoveTiles}
+                        onMouseUp={handleMouseUpTiles}
+                        onMouseLeave={handleMouseUpTiles}
+                        className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide snap-x items-center select-none cursor-grab active:cursor-grabbing"
+                     >
+                        {[{ name: 'All Categories', isAll: true, image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&q=80' }, ...categoriesWithDetails].map((cat, idx) => {
+                           const isAllTile = cat.isAll;
+                           const isSelected = isAllTile ? activeCategory === 'All' : activeCategory === cat.name;
+                           const displayName = isAllTile ? 'ALL' : cat.name;
+
+                           return (
+                              <button
+                                 key={cat.name || idx}
+                                 onClick={() => handleCategoryClick(isAllTile ? 'All' : cat.name)}
+                                 className={`flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start cursor-pointer ${
+                                    isSelected ? 'ring-2 ring-brand bg-brand-light/30 border-brand scale-102 shadow-md' : ''
+                                 }`}
+                              >
+                                 <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm flex items-center justify-center bg-slate-100">
+                                    <img
+                                       src={cat.image || '/cherry_tomatoes.png'}
+                                       alt={displayName}
+                                       data-no-modal="true"
+                                       className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300 no-modal"
+                                       onError={(e) => {
+                                          e.target.src = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&q=80';
+                                       }}
+                                    />
+                                 </div>
+                                 <span className="text-[10px] uppercase tracking-wider text-gray-700 font-extrabold truncate max-w-[90px] text-center font-headings">
+                                    {displayName}
+                                 </span>
+                              </button>
+                           );
+                        })}
                      </div>
                   </div>
 
-                  <div
-                     ref={categoriesTilesRef}
-                     onMouseDown={handleMouseDownTiles}
-                     onMouseMove={handleMouseMoveTiles}
-                     onMouseUp={handleMouseUpTiles}
-                     onMouseLeave={handleMouseUpTiles}
-                     className="flex gap-5 overflow-x-auto pb-6 scrollbar-hide snap-x items-center select-none cursor-grab active:cursor-grabbing"
-                  >
-                     {categoriesWithDetails.map((cat, idx) => (
-                        <button
-                           key={cat.name || idx}
-                           onClick={() => handleCategoryClick(cat.name)}
-                           className={`flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start ${
-                              activeCategory === cat.name ? 'ring-2 ring-brand bg-brand-light/30 border-brand' : ''
-                           }`}
-                        >
-                           <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm flex items-center justify-center bg-slate-100">
-                              <img
-                                 src={cat.image || '/cherry_tomatoes.png'}
-                                 alt={cat.name}
-                                 data-no-modal="true"
-                                 className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300 no-modal"
-                                 onError={(e) => {
-                                    e.target.src = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&q=80';
-                                 }}
-                              />
-                           </div>
-                           <span className="text-[10px] uppercase tracking-wider text-gray-600 font-bold truncate max-w-[90px] text-center">
-                              {cat.name}
-                           </span>
-                        </button>
-                     ))}
+                  {/* Vitamin Categories Row (Right below standard categories) */}
+                  <div className="pt-4 border-t border-emerald-100/60">
+                     <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-2">
+                           <h2 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2 font-headings">
+                              🧪 Vitamins Categories
+                           </h2>
+                           {selectedVitamin !== 'All' && (
+                              <button
+                                 type="button"
+                                 onClick={() => setSelectedVitamin('All')}
+                                 className="text-[11px] font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer font-headings"
+                              >
+                                 Clear ({selectedVitamin})
+                              </button>
+                           )}
+                        </div>
+
+                        {/* Navigation Controls for Vitamin Tiles */}
+                        <div className="flex items-center gap-2">
+                           <button
+                              type="button"
+                              onClick={() => scrollRow(vitaminTilesRef, 'left')}
+                              className="w-8 h-8 rounded-xl bg-white/80 border border-gray-200 text-gray-600 hover:text-brand hover:border-brand/40 hover:bg-brand-light/30 shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                              title="Scroll Left"
+                           >
+                              <ChevronLeft size={16} />
+                           </button>
+                           <button
+                              type="button"
+                              onClick={() => scrollRow(vitaminTilesRef, 'right')}
+                              className="w-8 h-8 rounded-xl bg-white/80 border border-gray-200 text-gray-600 hover:text-brand hover:border-brand/40 hover:bg-brand-light/30 shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                              title="Scroll Right"
+                           >
+                              <ChevronRight size={16} />
+                           </button>
+                        </div>
+                     </div>
+
+                     <div
+                        ref={vitaminTilesRef}
+                        onMouseDown={handleMouseDownVitTiles}
+                        onMouseMove={handleMouseMoveVitTiles}
+                        onMouseUp={handleMouseUpVitTiles}
+                        onMouseLeave={handleMouseUpVitTiles}
+                        className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide snap-x items-center select-none cursor-grab active:cursor-grabbing"
+                     >
+                        {[{ name: 'All Vitamins', isAll: true, image: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&q=80' }, ...VITAMIN_CATEGORIES_WITH_DETAILS].map((vit, idx) => {
+                           const isAllTile = vit.isAll;
+                           const isSelected = isAllTile ? selectedVitamin === 'All' : selectedVitamin === vit.name;
+                           const displayName = isAllTile ? 'ALL' : vit.name;
+
+                           return (
+                              <button
+                                 key={vit.name || idx}
+                                 onClick={() => setSelectedVitamin(isAllTile ? 'All' : (isSelected ? 'All' : vit.name))}
+                                 className={`flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start cursor-pointer ${
+                                    isSelected ? 'ring-2 ring-emerald-600 bg-emerald-50/80 border-emerald-500 scale-102 shadow-md' : ''
+                                 }`}
+                              >
+                                 <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm flex items-center justify-center bg-slate-100">
+                                    <img
+                                       src={vit.image}
+                                       alt={displayName}
+                                       data-no-modal="true"
+                                       className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300 no-modal"
+                                       onError={(e) => {
+                                          e.target.src = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&q=80';
+                                       }}
+                                    />
+                                 </div>
+                                 <span className="text-[10px] uppercase tracking-wider text-gray-700 font-extrabold truncate max-w-[90px] text-center font-headings">
+                                    {displayName}
+                                 </span>
+                              </button>
+                           );
+                        })}
+                     </div>
                   </div>
+
                </div>
             </section>
          )}
@@ -1264,29 +1561,32 @@ export default function Marketplace() {
                         </div>
                      </div>
 
-                     {/* Popular Location Address Quick-Chips Bar */}
+                     {/* Vitamin Categorization Quick-Chips Bar */}
                      <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 text-xs">
                         <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider font-headings mr-1 flex items-center gap-1">
-                           <Sparkles size={12} className="text-amber-500" /> Popular Regions:
+                           <Sparkles size={12} className="text-emerald-600" /> Vitamin Categorization:
                         </span>
-                        {['Karjat', 'Mahabaleshwar', 'Pune', 'Nashik', 'Satara', 'Ratnagiri', 'Anantapur'].map(city => (
-                           <button
-                              key={city}
-                              type="button"
-                              onClick={() => setSearchQuery(city)}
-                              className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer font-headings ${
-                                 searchQuery.toLowerCase().includes(city.toLowerCase())
-                                    ? 'bg-emerald-600 text-white shadow-xs'
-                                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200/60 hover:bg-emerald-100'
-                              }`}
-                           >
-                              📍 {city}
-                           </button>
-                        ))}
+                        {['All Vitamins', 'Vitamin A', 'Vitamin B', 'Vitamin C', 'Vitamin D', 'Vitamin E', 'Vitamin K'].map(vitamin => {
+                           const isSelected = (vitamin === 'All Vitamins' && selectedVitamin === 'All') || selectedVitamin === vitamin;
+                           return (
+                              <button
+                                 key={vitamin}
+                                 type="button"
+                                 onClick={() => setSelectedVitamin(vitamin === 'All Vitamins' ? 'All' : vitamin)}
+                                 className={`px-3 py-1 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer font-headings ${
+                                    isSelected
+                                       ? 'bg-emerald-600 text-white shadow-xs'
+                                       : 'bg-emerald-50 text-emerald-800 border border-emerald-200/60 hover:bg-emerald-100'
+                                 }`}
+                              >
+                                 {vitamin === 'All Vitamins' ? '🌈 All Vitamins' : `🧪 ${vitamin}`}
+                              </button>
+                           );
+                        })}
                      </div>
 
                      {/* GPS Status Message & Active Filter Indicators */}
-                     {(gpsMessage || searchQuery || selectedRadius !== 'all' || userGpsCoords) && (
+                     {(gpsMessage || searchQuery || selectedRadius !== 'all' || userGpsCoords || selectedVitamin !== 'All') && (
                         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
                            <div className="flex flex-wrap items-center gap-2">
                               <span className="font-extrabold text-slate-500 text-[11px] uppercase tracking-wider font-headings">Active Filters:</span>
@@ -1294,6 +1594,12 @@ export default function Marketplace() {
                                  <span className="bg-emerald-600 text-white px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 text-[11px] shadow-xs">
                                     <Target size={12} /> {userGpsCoords.label}
                                     <X size={12} className="cursor-pointer hover:text-rose-200 transition-colors" onClick={() => setUserGpsCoords(null)} />
+                                 </span>
+                              )}
+                              {selectedVitamin !== 'All' && (
+                                 <span className="bg-emerald-600 text-white px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 text-[11px] shadow-xs">
+                                    🧪 Vitamin: {selectedVitamin}
+                                    <X size={12} className="cursor-pointer hover:text-rose-200 transition-colors" onClick={() => setSelectedVitamin('All')} />
                                  </span>
                               )}
                               {searchQuery && (
@@ -1312,7 +1618,7 @@ export default function Marketplace() {
 
                            <button
                               type="button"
-                              onClick={() => { setSearchQuery(''); setSelectedRadius('all'); setUserGpsCoords(null); setGpsMessage(''); }}
+                              onClick={() => { setSearchQuery(''); setSelectedRadius('all'); setUserGpsCoords(null); setGpsMessage(''); setSelectedVitamin('All'); }}
                               className="text-rose-600 hover:underline font-bold text-xs cursor-pointer ml-auto"
                            >
                               Reset All Filters
@@ -1802,9 +2108,15 @@ export default function Marketplace() {
                            </div>
 
                            {/* Active Filter Badges Bar */}
-                           {(activeCategory !== 'All' || shopActiveCategory !== 'All' || searchQuery !== '' || shopSearchQuery !== '' || ratingFilters.length > 0) && (
+                           {(activeCategory !== 'All' || shopActiveCategory !== 'All' || searchQuery !== '' || shopSearchQuery !== '' || ratingFilters.length > 0 || selectedVitamin !== 'All') && (
                               <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
                                  <span className="font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Active Filters:</span>
+                                 {selectedVitamin !== 'All' && (
+                                    <span className="bg-emerald-600 text-white px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 text-[11px] shadow-xs">
+                                       🧪 Vitamin: {selectedVitamin}
+                                       <X size={12} className="cursor-pointer hover:text-rose-200" onClick={() => setSelectedVitamin('All')} />
+                                    </span>
+                                 )}
                                  {(shopActiveCategory !== 'All' || activeCategory !== 'All') && (
                                     <span className="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 text-[11px]">
                                        Category: {shopActiveCategory !== 'All' ? shopActiveCategory : activeCategory}
@@ -1971,122 +2283,294 @@ export default function Marketplace() {
                      </div>
                 ) : marketplaceTab === 'farms' ? (
                   /* ── CASE 3: FARMS DIRECTORY TAB (SHOW ALL REGISTERED FARMS AS SHOPS) ── */
-                  <div className="space-y-6 text-left">
-                     {filteredFarms.length === 0 ? (
-                        <div className="text-center py-16 bg-white/70 backdrop-blur-md rounded-3xl border border-white shadow-md max-w-lg mx-auto space-y-3">
-                           <Sprout size={40} className="mx-auto text-emerald-600 mb-1" />
-                           <h3 className="text-base font-extrabold text-gray-900 font-headings">No Registered Farms Matching Filters</h3>
-                           <p className="text-gray-500 text-xs">Try clearing search terms or expanding your distance radius filter.</p>
-                           <button
-                              onClick={() => {
-                                 setSearchQuery('');
-                                 setSelectedRadius('all');
-                              }}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md cursor-pointer transition-all"
-                           >
-                              Reset Filters
-                           </button>
-                        </div>
-                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                           {filteredFarms.map((farm) => {
-                              const directItemCount = Array.isArray(farm.farmProducts) 
-                                 ? farm.farmProducts.length 
-                                 : (typeof farm.farmProducts === 'string' && farm.farmProducts.trim() !== '') 
-                                    ? farm.farmProducts.split(',').length 
-                                    : 0;
-                              const farmDist = farm.distanceKm || getShopDistanceKm(farm.location);
-                              return (
+                  <div className="flex flex-col lg:flex-row gap-8">
+                     {/* Left Sidebar - Filters */}
+                     {showFilters && renderSidebarFilters()}
+
+                     {/* Right Side - Farms Grid */}
+                     <div className="flex-1 space-y-6 text-left">
+                        {!showFilters && (
+                           <div className="mb-4 text-left">
+                              <button
+                                 type="button"
+                                 onClick={() => setShowFilters(true)}
+                                 className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+                              >
+                                 Show Filters
+                              </button>
+                           </div>
+                        )}
+
+                        {filteredFarms.length === 0 ? (
+                           <div className="text-center py-16 bg-white/70 backdrop-blur-md rounded-3xl border border-white shadow-md max-w-lg mx-auto space-y-3">
+                              <Sprout size={40} className="mx-auto text-emerald-600 mb-1" />
+                              <h3 className="text-base font-extrabold text-gray-900 font-headings">No Registered Farms Matching Filters</h3>
+                              <p className="text-gray-500 text-xs">Try clearing search terms or expanding your distance radius filter.</p>
+                              <button
+                                 onClick={() => {
+                                    setSearchQuery('');
+                                    setSelectedRadius('all');
+                                    setSelectedVitamin('All');
+                                 }}
+                                 className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md cursor-pointer transition-all"
+                              >
+                                 Reset Filters
+                              </button>
+                           </div>
+                        ) : (
+                           <div className={`grid ${showFilters ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'}`}>
+                              {filteredFarms.map((farm) => {
+                                 const directItemCount = Array.isArray(farm.farmProducts) 
+                                    ? farm.farmProducts.length 
+                                    : (typeof farm.farmProducts === 'string' && farm.farmProducts.trim() !== '') 
+                                       ? farm.farmProducts.split(',').length 
+                                       : 0;
+                                 const farmDist = farm.distanceKm || getShopDistanceKm(farm.location);
+                                 return (
+                                    <div
+                                       key={farm.id}
+                                       onClick={() => {
+                                          setSelectedFarmShop(farm);
+                                          setSelectedShop(null);
+                                          setSearchParams({ tab: 'farms', farm: getFarmSlug(farm) });
+                                          window.scrollTo({ top: 300, behavior: 'smooth' });
+                                       }}
+                                       className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden border border-white shadow-md hover:shadow-2xl hover:shadow-emerald-950/[0.06] hover:-translate-y-1 transition-all duration-300 group cursor-pointer flex flex-col h-full"
+                                    >
+                                       {/* Farm Cover Image */}
+                                       <div className="relative h-48 overflow-hidden bg-slate-900">
+                                          <img
+                                             src={farm.image || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80'}
+                                             alt={farm.farmName}
+                                             data-no-modal="true"
+                                             className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 no-modal"
+                                          />
+                                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                                          <div className="absolute top-3 left-3 bg-emerald-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-xl shadow-sm font-mono flex items-center gap-1">
+                                             <Sprout size={11} /> {directItemCount} Direct Items
+                                          </div>
+
+                                          <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md text-amber-300 text-[10px] font-black uppercase px-2.5 py-1 rounded-xl shadow-sm font-mono">
+                                             ★ {farm.rating || 4.9}
+                                          </div>
+
+                                          <div className="absolute bottom-3 left-3 right-3 text-white">
+                                             <h3 className="font-black text-lg font-headings leading-tight drop-shadow-sm text-white line-clamp-1">{farm.farmName}</h3>
+                                             <div className="flex items-center justify-between text-[11px] text-slate-200 font-medium mt-0.5">
+                                                <p className="flex items-center gap-1 truncate">
+                                                   <MapPin size={11} className="text-emerald-400 shrink-0" /> {farm.location}
+                                                </p>
+                                                <span className="bg-emerald-900/80 backdrop-blur-md text-emerald-300 font-bold px-2 py-0.5 rounded-md text-[10px] shrink-0 border border-emerald-500/30">
+                                                   📍 {farmDist.toFixed(1)} km
+                                                </span>
+                                             </div>
+                                          </div>
+                                       </div>
+
+                                       {/* Farm Info Content */}
+                                       <div className="p-5 flex flex-col flex-1 justify-between space-y-4">
+                                          <div className="space-y-2">
+                                             <div className="flex items-center justify-between text-xs font-bold text-slate-600">
+                                                <span className="flex items-center gap-1"><Store size={13} className="text-emerald-600" /> Owner: <strong className="text-slate-800">{farm.vendorName || 'Vendor'}</strong></span>
+                                                {(!farm.costPerPerson || Number(farm.costPerPerson) === 0) ? (
+                                                   <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">FREE ENTRY</span>
+                                                ) : (
+                                                   <span className="text-xs font-black text-slate-900">₹{farm.costPerPerson}/guest</span>
+                                                )}
+                                             </div>
+                                             <p className="text-xs text-slate-500 font-body line-clamp-2 italic">"{farm.description}"</p>
+                                             {(farm.updatedAt || farm.createdAt) && (
+                                                <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100/60 px-2.5 py-0.5 rounded-full font-mono w-fit mt-1">
+                                                   <Clock size={10} className="text-emerald-600" />
+                                                   <span>Updated {formatUpdatedTime(farm.updatedAt || farm.createdAt)}</span>
+                                                </div>
+                                             )}
+
+                                             {/* Social Media Links Icons on Farm Card */}
+                                             {(() => {
+                                                const farmSocials = resolveShopSocialLinks(farm, publicShopsData);
+                                                const hasSocials = farmSocials.instagram || farmSocials.facebook || farmSocials.youtube || farmSocials.whatsapp || farmSocials.website;
+                                                if (!hasSocials) return null;
+                                                return (
+                                                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                                      <span className="text-[10px] font-bold text-slate-400 font-headings">Socials:</span>
+                                                      {farmSocials.instagram && (
+                                                         <a href={farmSocials.instagram.startsWith('http') ? farmSocials.instagram : `https://instagram.com/${farmSocials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white hover:scale-110 transition-transform" title="Instagram">
+                                                            <Instagram size={11} />
+                                                         </a>
+                                                      )}
+                                                      {farmSocials.facebook && (
+                                                         <a href={farmSocials.facebook.startsWith('http') ? farmSocials.facebook : `https://facebook.com/${farmSocials.facebook}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-blue-600 text-white hover:scale-110 transition-transform" title="Facebook">
+                                                            <Facebook size={11} />
+                                                         </a>
+                                                      )}
+                                                      {farmSocials.youtube && (
+                                                         <a href={farmSocials.youtube.startsWith('http') ? farmSocials.youtube : `https://youtube.com/${farmSocials.youtube}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-red-600 text-white hover:scale-110 transition-transform" title="YouTube">
+                                                            <Youtube size={11} />
+                                                         </a>
+                                                      )}
+                                                      {farmSocials.whatsapp && (
+                                                         <a href={farmSocials.whatsapp.startsWith('http') ? farmSocials.whatsapp : `https://wa.me/${farmSocials.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-emerald-600 text-white hover:scale-110 transition-transform" title="WhatsApp">
+                                                            <MessageCircle size={11} />
+                                                         </a>
+                                                      )}
+                                                      {farmSocials.website && (
+                                                         <a href={farmSocials.website.startsWith('http') ? farmSocials.website : `https://${farmSocials.website}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-slate-800 text-white hover:scale-110 transition-transform" title="Website">
+                                                            <Globe size={11} />
+                                                         </a>
+                                                      )}
+                                                   </div>
+                                                );
+                                             })()}
+                                          </div>
+
+                                          <button
+                                             type="button"
+                                             className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition-all shadow-md group-hover:bg-emerald-700 flex items-center justify-center gap-1.5 font-headings cursor-pointer"
+                                          >
+                                             <Sprout size={14} /> Explore Farm Shop & Direct Harvest →
+                                          </button>
+                                       </div>
+                                    </div>
+                                 );
+                              })}
+                           </div>
+                        )}
+                     </div>
+                  </div>
+               ) : (
+                  /* ── CASE 4: MARKETS DIRECTORY TAB (SHOW ALL MARKETS/SHOPS) ── */
+                  <div className="flex flex-col lg:flex-row gap-8">
+                     {/* Left Sidebar - Filters */}
+                     {showFilters && renderSidebarFilters()}
+
+                     {/* Right Side - Shops Grid */}
+                     <div className="flex-1 space-y-6 text-left">
+                        {!showFilters && (
+                           <div className="mb-4 text-left">
+                              <button
+                                 type="button"
+                                 onClick={() => setShowFilters(true)}
+                                 className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+                              >
+                                 Show Filters
+                              </button>
+                           </div>
+                        )}
+
+                        {filteredShops.length === 0 ? (
+                           <div className="text-center py-16 bg-white/70 backdrop-blur-md rounded-3xl border border-white shadow-md max-w-lg mx-auto">
+                              <Store size={36} className="mx-auto text-emerald-600 mb-3" />
+                              <h3 className="text-base font-extrabold text-gray-900 mb-1 font-headings">No Organic Shops Found</h3>
+                              <p className="text-gray-500 text-xs mb-4">Try clearing category, vitamin or search filters.</p>
+                              <button
+                                 type="button"
+                                 onClick={() => {
+                                    setActiveCategory('All');
+                                    setSelectedVitamin('All');
+                                    setSearchQuery('');
+                                 }}
+                                 className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md cursor-pointer"
+                              >
+                                 Reset Filters
+                              </button>
+                           </div>
+                        ) : (
+                           <div className={`grid ${showFilters ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'}`}>
+                              {filteredShops.map((shop) => (
                                  <div
-                                    key={farm.id}
+                                    key={shop.id}
                                     onClick={() => {
-                                       setSelectedFarmShop(farm);
-                                       setSelectedShop(null);
-                                       setSearchParams({ tab: 'farms', farm: getFarmSlug(farm) });
+                                       setSelectedShop(shop);
+                                       setSelectedFarmShop(null);
+                                       setSearchParams({ tab: 'markets', shop: shop.id });
                                        window.scrollTo({ top: 300, behavior: 'smooth' });
                                     }}
                                     className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden border border-white shadow-md hover:shadow-2xl hover:shadow-emerald-950/[0.06] hover:-translate-y-1 transition-all duration-300 group cursor-pointer flex flex-col h-full"
                                  >
-                                    {/* Farm Cover Image */}
+                                    {/* Shop Image Cover */}
                                     <div className="relative h-48 overflow-hidden bg-slate-900">
                                        <img
-                                          src={farm.image || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80'}
-                                          alt={farm.farmName}
-                                          data-no-modal="true"
-                                          className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 no-modal"
+                                          src={shop.image}
+                                          alt={shop.name}
+                                          className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
                                        />
-                                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-                                       <div className="absolute top-3 left-3 bg-emerald-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-xl shadow-sm font-mono flex items-center gap-1">
-                                          <Sprout size={11} /> {directItemCount} Direct Items
+                                       <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-xl text-[10px] font-extrabold text-emerald-800 shadow-sm border border-emerald-100/40 font-mono">
+                                          {shop.products.length} Fresh Items
                                        </div>
 
-                                       <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md text-amber-300 text-[10px] font-black uppercase px-2.5 py-1 rounded-xl shadow-sm font-mono">
-                                          ★ {farm.rating || 4.9}
+                                       <div className="absolute top-3 right-3 bg-emerald-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-xl shadow-sm flex items-center gap-1 font-mono">
+                                          ★ {shop.rating}
                                        </div>
 
                                        <div className="absolute bottom-3 left-3 right-3 text-white">
-                                          <h3 className="font-black text-lg font-headings leading-tight drop-shadow-sm text-white line-clamp-1">{farm.farmName}</h3>
-                                          <div className="flex items-center justify-between text-[11px] text-slate-200 font-medium mt-0.5">
-                                             <p className="flex items-center gap-1 truncate">
-                                                <MapPin size={11} className="text-emerald-400 shrink-0" /> {farm.location}
-                                             </p>
-                                             <span className="bg-emerald-900/80 backdrop-blur-md text-emerald-300 font-bold px-2 py-0.5 rounded-md text-[10px] shrink-0 border border-emerald-500/30">
-                                                📍 {farmDist.toFixed(1)} km
-                                             </span>
-                                          </div>
+                                          <h3 className="font-black text-lg font-headings leading-tight drop-shadow-sm text-white line-clamp-1">{shop.name}</h3>
+                                          <p onClick={(e) => openLocationInMaps(shop.location, e)} className="text-[11px] text-slate-200 font-medium flex items-center gap-1 mt-0.5 hover:underline hover:text-emerald-300 cursor-pointer transition-colors" title="Click to open location in Google Maps">
+                                             <MapPin size={11} className="text-emerald-400" /> {shop.location}
+                                          </p>
                                        </div>
                                     </div>
 
-                                    {/* Farm Info Content */}
+                                    {/* Shop Content Info */}
                                     <div className="p-5 flex flex-col flex-1 justify-between space-y-4">
                                        <div className="space-y-2">
-                                          <div className="flex items-center justify-between text-xs font-bold text-slate-600">
-                                             <span className="flex items-center gap-1"><Store size={13} className="text-emerald-600" /> Owner: <strong className="text-slate-800">{farm.vendorName || 'Vendor'}</strong></span>
-                                             {(!farm.costPerPerson || Number(farm.costPerPerson) === 0) ? (
-                                                <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">FREE ENTRY</span>
-                                             ) : (
-                                                <span className="text-xs font-black text-slate-900">₹{farm.costPerPerson}/guest</span>
+                                          <div className="flex items-center justify-between gap-2 text-xs font-bold text-slate-600">
+                                             <div className="flex items-center gap-1">
+                                                <Clock size={13} className="text-emerald-600" />
+                                                <span>Delivery: <strong className="text-emerald-700">{shop.deliveryTime}</strong></span>
+                                             </div>
+                                             {(shop.updatedAt || shop.createdAt) && (
+                                                <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100/60 px-2 py-0.5 rounded-full font-mono">
+                                                   <Clock size={10} className="text-emerald-600" />
+                                                   <span>Updated {formatUpdatedTime(shop.updatedAt || shop.createdAt)}</span>
+                                                </div>
                                              )}
                                           </div>
-                                          <p className="text-xs text-slate-500 font-body line-clamp-2 italic">"{farm.description}"</p>
-                                          {(farm.updatedAt || farm.createdAt) && (
-                                             <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100/60 px-2.5 py-0.5 rounded-full font-mono w-fit mt-1">
-                                                <Clock size={10} className="text-emerald-600" />
-                                                <span>Updated {formatUpdatedTime(farm.updatedAt || farm.createdAt)}</span>
-                                             </div>
-                                          )}
 
-                                          {/* Social Media Links Icons on Farm Card */}
+                                          <div className="flex flex-wrap gap-1.5 pt-1">
+                                             {shop.categoryList.slice(0, 4).map((cat, i) => (
+                                                <span key={i} className="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                                                   {cat}
+                                                </span>
+                                             ))}
+                                             {shop.categoryList.length > 4 && (
+                                                <span className="text-[10px] font-bold text-slate-400 flex items-center">+{shop.categoryList.length - 4} more</span>
+                                             )}
+                                          </div>
+
+                                          {/* Social Media Links Icons on Shop Card */}
                                           {(() => {
-                                             const farmSocials = resolveShopSocialLinks(farm, publicShopsData);
-                                             const hasSocials = farmSocials.instagram || farmSocials.facebook || farmSocials.youtube || farmSocials.whatsapp || farmSocials.website;
+                                             const shopSocials = resolveShopSocialLinks(shop, publicShopsData);
+                                             const hasSocials = shopSocials.instagram || shopSocials.facebook || shopSocials.youtube || shopSocials.whatsapp || shopSocials.website;
                                              if (!hasSocials) return null;
                                              return (
                                                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
                                                    <span className="text-[10px] font-bold text-slate-400 font-headings">Socials:</span>
-                                                   {farmSocials.instagram && (
-                                                      <a href={farmSocials.instagram.startsWith('http') ? farmSocials.instagram : `https://instagram.com/${farmSocials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white hover:scale-110 transition-transform" title="Instagram">
+                                                   {shopSocials.instagram && (
+                                                      <a href={shopSocials.instagram.startsWith('http') ? shopSocials.instagram : `https://instagram.com/${shopSocials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white hover:scale-110 transition-transform" title="Instagram">
                                                          <Instagram size={11} />
                                                       </a>
                                                    )}
-                                                   {farmSocials.facebook && (
-                                                      <a href={farmSocials.facebook.startsWith('http') ? farmSocials.facebook : `https://facebook.com/${farmSocials.facebook}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-blue-600 text-white hover:scale-110 transition-transform" title="Facebook">
+                                                   {shopSocials.facebook && (
+                                                      <a href={shopSocials.facebook.startsWith('http') ? shopSocials.facebook : `https://facebook.com/${shopSocials.facebook}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-blue-600 text-white hover:scale-110 transition-transform" title="Facebook">
                                                          <Facebook size={11} />
                                                       </a>
                                                    )}
-                                                   {farmSocials.youtube && (
-                                                      <a href={farmSocials.youtube.startsWith('http') ? farmSocials.youtube : `https://youtube.com/${farmSocials.youtube}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-red-600 text-white hover:scale-110 transition-transform" title="YouTube">
+                                                   {shopSocials.youtube && (
+                                                      <a href={shopSocials.youtube.startsWith('http') ? shopSocials.youtube : `https://youtube.com/${shopSocials.youtube}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-red-600 text-white hover:scale-110 transition-transform" title="YouTube">
                                                          <Youtube size={11} />
                                                       </a>
                                                    )}
-                                                   {farmSocials.whatsapp && (
-                                                      <a href={farmSocials.whatsapp.startsWith('http') ? farmSocials.whatsapp : `https://wa.me/${farmSocials.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-emerald-600 text-white hover:scale-110 transition-transform" title="WhatsApp">
+                                                   {shopSocials.whatsapp && (
+                                                      <a href={shopSocials.whatsapp.startsWith('http') ? shopSocials.whatsapp : `https://wa.me/${shopSocials.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-emerald-600 text-white hover:scale-110 transition-transform" title="WhatsApp">
                                                          <MessageCircle size={11} />
                                                       </a>
                                                    )}
-                                                   {farmSocials.website && (
-                                                      <a href={farmSocials.website.startsWith('http') ? farmSocials.website : `https://${farmSocials.website}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-slate-800 text-white hover:scale-110 transition-transform" title="Website">
+                                                   {shopSocials.website && (
+                                                      <a href={shopSocials.website.startsWith('http') ? shopSocials.website : `https://${shopSocials.website}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-slate-800 text-white hover:scale-110 transition-transform" title="Website">
                                                          <Globe size={11} />
                                                       </a>
                                                    )}
@@ -2099,36 +2583,75 @@ export default function Marketplace() {
                                           type="button"
                                           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition-all shadow-md group-hover:bg-emerald-700 flex items-center justify-center gap-1.5 font-headings cursor-pointer"
                                        >
-                                          <Sprout size={14} /> Explore Farm Shop & Direct Harvest →
+                                          <Store size={14} /> Explore Shop & Buy Harvest →
                                        </button>
                                     </div>
                                  </div>
-                              );
-                           })}
-                        </div>
-                     )}
+                              ))}
+                           </div>
+                        )}
+                     </div>
                   </div>
-               ) : (
-                  /* ── CASE 4: MARKETS DIRECTORY TAB (SHOW ALL MARKETS/SHOPS) ── */
-                  <div className="space-y-6 text-left">
+               )}
+
+            </div>
+         </section>
+
+
+            {/* ── Bottom Section: Dynamic Recommended Shops & Recommended Products ── */}
+            <section className="py-12 bg-emerald-50/50 border-t border-slate-200/60 mt-12">
+               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10 text-left">
+                  
+                  {/* Dynamic Recommended Shops */}
+                  <div className="space-y-4">
+                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                           <h3 className="text-2xl font-black text-slate-900 font-headings flex items-center gap-2">
+                              <Store size={22} className="text-emerald-600" /> Recommended Shops
+                           </h3>
+                           <p className="text-xs text-slate-500 font-medium mt-0.5">
+                              {filteredShops.length > 0
+                                 ? `Showing top shops matching your active filters (${filteredShops.length} shops found)`
+                                 : 'Handpicked certified organic vendors'}
+                           </p>
+                        </div>
+                     </div>
+
                      {filteredShops.length === 0 ? (
-                        <div className="text-center py-16 bg-white/70 backdrop-blur-md rounded-3xl border border-white shadow-md max-w-lg mx-auto">
-                           <Store size={36} className="mx-auto text-emerald-600 mb-3" />
-                           <h3 className="text-base font-extrabold text-gray-900 mb-1 font-headings">No Organic Shops Found</h3>
-                           <p className="text-gray-500 text-xs mb-4">Try clearing category filters or search terms.</p>
-                           <button
-                              onClick={() => {
-                                 setActiveCategory('All');
-                                 setSearchQuery('');
-                              }}
-                              className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md cursor-pointer"
-                           >
-                              Reset Filters
-                           </button>
+                        <div className="bg-white/80 rounded-2xl p-6 border border-slate-200 text-center space-y-2">
+                           <p className="text-xs text-slate-500 font-medium">No specific shops matched all active filter criteria. Showing top recommended shops below:</p>
+                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pt-2">
+                              {shopsList.slice(0, 4).map((shop) => (
+                                 <div
+                                    key={shop.id}
+                                    onClick={() => {
+                                       setSelectedShop(shop);
+                                       setSelectedFarmShop(null);
+                                       setSearchParams({ tab: 'markets', shop: shop.id });
+                                       window.scrollTo({ top: 300, behavior: 'smooth' });
+                                    }}
+                                    className="bg-white rounded-2xl p-3 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-emerald-500 transition-all cursor-pointer group flex items-center gap-3"
+                                 >
+                                    <img
+                                       src={shop.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80'}
+                                       alt={shop.name}
+                                       onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80'; }}
+                                       className="w-14 h-14 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform"
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                       <h4 className="text-sm font-bold text-slate-900 group-hover:text-emerald-600 truncate font-headings">{shop.name}</h4>
+                                       <p className="text-xs text-slate-500 truncate font-medium mt-0.5">{shop.location}</p>
+                                       <div className="flex items-center gap-1 mt-1 text-[11px] font-extrabold text-amber-600">
+                                          <Star size={12} className="fill-current" /> ★ {shop.rating}
+                                       </div>
+                                    </div>
+                                 </div>
+                              ))}
+                           </div>
                         </div>
                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                           {filteredShops.map((shop) => (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                           {filteredShops.slice(0, 4).map((shop) => (
                               <div
                                  key={shop.id}
                                  onClick={() => {
@@ -2137,103 +2660,83 @@ export default function Marketplace() {
                                     setSearchParams({ tab: 'markets', shop: shop.id });
                                     window.scrollTo({ top: 300, behavior: 'smooth' });
                                  }}
-                                 className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden border border-white shadow-md hover:shadow-2xl hover:shadow-emerald-950/[0.06] hover:-translate-y-1 transition-all duration-300 group cursor-pointer flex flex-col h-full"
+                                 className="bg-white rounded-2xl p-3 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-emerald-500 transition-all cursor-pointer group flex items-center gap-3"
                               >
-                                 {/* Shop Image Cover */}
-                                 <div className="relative h-48 overflow-hidden bg-slate-900">
-                                    <img
-                                       src={shop.image}
-                                       alt={shop.name}
-                                       className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-
-                                    <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-xl text-[10px] font-extrabold text-emerald-800 shadow-sm border border-emerald-100/40 font-mono">
-                                       {shop.products.length} Fresh Items
-                                    </div>
-
-                                    <div className="absolute top-3 right-3 bg-emerald-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-xl shadow-sm flex items-center gap-1 font-mono">
-                                       ★ {shop.rating}
-                                    </div>
-
-                                    <div className="absolute bottom-3 left-3 right-3 text-white">
-                                       <h3 className="font-black text-lg font-headings leading-tight drop-shadow-sm text-white line-clamp-1">{shop.name}</h3>
-                                       <p onClick={(e) => openLocationInMaps(shop.location, e)} className="text-[11px] text-slate-200 font-medium flex items-center gap-1 mt-0.5 hover:underline hover:text-emerald-300 cursor-pointer transition-colors" title="Click to open location in Google Maps">
-                                          <MapPin size={11} className="text-emerald-400" /> {shop.location}
-                                       </p>
+                                 <img
+                                    src={shop.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80'}
+                                    alt={shop.name}
+                                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80'; }}
+                                    className="w-14 h-14 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform"
+                                 />
+                                 <div className="min-w-0 flex-1">
+                                    <h4 className="text-sm font-bold text-slate-900 group-hover:text-emerald-600 truncate font-headings">{shop.name}</h4>
+                                    <p className="text-xs text-slate-500 truncate font-medium mt-0.5">{shop.location}</p>
+                                    <div className="flex items-center gap-1 mt-1 text-[11px] font-extrabold text-amber-600">
+                                       <Star size={12} className="fill-current" /> ★ {shop.rating}
                                     </div>
                                  </div>
+                              </div>
+                           ))}
+                        </div>
+                     )}
+                  </div>
 
-                                 {/* Shop Content Info */}
-                                 <div className="p-5 flex flex-col flex-1 justify-between space-y-4">
-                                    <div className="space-y-2">
-                                       <div className="flex items-center justify-between gap-2 text-xs font-bold text-slate-600">
-                                          <div className="flex items-center gap-1">
-                                             <Clock size={13} className="text-emerald-600" />
-                                             <span>Delivery: <strong className="text-emerald-700">{shop.deliveryTime}</strong></span>
-                                          </div>
-                                          {(shop.updatedAt || shop.createdAt) && (
-                                             <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100/60 px-2 py-0.5 rounded-full font-mono">
-                                                <Clock size={10} className="text-emerald-600" />
-                                                <span>Updated {formatUpdatedTime(shop.updatedAt || shop.createdAt)}</span>
-                                             </div>
-                                          )}
-                                       </div>
+                  {/* Dynamic Recommended Products */}
+                  <div className="space-y-4">
+                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                           <h3 className="text-2xl font-black text-slate-900 font-headings flex items-center gap-2">
+                              <Sparkles size={22} className="text-amber-500" /> Recommended Products
+                           </h3>
+                           <p className="text-xs text-slate-500 font-medium mt-0.5">
+                              {filteredRecommendedProducts.length > 0
+                                 ? `Showing recommended products filtered by your preferences (${filteredRecommendedProducts.length} items)`
+                                 : 'Fresh produce & direct harvest items'}
+                           </p>
+                        </div>
+                     </div>
 
-                                       <div className="flex flex-wrap gap-1.5 pt-1">
-                                          {shop.categoryList.slice(0, 4).map((cat, i) => (
-                                             <span key={i} className="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
-                                                {cat}
-                                             </span>
-                                          ))}
-                                          {shop.categoryList.length > 4 && (
-                                             <span className="text-[10px] font-bold text-slate-400 flex items-center">+{shop.categoryList.length - 4} more</span>
-                                          )}
-                                       </div>
-
-                                       {/* Social Media Links Icons on Shop Card */}
-                                       {(() => {
-                                          const shopSocials = resolveShopSocialLinks(shop, publicShopsData);
-                                          const hasSocials = shopSocials.instagram || shopSocials.facebook || shopSocials.youtube || shopSocials.whatsapp || shopSocials.website;
-                                          if (!hasSocials) return null;
-                                          return (
-                                             <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                                                <span className="text-[10px] font-bold text-slate-400 font-headings">Socials:</span>
-                                                {shopSocials.instagram && (
-                                                   <a href={shopSocials.instagram.startsWith('http') ? shopSocials.instagram : `https://instagram.com/${shopSocials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white hover:scale-110 transition-transform" title="Instagram">
-                                                      <Instagram size={11} />
-                                                   </a>
-                                                )}
-                                                {shopSocials.facebook && (
-                                                   <a href={shopSocials.facebook.startsWith('http') ? shopSocials.facebook : `https://facebook.com/${shopSocials.facebook}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-blue-600 text-white hover:scale-110 transition-transform" title="Facebook">
-                                                      <Facebook size={11} />
-                                                   </a>
-                                                )}
-                                                {shopSocials.youtube && (
-                                                   <a href={shopSocials.youtube.startsWith('http') ? shopSocials.youtube : `https://youtube.com/${shopSocials.youtube}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-red-600 text-white hover:scale-110 transition-transform" title="YouTube">
-                                                      <Youtube size={11} />
-                                                   </a>
-                                                )}
-                                                {shopSocials.whatsapp && (
-                                                   <a href={shopSocials.whatsapp.startsWith('http') ? shopSocials.whatsapp : `https://wa.me/${shopSocials.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-emerald-600 text-white hover:scale-110 transition-transform" title="WhatsApp">
-                                                      <MessageCircle size={11} />
-                                                   </a>
-                                                )}
-                                                {shopSocials.website && (
-                                                   <a href={shopSocials.website.startsWith('http') ? shopSocials.website : `https://${shopSocials.website}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg bg-slate-800 text-white hover:scale-110 transition-transform" title="Website">
-                                                      <Globe size={11} />
-                                                   </a>
-                                                )}
-                                             </div>
-                                          );
-                                       })()}
+                     {(filteredRecommendedProducts.length === 0 ? products : filteredRecommendedProducts).slice(0, 6).length === 0 ? (
+                        <div className="bg-white/80 rounded-2xl p-6 border border-slate-200 text-center">
+                           <p className="text-xs text-slate-500 font-medium">No products matching active filters.</p>
+                        </div>
+                     ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                           {(filteredRecommendedProducts.length === 0 ? products : filteredRecommendedProducts).slice(0, 6).map((prod) => (
+                              <div
+                                 key={prod.id}
+                                 onClick={() => navigate(`/product/${getProductSlug(prod)}`)}
+                                 className="bg-white rounded-2xl p-3 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-emerald-500 transition-all cursor-pointer group flex flex-col justify-between"
+                              >
+                                 <div>
+                                    <div className="relative h-28 w-full rounded-xl overflow-hidden mb-2 bg-slate-100">
+                                       <img
+                                          src={prod.image || 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&q=80'}
+                                          alt={prod.name}
+                                          onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&q=80'; }}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                       />
+                                       <span className="absolute top-1.5 right-1.5 bg-black/60 backdrop-blur-md text-amber-300 text-[10px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                                          <Star size={9} className="fill-current" /> {prod.rating || 4.8}
+                                       </span>
                                     </div>
-
+                                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-600 line-clamp-1 font-headings">{prod.name}</h4>
+                                 </div>
+                                 <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+                                    <div>
+                                       <span className="text-xs font-extrabold text-slate-900">₹{prod.price}</span>
+                                       <span className="text-[10px] text-slate-400 font-medium">/{prod.unit || 'kg'}</span>
+                                    </div>
                                     <button
                                        type="button"
-                                       className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition-all shadow-md group-hover:bg-emerald-700 flex items-center justify-center gap-1.5 font-headings cursor-pointer"
+                                       onClick={(e) => {
+                                          e.stopPropagation();
+                                          addToCart(prod);
+                                       }}
+                                       className="w-7 h-7 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs active:scale-95 transition-all cursor-pointer"
+                                       title="Add to Cart"
                                     >
-                                       <Store size={14} /> Explore Shop & Buy Harvest →
+                                       <Plus size={13} strokeWidth={3} />
                                     </button>
                                  </div>
                               </div>
@@ -2241,11 +2744,10 @@ export default function Marketplace() {
                         </div>
                      )}
                   </div>
-               )}
 
-            </div>
-         </section>
+               </div>
+            </section>
 
-      </div>
-   );
-}
+         </div>
+      );
+   }

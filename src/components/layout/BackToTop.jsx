@@ -7,11 +7,11 @@ export default function BackToTop() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      const docHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      const docHeight = (document.documentElement.scrollHeight || document.body.scrollHeight) - window.innerHeight;
       const progress = docHeight > 0 ? Math.min((scrollTop / docHeight) * 100, 100) : 0;
       setScrollProgress(progress);
-      setIsVisible(scrollTop > 300);
+      setIsVisible(scrollTop > 250);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -20,7 +20,13 @@ export default function BackToTop() {
   }, []);
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
   };
 
   const radius = 18;

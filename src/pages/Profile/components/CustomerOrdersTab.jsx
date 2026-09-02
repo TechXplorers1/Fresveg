@@ -242,8 +242,8 @@ export default function CustomerOrdersTab({
                                                             </span>
                                                         ) : (
                                                             <button
-                                                                onClick={() => handleUpdateOrderStatus(order.id, 'processing', { deliveryStatus: 'requested' })}
-                                                                className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 font-headings cursor-pointer"
+                                                                onClick={() => handleUpdateOrderStatus(order.id || order.orderId, 'processing', { deliveryStatus: 'requested' })}
+                                                                className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 font-headings cursor-pointer active:scale-95"
                                                             >
                                                                 <Bike size={14} /> Request Dispatch Rider
                                                             </button>

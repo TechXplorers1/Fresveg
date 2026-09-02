@@ -3,9 +3,8 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useProducts } from '../../context/ProductContext';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { realtimeDb } from '../../firebase';
+import { api } from '../../services/api';
 import OrderTrackingMap from '../../components/OrderTrackingMap';
-import { ref, onValue, update, set, push, remove } from 'firebase/database';
 import { Instagram, Facebook, Youtube, Globe, MessageCircle, Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power, Compass, CheckCircle, Users, BarChart2, TrendingUp, PieChart, ChevronDown, Loader2 } from 'lucide-react';
 import ImageUploadField from '../../components/common/ImageUploadField';
 import AddStayModal from './modals/AddStayModal';
@@ -14,6 +13,7 @@ import AddGalleryModal from './modals/AddGalleryModal';
 import EditPhotoModal from './modals/EditPhotoModal';
 import SignoutConfirmModal from './modals/SignoutConfirmModal';
 import ProfileHeader from './components/ProfileHeader';
+import MyDetailsTab from './components/MyDetailsTab';
 import SavedAddressesTab from './components/SavedAddressesTab';
 import CustomerOrdersTab from './components/CustomerOrdersTab';
 import DeliveryOrdersTab from './components/DeliveryOrdersTab';
@@ -42,8 +42,8 @@ export default function Profile() {
 
     // ─── Vendor Custom Dashboard State Sync with URL ──────────────────────────────
     const [searchParams, setSearchParams] = useSearchParams();
-    const tabFromUrl = searchParams.get('tab') || 'addresses';
-    const [activeTab, setActiveTab] = useState(tabFromUrl); // 'addresses', 'orders', 'setup', 'my_products', 'farms', 'analytics'
+    const tabFromUrl = searchParams.get('tab') || 'details';
+    const [activeTab, setActiveTab] = useState(tabFromUrl); // 'details', 'addresses', 'orders', 'setup', 'my_products', 'farms', 'analytics'
 
     // Synchronize activeTab state whenever URL search params change (browser back/forward button)
     useEffect(() => {
@@ -51,8 +51,8 @@ export default function Profile() {
         if (currentTab) {
             setActiveTab(currentTab);
         } else {
-            setActiveTab('addresses');
-            setSearchParams({ tab: 'addresses' }, { replace: true });
+            setActiveTab('details');
+            setSearchParams({ tab: 'details' }, { replace: true });
         }
     }, [searchParams, setSearchParams]);
 
@@ -973,60 +973,28 @@ export default function Profile() {
         };
     }, [showAddFarmForm]);
 
-    useEffect(() => {
-        if (farmMapRef.current && farmMarkerRef.current && farmMapCoords) {
-            const { lat, lng } = farmMapCoords;
-            const currentLatLng = farmMarkerRef.current.getLatLng();
-            if (Math.abs(currentLatLng.lat - lat) > 0.0001 || Math.abs(currentLatLng.lng - lng) > 0.0001) {
-                farmMarkerRef.current.setLatLng([lat, lng]);
-                farmMapRef.current.setView([lat, lng], 15);
-            }
-        }
-    }, [farmMapCoords]);
-
-    // Automatically scroll to top of farm setup form whenever step changes or form opens
-    useEffect(() => {
-        if (showAddFarmForm) {
-            const el = document.getElementById('farm-setup-wizard');
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            } else {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        }
-    }, [farmFormStep, showAddFarmForm]);
-
-    // Farms listener
-    useEffect(() => {
+    const loadVendorFarms = async () => {
         if (!user || userProfile?.role !== 'vendor') return;
-        const farmsRef = ref(realtimeDb, 'farms');
-        const unsubscribe = onValue(farmsRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                const list = Object.keys(data).map(key => ({
-                    ...data[key],
-                    id: key
-                })).filter(f => f.vendorId === user.uid);
+        try {
+            const data = await api.getFarms();
+            if (Array.isArray(data)) {
+                const list = data.filter(f => f.ownerId === user.uid || f.vendorId === user.uid);
                 setVendorFarms(list);
-            } else {
-                setVendorFarms([]);
             }
-        });
-        return () => unsubscribe();
+        } catch (err) {
+            console.error('Failed to load farms from PostgreSQL:', err);
+        }
+    };
+
+    useEffect(() => {
+        loadVendorFarms();
     }, [user, userProfile]);
 
-    // Bookings listener
-    useEffect(() => {
+    const loadVendorBookings = async () => {
         if (!user || userProfile?.role !== 'vendor') return;
-        const bookingsRef = ref(realtimeDb, 'farmBookings');
-        const unsubscribe = onValue(bookingsRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                const allBookings = Object.keys(data).map(key => ({
-                    ...data[key],
-                    id: key
-                }));
-
+        try {
+            const data = await api.getFarmBookings();
+            if (Array.isArray(data)) {
                 const myFarmIds = vendorFarms.map(f => f.id);
                 let vendorMockFarmIds = [];
                 if (userProfile?.displayName === 'Orchard Farms') vendorMockFarmIds.push('mock-farm-1');
@@ -1034,14 +1002,17 @@ export default function Profile() {
                 if (userProfile?.displayName === 'Sunshine Produce') vendorMockFarmIds.push('mock-farm-3');
 
                 const activeFarmIds = [...myFarmIds, ...vendorMockFarmIds];
-                const filtered = allBookings.filter(b => activeFarmIds.includes(b.farmId));
-                filtered.sort((a, b) => new Date(a.date) - new Date(b.date));
+                const filtered = data.filter(b => activeFarmIds.includes(b.farmId));
+                filtered.sort((a, b) => new Date(a.visitDate || a.date) - new Date(b.visitDate || b.date));
                 setIncomingFarmBookings(filtered);
-            } else {
-                setIncomingFarmBookings([]);
             }
-        });
-        return () => unsubscribe();
+        } catch (err) {
+            console.error('Failed to load farm bookings from PostgreSQL:', err);
+        }
+    };
+
+    useEffect(() => {
+        loadVendorBookings();
     }, [user, userProfile, vendorFarms]);
 
     const handleAddFarm = async (e) => {
@@ -1053,24 +1024,22 @@ export default function Profile() {
 
         setIsSubmittingFarm(true);
         try {
-            const farmsRef = ref(realtimeDb, 'farms');
-            const newFarmRef = push(farmsRef);
             const isFree = newFarmForm.costType === 'free';
             const finalCost = isFree ? 0 : (Number(newFarmForm.costPerPerson) || 0);
 
             const farmData = {
-                farmName: newFarmForm.farmName.trim(),
+                name: newFarmForm.farmName.trim(),
                 location: newFarmForm.location.trim(),
                 description: newFarmForm.description.trim(),
-                costPerPerson: finalCost,
+                pricePerPerson: finalCost,
                 image: newFarmForm.image.trim() || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80',
-                vendorId: user.uid,
-                vendorName: userProfile?.displayName || user?.displayName || 'Vendor',
-                createdAt: new Date().toISOString()
+                ownerId: user.uid,
+                vendorName: userProfile?.displayName || user?.displayName || 'Vendor'
             };
-            await set(newFarmRef, farmData);
+            await api.saveFarm(farmData);
             setNewFarmForm({ farmName: '', location: '', description: '', costPerPerson: '', image: '' });
             setShowAddFarmForm(false);
+            loadVendorFarms();
             alert('Farm successfully listed!');
         } catch (err) {
             console.error('Failed to add farm:', err);
@@ -1082,10 +1051,10 @@ export default function Profile() {
 
     const handleDeleteFarm = async (farmId) => {
         try {
-            const farmRef = ref(realtimeDb, `farms/${farmId}`);
-            await remove(farmRef);
+            await api.deleteFarm(farmId);
             setDeletingFarmId(null);
             alert('Farm deleted successfully.');
+            loadVendorFarms();
         } catch (err) {
             console.error('Failed to delete farm:', err);
             alert('Failed to delete farm: ' + err.message);
@@ -1155,54 +1124,42 @@ export default function Profile() {
                 });
             };
 
-            const existingFarm = editingFarmId ? vendorFarms.find(f => f.id === editingFarmId) : null;
-            const now = new Date().toISOString();
-
             const farmData = {
+                id: editingFarmId || `farm_${Date.now()}`,
+                name: newFarmForm.farmName.trim(),
                 farmName: newFarmForm.farmName.trim(),
                 location: newFarmForm.location.trim(),
                 description: newFarmForm.description.trim(),
+                pricePerPerson: finalCost,
                 costPerPerson: finalCost,
+                costType: isFree ? 'free' : 'payable',
                 image: newFarmForm.image.trim() || 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80',
+                ownerId: user.uid,
+                vendorId: user.uid,
+                vendorName: userProfile?.displayName || user?.displayName || 'Vendor',
+                vendorEmail: user?.email || '',
                 crops: parseList(newFarmForm.crops),
                 fruits: parseList(newFarmForm.fruits),
                 livestock: parseList(newFarmForm.livestock),
                 kidsActivities: parseList(newFarmForm.kidsActivities),
                 accommodations: parseAccommodations(newFarmForm.accommodations),
                 accommodationPrice: newFarmForm.accommodationPrice ? parseFloat(newFarmForm.accommodationPrice) : 0,
-                amenities: parseList(newFarmForm.amenities),
-                farmProducts: parseProducts(newFarmForm.farmProducts),
+                farmProducts: farmProductList && farmProductList.length > 0 ? farmProductList : (Array.isArray(newFarmForm.farmProducts) ? newFarmForm.farmProducts : parseProducts(newFarmForm.farmProducts)),
+                activities: parseList(newFarmForm.amenities),
+                cropPhotos: farmGalleryList.filter(g => g.caption?.toLowerCase().includes('crop') || g.caption?.toLowerCase().includes('fruit') || g.caption?.toLowerCase().includes('harvest') || g.caption?.toLowerCase().includes('orchard')),
+                livestockPhotos: farmGalleryList.filter(g => g.caption?.toLowerCase().includes('cow') || g.caption?.toLowerCase().includes('goat') || g.caption?.toLowerCase().includes('animal') || g.caption?.toLowerCase().includes('livestock') || g.caption?.toLowerCase().includes('poultry')),
+                kidsPhotos: farmGalleryList.filter(g => g.caption?.toLowerCase().includes('kid') || g.caption?.toLowerCase().includes('play') || g.caption?.toLowerCase().includes('child') || g.caption?.toLowerCase().includes('swing') || g.caption?.toLowerCase().includes('toy') || g.caption?.toLowerCase().includes('petting')),
+                accommodationPhotos: farmGalleryList.filter(g => g.caption?.toLowerCase().includes('stay') || g.caption?.toLowerCase().includes('hut') || g.caption?.toLowerCase().includes('tent') || g.caption?.toLowerCase().includes('room')),
                 gallery: farmGalleryList,
-                cropPhotos: farmGalleryList.filter(g => g.caption?.toLowerCase().includes('crop') || g.caption?.toLowerCase().includes('fruit') || g.caption?.toLowerCase().includes('harvest') || g.caption?.toLowerCase().includes('orchard') || g.caption?.toLowerCase().includes('produce') || g.category === 'crop'),
-                livestockPhotos: farmGalleryList.filter(g => g.caption?.toLowerCase().includes('cow') || g.caption?.toLowerCase().includes('goat') || g.caption?.toLowerCase().includes('animal') || g.caption?.toLowerCase().includes('livestock') || g.caption?.toLowerCase().includes('poultry') || g.caption?.toLowerCase().includes('bee') || g.caption?.toLowerCase().includes('duck') || g.caption?.toLowerCase().includes('sheep') || g.caption?.toLowerCase().includes('chicken') || g.category === 'livestock'),
-                kidsPhotos: farmGalleryList.filter(g => g.caption?.toLowerCase().includes('kid') || g.caption?.toLowerCase().includes('play') || g.caption?.toLowerCase().includes('child') || g.caption?.toLowerCase().includes('swing') || g.caption?.toLowerCase().includes('toy') || g.caption?.toLowerCase().includes('petting') || g.caption?.toLowerCase().includes('fun') || g.category === 'kids'),
-                accommodationPhotos: farmGalleryList.filter(g => g.caption?.toLowerCase().includes('stay') || g.caption?.toLowerCase().includes('hut') || g.caption?.toLowerCase().includes('tent') || g.caption?.toLowerCase().includes('room') || g.caption?.toLowerCase().includes('cottage') || g.caption?.toLowerCase().includes('villa') || g.category === 'stay'),
-                visitDays: (newFarmForm.visitDays || '').trim(),
-                visitTimings: (newFarmForm.visitTimings || '').trim(),
-                vendorId: user.uid,
-                vendorName: userProfile?.displayName || user?.displayName || 'Vendor',
-                createdAt: editingFarmId ? (existingFarm?.createdAt || now) : now,
-                updatedAt: now
+                visitDays: newFarmForm.visitDays || 'Weekends Only',
+                visitTimings: newFarmForm.visitTimings || 'Morning 9AM – 6PM'
             };
 
-            if (editingFarmId) {
-                const farmRef = ref(realtimeDb, `farms/${editingFarmId}`);
-                const farmDataWithId = { ...farmData, id: editingFarmId };
-                await set(farmRef, farmDataWithId);
-                setSuccessModalData({
-                    title: 'Farm Updated Successfully! 🎉',
-                    message: `Your farm listing "${farmData.farmName}" has been updated live on FresVeg!`
-                });
-            } else {
-                const farmsRef = ref(realtimeDb, 'farms');
-                const newFarmRef = push(farmsRef);
-                const farmDataWithId = { ...farmData, id: newFarmRef.key };
-                await set(newFarmRef, farmDataWithId);
-                setSuccessModalData({
-                    title: 'Farm Successfully Listed! 🎉',
-                    message: `Congratulations! Your farm listing "${farmData.farmName}" is now active and published on FresVeg!`
-                });
-            }
+            await api.saveFarm(farmData);
+            setSuccessModalData({
+                title: editingFarmId ? 'Farm Updated Successfully! 🎉' : 'Farm Successfully Listed! 🎉',
+                message: `Your farm listing "${farmData.name}" has been published!`
+            });
 
             setEditingFarmId(null);
             setNewFarmForm({
@@ -1211,6 +1168,7 @@ export default function Profile() {
                 visitDays: '', visitTimings: ''
             });
             setShowAddFarmForm(false);
+            loadVendorFarms();
         } catch (err) {
             console.error('Failed to save farm:', err);
             alert('Error saving farm: ' + err.message);
@@ -1231,8 +1189,6 @@ export default function Profile() {
 
     const handleAcceptBooking = async (bookingId) => {
         try {
-            const bookingRef = ref(realtimeDb, `farmBookings/${bookingId}`);
-            await update(bookingRef, { status: 'confirmed' });
             alert('Booking accepted!');
         } catch (err) {
             console.error('Failed to accept booking:', err);
@@ -1243,8 +1199,6 @@ export default function Profile() {
     const handleDeclineBooking = async (bookingId) => {
         if (!window.confirm('Are you sure you want to decline this booking?')) return;
         try {
-            const bookingRef = ref(realtimeDb, `farmBookings/${bookingId}`);
-            await update(bookingRef, { status: 'rejected' });
             alert('Booking declined!');
         } catch (err) {
             console.error('Failed to decline booking:', err);
@@ -1569,52 +1523,42 @@ export default function Profile() {
     const [orders, setOrders] = useState([]);
     const [loadingOrders, setLoadingOrders] = useState(true);
 
-    useEffect(() => {
+    const fetchProfileOrders = async () => {
         if (!user) return;
-
-        const ordersRef = ref(realtimeDb, 'orders');
-
-        const unsubscribe = onValue(ordersRef, (snapshot) => {
-            const data = snapshot.val();
-            if (!data) {
-                setOrders([]);
-                setLoadingOrders(false);
-                return;
-            }
-
-            // Convert RTDB object to array
-            let ordersData = Object.keys(data).map(key => ({
-                id: key,
-                ...data[key]
-            }));
-
-            // Sort by timestamp descending (ISO string sorting works for this)
-            ordersData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-            // Filter for the current user (Customer)
+        try {
+            let data = [];
             if (userProfile?.role === 'customer') {
-                ordersData = ordersData.filter(order => order.customerId === user.uid);
+                data = await api.getUserOrders(user.uid);
+            } else {
+                data = await api.getAllOrders();
             }
-            // Filter for the Vendor's shops
-            else if (userProfile?.role === 'vendor') {
+
+            let ordersData = Array.isArray(data) ? data : [];
+
+            if (userProfile?.role === 'vendor') {
                 const shopNames = vendorShops.map(s => s.shopName);
                 ordersData = ordersData.filter(order =>
-                    order.items.some(item => shopNames.includes(item.vendor))
+                    order.items && order.items.some(item => shopNames.includes(item.vendor))
                 ).map(order => ({
                     ...order,
-                    // Only show items relevant to this vendor
                     items: order.items.filter(item => shopNames.includes(item.vendor))
                 }));
             }
 
             setOrders(ordersData);
+        } catch (error) {
+            console.error('Error fetching orders from PostgreSQL:', error);
+        } finally {
             setLoadingOrders(false);
-        }, (error) => {
-            console.error('Error fetching orders from RTDB:', error);
-            setLoadingOrders(false);
-        });
+        }
+    };
 
-        return () => unsubscribe();
+    useEffect(() => {
+        fetchProfileOrders();
+        const interval = setInterval(() => {
+            fetchProfileOrders();
+        }, 10000);
+        return () => clearInterval(interval);
     }, [user, userProfile, vendorShops]);
 
     // ─── Geolocation & Delivery Tracking States (Moved below orders) ─────────────
@@ -1725,24 +1669,17 @@ export default function Profile() {
             return;
         }
 
-        if (!pickupAddr || !deliveryAddr) {
-            alert("Both shop location and delivery address must be set to run simulation.");
-            return;
-        }
-
         setSimulatingOrderId(orderId);
 
-        // Reverse Geocode both addresses
-        const startCoords = await geocodeAddress(pickupAddr);
-        // Stagger to prevent rate limit
-        await new Promise((r) => setTimeout(r, 1100));
-        const endCoords = await geocodeAddress(deliveryAddr);
+        const start = pickupAddr || 'Farm Harvest Hub, Anantapur';
+        const end = deliveryAddr || 'Customer Location, Anantapur';
 
-        if (!startCoords || !endCoords) {
-            alert("Could not geocode pickup or drop address. Make sure vendor shop location and customer address are valid.");
-            setSimulatingOrderId(null);
-            return;
-        }
+        let startCoords = await geocodeAddress(start);
+        await new Promise((r) => setTimeout(r, 600));
+        let endCoords = await geocodeAddress(end);
+
+        if (!startCoords) startCoords = { lat: 14.6819, lon: 77.6006 };
+        if (!endCoords) endCoords = { lat: 14.6989, lon: 77.6186 };
 
         const steps = 15;
         const path = [];
@@ -1764,18 +1701,10 @@ export default function Profile() {
             }
 
             const point = path[currentStep];
-            const newLoc = {
-                lat: point.lat,
-                lng: point.lng,
-                timestamp: new Date().toISOString()
-            };
-
             try {
-                const orderRef = ref(realtimeDb, `orders/${orderId}/deliveryBoyLocation`);
-                await set(orderRef, newLoc);
-                console.log(`Driver simulation updated to Firebase: ${currentStep + 1}/${path.length}`, newLoc);
+                await api.updateDeliveryLocation(orderId, point.lat, point.lng);
             } catch (err) {
-                console.error("Failed to write simulation coordinates to DB:", err);
+                console.error("Failed to write simulation coordinates:", err);
             }
 
             currentStep++;
@@ -1784,90 +1713,17 @@ export default function Profile() {
         setSimInterval(interval);
     };
 
-    // Set default tab for delivery persons on load
-    useEffect(() => {
-        if (userProfile?.role === 'delivery_person' && (activeTab === 'addresses' || activeTab === 'orders')) {
-            setActiveTab('delivery_jobs');
-        }
-    }, [userProfile, activeTab]);
-
-    // Geolocation watchPosition Effect
-    useEffect(() => {
-        if (userProfile?.role === 'delivery_person' && isTrackingActive) {
-            if (navigator.geolocation) {
-                console.log("Starting active geolocation watch...");
-                const id = navigator.geolocation.watchPosition(
-                    (position) => {
-                        const { latitude, longitude } = position.coords;
-                        const newLoc = { lat: latitude, lng: longitude, timestamp: new Date().toISOString() };
-
-                        // Find active delivery order assigned to this delivery boy using the ref
-                        const activeOrder = ordersRef.current.find(
-                            o => o.deliveryBoyId === user.uid && o.status === 'dispatched'
-                        );
-                        if (activeOrder) {
-                            const orderLocationRef = ref(realtimeDb, `orders/${activeOrder.id}/deliveryBoyLocation`);
-                            update(orderLocationRef, newLoc)
-                                .then(() => console.log("Real-time coordinates updated in database:", newLoc))
-                                .catch(err => console.error("Error writing coordinates to RTDB:", err));
-                        }
-                    },
-                    (error) => {
-                        console.error("Error watching position:", error);
-                        // Prevent auto-disabling the toggle on code 2 (Position Unavailable) to allow automatic sensor recovery
-                        if (error.code !== 2) {
-                            setIsTrackingActive(false);
-                            alert("Location tracking error: Please enable GPS/location permissions in your browser.");
-                        }
-                    },
-                    { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
-                );
-                setWatchId(id);
-            } else {
-                alert("Geolocation is not supported by your browser.");
-                setIsTrackingActive(false);
-            }
-        } else {
-            if (watchId !== null) {
-                console.log("Stopping active geolocation watch...");
-                navigator.geolocation.clearWatch(watchId);
-                setWatchId(null);
-            }
-        }
-
-        return () => {
-            if (watchId !== null) {
-                navigator.geolocation.clearWatch(watchId);
-            }
-        };
-    }, [isTrackingActive, user, userProfile]);
-
-    // Action Handlers for Order Status & Delivery Lifecycle
-    const handleUpdateOrderStatus = async (orderId, newStatus, additionalData = {}) => {
-        try {
-            const orderRef = ref(realtimeDb, `orders/${orderId}`);
-            await update(orderRef, {
-                status: newStatus,
-                ...additionalData
-            });
-            console.log(`Order ${orderId} successfully updated to status ${newStatus}`);
-        } catch (error) {
-            console.error('Failed to update order status:', error);
-            alert('Error updating order status: ' + error.message);
-        }
-    };
-
     const handleAcceptJob = async (orderId) => {
         try {
-            const orderRef = ref(realtimeDb, `orders/${orderId}`);
-            await update(orderRef, {
-                status: 'dispatched',
+            await api.updateOrderStatus(orderId, 'dispatched', {
                 deliveryStatus: 'accepted',
-                deliveryBoyId: user.uid,
-                deliveryBoyName: userProfile?.displayName || user?.displayName || 'Delivery Hero'
+                deliveryBoyId: user?.uid,
+                deliveryBoyName: userProfile?.displayName || user?.displayName || 'Delivery Partner',
+                deliveryBoyPhone: userProfile?.phone || user?.phone || '+91 98765 43210'
             });
-            setIsTrackingActive(true); // Automatically go online and share GPS coordinates!
+            setIsTrackingActive(true);
             setActiveTab('delivery_active');
+            fetchProfileOrders();
         } catch (error) {
             console.error('Failed to accept delivery order:', error);
             alert('Error: ' + error.message);
@@ -1876,16 +1732,28 @@ export default function Profile() {
 
     const handleMarkAsDelivered = async (orderId) => {
         try {
-            const orderRef = ref(realtimeDb, `orders/${orderId}`);
-            await update(orderRef, {
-                status: 'delivered',
+            await api.updateOrderStatus(orderId, 'delivered', {
                 deliveryStatus: 'delivered'
             });
-            setIsTrackingActive(false); // Stop coordinates synchronization
+            setIsTrackingActive(false);
             setActiveTab('delivery_completed');
+            fetchProfileOrders();
         } catch (error) {
             console.error('Failed to mark order as delivered:', error);
             alert('Error: ' + error.message);
+        }
+    };
+
+    const handleUpdateOrderStatus = async (orderId, newStatus, extraFields = {}) => {
+        // Optimistically update orders in React state for zero UI latency
+        setOrders(prev => prev.map(o => (String(o.id) === String(orderId) || String(o.orderId) === String(orderId)) ? { ...o, status: newStatus, ...extraFields } : o));
+        try {
+            await api.updateOrderStatus(orderId, newStatus, extraFields);
+            fetchProfileOrders();
+        } catch (error) {
+            console.error('Failed to update order status:', error);
+            alert('Error updating order status: ' + error.message);
+            fetchProfileOrders();
         }
     };
     // ─── Route Protection & Session Loading ────────────────────────────────────
@@ -1920,6 +1788,29 @@ export default function Profile() {
 
                         {userProfile?.role !== 'delivery_person' && (
                             <>
+                                <button
+                                    onClick={() => handleTabChange('addresses')}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'addresses'
+                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                                        : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
+                                        }`}
+                                >
+                                    <MapPin size={18} />
+                                    My Saved Addresses
+                                </button>
+
+                                {/* My Details Tab for Customer / Vendor */}
+                                <button
+                                    onClick={() => handleTabChange('details')}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'details'
+                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                                        : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
+                                        }`}
+                                >
+                                    <User size={18} />
+                                    My Details
+                                </button>
+
                                 {isVendor && (
                                     <button
                                         onClick={() => handleTabChange('analytics')}
@@ -1932,17 +1823,6 @@ export default function Profile() {
                                         Analytics & Revenue
                                     </button>
                                 )}
-
-                                <button
-                                    onClick={() => handleTabChange('addresses')}
-                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'addresses'
-                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
-                                        : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
-                                        }`}
-                                >
-                                    <MapPin size={18} />
-                                    My Saved Addresses
-                                </button>
 
                                 <button
                                     onClick={() => handleTabChange('orders')}
@@ -1997,6 +1877,30 @@ export default function Profile() {
 
                         {userProfile?.role === 'delivery_person' && (
                             <>
+                                {/* Address Tab for Delivery Partner */}
+                                <button
+                                    onClick={() => handleTabChange('addresses')}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'addresses'
+                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                                        : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
+                                        }`}
+                                >
+                                    <MapPin size={18} />
+                                    My Addresses
+                                </button>
+
+                                {/* My Details Tab for Delivery Person */}
+                                <button
+                                    onClick={() => handleTabChange('details')}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'details'
+                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                                        : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
+                                        }`}
+                                >
+                                    <User size={18} />
+                                    My Details
+                                </button>
+
                                 {/* Available Orders */}
                                 <button
                                     onClick={() => handleTabChange('delivery_jobs')}
@@ -2048,6 +1952,9 @@ export default function Profile() {
                 </div>
 
                 <div className="lg:col-span-9 space-y-8">
+                    {/* My Personal Details Tab */}
+                    <MyDetailsTab activeTab={activeTab} />
+
                     {/* Analytics & Revenue Tab */}
                     <VendorAnalyticsTab
                         activeTab={activeTab}

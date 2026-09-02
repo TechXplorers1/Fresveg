@@ -1,5 +1,7 @@
 import React from 'react';
-import { Leaf, Facebook, Instagram, ShieldCheck, Truck, Clock, Heart } from 'lucide-react';
+import { 
+  Leaf, Facebook, Instagram, ShieldCheck, Truck, Clock, Heart, ChevronUp 
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Footer() {
@@ -68,9 +70,28 @@ export default function Footer() {
         {/* Footer Bottom Bar */}
         <div className="border-t border-slate-800/80 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-500 font-body">
           <p>&copy; {new Date().getFullYear()} FresVeg Organic. All rights reserved.</p>
-          <p className="flex items-center gap-1">
-            Directly connecting farmers to homes with <Heart size={12} className="text-emerald-500 fill-emerald-500 inline" />
-          </p>
+          <div className="flex items-center gap-6">
+            <p className="flex items-center gap-1">
+              Directly connecting farmers to homes with <Heart size={12} className="text-emerald-500 fill-emerald-500 inline" />
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+                } catch {
+                  window.scrollTo(0, 0);
+                }
+                if (document.documentElement) document.documentElement.scrollTop = 0;
+                if (document.body) document.body.scrollTop = 0;
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-emerald-900/50 text-slate-300 hover:text-emerald-400 border border-slate-800 hover:border-emerald-500/40 transition-all text-xs font-bold font-headings cursor-pointer group"
+              title="Scroll to top of page"
+            >
+              <span>Back to top</span>
+              <ChevronUp size={14} className="group-hover:-translate-y-0.5 transition-transform duration-200 text-emerald-400" />
+            </button>
+          </div>
         </div>
       </div>
     </footer>

@@ -1,8 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ref, push, set } from 'firebase/database';
-import { realtimeDb } from '../firebase';
+import { api } from '../services/api';
 import {
   CheckCircle, MapPin, Calendar, Clock, Users, ArrowRight,
   ShieldCheck, AlertTriangle, Zap, Check, Store, Phone, MessageCircle, Banknote, CreditCard, Loader, ChevronRight, Tent
@@ -87,21 +86,29 @@ export default function FarmCheckout() {
   ];
 
   const commitBookingToFirebase = async (paymentMethod, paymentId = '') => {
-    const bookingsRef = ref(realtimeDb, 'farmBookings');
-    const newBookingRef = push(bookingsRef);
-    const bookingId = newBookingRef.key;
-
     const finalBookingData = {
       ...booking,
-      bookingId,
+      userId: user.uid,
+      customerId: user.uid,
+      userName: userProfile?.displayName || user?.displayName || 'Customer',
+      customerName: userProfile?.displayName || user?.displayName || 'Customer',
+      userEmail: user.email,
+      customerEmail: user.email,
+      userPhone: userProfile?.phone || userProfile?.phoneNumber || user?.phoneNumber || '+91 98765 43210',
+      customerPhone: userProfile?.phone || userProfile?.phoneNumber || user?.phoneNumber || '+91 98765 43210',
+      visitDate: booking.date,
+      date: booking.date,
+      guests: booking.visitorsCount || 1,
+      visitorsCount: booking.visitorsCount || 1,
+      totalPrice: booking.totalAmount || 0,
+      totalAmount: booking.totalAmount || 0,
       paymentMethod,
       paymentId,
-      status: 'confirmed',
-      createdAt: new Date().toISOString(),
+      status: 'confirmed'
     };
 
-    await set(newBookingRef, finalBookingData);
-    return bookingId;
+    const res = await api.createFarmBooking(finalBookingData);
+    return res.bookingId;
   };
 
   const handleConfirmCOD = async () => {

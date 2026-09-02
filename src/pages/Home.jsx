@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Leaf, ShieldCheck, Truck, Tag, Percent, Sprout, Box, MapPin, Star, Quote, Flame, Sparkles, ShoppingBag, Eye, TrendingUp, ChevronRight } from 'lucide-react';
-import { ref, onValue } from 'firebase/database';
-import { realtimeDb } from '../firebase';
+import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';
 import { getProductSlug } from './ProductDetails';
+import FarmToTableSnakeProcess from '../components/FarmToTableSnakeProcess';
 
 export default function Home() {
    const navigate = useNavigate();
@@ -164,37 +164,7 @@ export default function Home() {
    });
 
    useEffect(() => {
-      const homeContentRef = ref(realtimeDb, 'homeContent');
-      const unsubscribe = onValue(homeContentRef, (snapshot) => {
-         const data = snapshot.val();
-         if (data) {
-            setHomeContent(prev => ({ ...prev, ...data }));
-         }
-      });
-
-      const shopsRef = ref(realtimeDb, 'publicShops');
-      const unsubscribeShops = onValue(shopsRef, (snapshot) => {
-         const data = snapshot.val();
-         if (data) {
-            const list = Object.entries(data).map(([key, val]) => ({
-               id: key,
-               name: val.name || val.shopName || 'Organic Shop',
-               location: val.location || 'Local Region',
-               distance: '3.5 km away',
-               rating: val.rating || 4.9,
-               discountText: val.discountText || '30% OFF SPECIAL',
-               offerTagline: val.offerTagline || 'Get up to 30% OFF on direct harvest produce!',
-               tags: val.categoryList || ['Fresh Produce', 'Direct Harvest'],
-               image: val.image || val.banner || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&q=80'
-            }));
-            setPublicShopsList(list);
-         }
-      });
-
-      return () => {
-         unsubscribe();
-         unsubscribeShops();
-      };
+      // Home content defaults set in state
    }, []);
 
    const activeOfferMarkets = (publicShopsList && publicShopsList.length > 0) ? publicShopsList : fallbackOfferMarkets;
@@ -257,7 +227,7 @@ export default function Home() {
          )}
 
          {/* Premium Special Offers & Deals */}
-         {!homeContent.hiddenSections?.specialOffers && (
+         {!homeContent.hiddenSections?.specialOffers && userProfile?.role !== 'vendor' && userProfile?.role !== 'delivery_person' && userProfile?.role !== 'delivery_boy' && (
             <section className="py-8 sm:py-12 relative">
                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                   <div className="text-left mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 reveal-on-scroll">
@@ -652,64 +622,9 @@ export default function Home() {
             </section>
          )}
 
-         {/* Our Farm-to-Table Process */}
+         {/* Our Farm-to-Table Animated Snake Process */}
          {!homeContent.hiddenSections?.process && (
-            <section className="py-20 bg-white">
-               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="text-center mb-16 reveal-on-scroll">
-                     <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">{homeContent.processTitle || "Our Farm-to-Table Process"}</h2>
-                     <p className="text-gray-500 max-w-xl mx-auto text-sm">{homeContent.processSubtitle || "We maintain a clean, temperature-controlled, and highly efficient network to ship organic products from local soil directly to your shelf."}</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative">
-
-                     {/* Step 1 */}
-                     <div className="space-y-4 text-center group reveal-on-scroll reveal-scale" style={{ transitionDelay: "0ms" }}>
-                        <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                           <Sprout size={28} />
-                        </div>
-                        <div className="space-y-2">
-                           <h3 className="text-base font-extrabold text-gray-900">{homeContent.process1Title || "1. Fresh Harvest"}</h3>
-                           <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process1Desc || "Farmers pick organic produce only after you place your order to ensure peak flavor."}</p>
-                        </div>
-                     </div>
-
-                     {/* Step 2 */}
-                     <div className="space-y-4 text-center group reveal-on-scroll reveal-scale" style={{ transitionDelay: "150ms" }}>
-                        <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                           <Box size={28} />
-                        </div>
-                        <div className="space-y-2">
-                           <h3 className="text-base font-extrabold text-gray-900">{homeContent.process2Title || "2. Eco Packaging"}</h3>
-                           <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process2Desc || "Items are sorted and wrapped in plastic-free biodegradable packets to protect the planet."}</p>
-                        </div>
-                     </div>
-
-                     {/* Step 3 */}
-                     <div className="space-y-4 text-center group reveal-on-scroll reveal-scale" style={{ transitionDelay: "300ms" }}>
-                        <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                           <Truck size={28} />
-                        </div>
-                        <div className="space-y-2">
-                           <h3 className="text-base font-extrabold text-gray-900">{homeContent.process3Title || "3. Swift Transit"}</h3>
-                           <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process3Desc || "Delivery partners collect your box immediately and run optimized routes using maps."}</p>
-                        </div>
-                     </div>
-
-                     {/* Step 4 */}
-                     <div className="space-y-4 text-center group reveal-on-scroll reveal-scale" style={{ transitionDelay: "450ms" }}>
-                        <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60 shadow-inner flex items-center justify-center mx-auto group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                           <MapPin size={28} />
-                        </div>
-                        <div className="space-y-2">
-                           <h3 className="text-base font-extrabold text-gray-900">{homeContent.process4Title || "4. Doorstep Joy"}</h3>
-                           <p className="text-gray-505 text-xs leading-relaxed px-4">{homeContent.process4Desc || "Get contact-free drop off in under 4 hours, and scan farm codes for origin tracing."}</p>
-                        </div>
-                     </div>
-
-                  </div>
-               </div>
-            </section>
+            <FarmToTableSnakeProcess homeContent={homeContent} />
          )}
 
          {/* Why Choose FresVeg? */}

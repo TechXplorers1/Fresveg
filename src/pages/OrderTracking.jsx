@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ref, onValue, get, set } from 'firebase/database';
-import { realtimeDb } from '../firebase';
+import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import OrderTrackingMap from '../components/OrderTrackingMap';
 import {
@@ -74,8 +73,16 @@ function TimelineStep({ step, isActive, isCompleted, isLast }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 async function geocodeAddress(address) {
+  if (!address || typeof address !== 'string') {
+    return { lat: 14.6819, lon: 77.6006 };
+  }
+  const cleanAddress = address.trim();
+  if (!cleanAddress) {
+    return { lat: 14.6819, lon: 77.6006 };
+  }
+
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&addressdetails=0`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanAddress)}&format=json&limit=1&addressdetails=0`;
     const res = await fetch(url, {
       headers: { 'Accept-Language': 'en-US,en', 'User-Agent': 'FresVegApp/1.0' },
     });
@@ -84,9 +91,39 @@ async function geocodeAddress(address) {
       return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
     }
   } catch (err) {
-    console.warn('Geocoding failed for:', address, err);
+    console.warn('Geocoding failed for:', cleanAddress, err);
   }
-  return null;
+
+  try {
+    const parts = cleanAddress.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length > 1) {
+      const broaderQuery = parts.slice(-2).join(', ');
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(broaderQuery)}&format=json&limit=1&addressdetails=0`;
+      const res = await fetch(url, {
+        headers: { 'Accept-Language': 'en-US,en', 'User-Agent': 'FresVegApp/1.0' },
+      });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+      }
+    }
+  } catch (e) {
+    console.warn('Broader geocoding failed:', e);
+  }
+
+  // Fallback deterministic coordinates based on hash
+  let hash = 0;
+  for (let i = 0; i < cleanAddress.length; i++) {
+    hash = (hash << 5) - hash + cleanAddress.charCodeAt(i);
+    hash |= 0;
+  }
+  const latOffset = ((Math.abs(hash) % 100) / 1000) - 0.05;
+  const lonOffset = (((Math.abs(hash) >> 2) % 100) / 1000) - 0.05;
+
+  return {
+    lat: 14.6819 + latOffset,
+    lon: 77.6006 + lonOffset
+  };
 }
 
 export default function OrderTracking() {
@@ -127,22 +164,17 @@ export default function OrderTracking() {
       return;
     }
 
-    if (!resolvedVendorLocation || !order?.address) {
-      alert("Both vendor shop location and delivery address must be set to run simulation.");
-      return;
-    }
-
     setSimulating(true);
-    const startCoords = await geocodeAddress(resolvedVendorLocation);
-    // Stagger geocoding requests to prevent Nominatim rate-limiting
-    await new Promise((r) => setTimeout(r, 1100));
-    const endCoords = await geocodeAddress(order.address);
 
-    if (!startCoords || !endCoords) {
-      alert("Failed to geocode addresses for simulation. Please enter detailed locations.");
-      setSimulating(false);
-      return;
-    }
+    const vendorAddr = resolvedVendorLocation || order?.items?.[0]?.shopLocation || order?.items?.[0]?.vendor || 'Farm Pickup Point, Anantapur';
+    const deliveryAddr = order?.address || 'Customer Address, Anantapur';
+
+    let startCoords = await geocodeAddress(vendorAddr);
+    await new Promise((r) => setTimeout(r, 600));
+    let endCoords = await geocodeAddress(deliveryAddr);
+
+    if (!startCoords) startCoords = { lat: 14.6819, lon: 77.6006 };
+    if (!endCoords) endCoords = { lat: 14.6989, lon: 77.6186 };
 
     // Generate 15 steps along the line
     const totalSteps = 15;
@@ -160,7 +192,6 @@ export default function OrderTracking() {
         clearInterval(interval);
         setSimIntervalId(null);
         setSimulating(false);
-        alert("Delivery simulation completed!");
         return;
       }
 
@@ -172,83 +203,46 @@ export default function OrderTracking() {
       };
 
       try {
-        const dbRef = ref(realtimeDb, `orders/${orderId}/deliveryBoyLocation`);
-        await set(dbRef, newLoc);
+        await api.updateDeliveryLocation(orderId, point.lat, point.lng);
         console.log(`Simulation step ${currentStep + 1}/${path.length} updated:`, newLoc);
       } catch (err) {
         console.error("Simulation database update failed:", err);
       }
 
       currentStep++;
-    }, 2000); // Update coordinates every 2 seconds
+    }, 2000);
 
     setSimIntervalId(interval);
   };
 
-  // Realtime listener on this specific order
-  useEffect(() => {
+  // Poll order status and location from PostgreSQL API
+  const fetchOrderDetails = async () => {
     if (!orderId) return;
-    const orderRef = ref(realtimeDb, `orders/${orderId}`);
-    const unsubscribe = onValue(
-      orderRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          setOrder({ id: orderId, ...snapshot.val() });
-        } else {
-          setError('Order not found.');
-        }
-        setLoading(false);
-      },
-      (err) => {
-        console.error('Error fetching order:', err);
-        setError('Failed to load order. Please check your connection.');
-        setLoading(false);
-      }
-    );
-    return () => unsubscribe();
+    try {
+      const data = await api.getOrderById(orderId);
+      setOrder(data);
+    } catch (err) {
+      console.error('Error fetching order from PostgreSQL:', err);
+      setError('Order not found or failed to load.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrderDetails();
+    const interval = setInterval(() => {
+      fetchOrderDetails();
+    }, 5000);
+    return () => clearInterval(interval);
   }, [orderId]);
 
-  // ── Fallback: look up vendor shop location from user profiles ───────────────
-  // Runs when order loads; tries item.shopLocation first, then scans RTDB users
   useEffect(() => {
     if (!order) return;
-
     const primaryItem = order?.items?.[0];
-
-    // ✅ Already stored in order item (new orders)
     if (primaryItem?.shopLocation) {
       setResolvedVendorLocation(primaryItem.shopLocation);
-      return;
     }
-
-    // 🔍 Fallback: scan all vendor profiles to find matching shop name (old orders)
-    const vendorShopName = primaryItem?.vendor;
-    if (!vendorShopName) return;
-
-    setLocationLoading(true);
-    const usersRef = ref(realtimeDb, 'users');
-    get(usersRef)
-      .then((snapshot) => {
-        if (!snapshot.exists()) return;
-        const users = snapshot.val();
-        // Iterate all user profiles to find a shop whose name matches
-        for (const uid of Object.keys(users)) {
-          const profile = users[uid];
-          const shops = profile.shops;
-          if (!shops) continue;
-          // shops can be an array or object (Firebase RTDB quirk)
-          const shopList = Array.isArray(shops) ? shops : Object.values(shops);
-          const match = shopList.find(
-            (s) => s?.shopName && s.shopName.toLowerCase() === vendorShopName.toLowerCase()
-          );
-          if (match?.location) {
-            setResolvedVendorLocation(match.location);
-            break;
-          }
-        }
-      })
-      .catch((err) => console.warn('Could not look up vendor location:', err))
-      .finally(() => setLocationLoading(false));
   }, [order]);
 
   if (loading) {

@@ -3,8 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { realtimeDb } from '../firebase';
-import { ref, onValue } from 'firebase/database';
+import { api } from '../services/api';
 import { Instagram, Facebook, Youtube, Globe, MessageCircle, ShoppingCart, Target, ShieldCheck, Truck, Star, Info, Tag, ArrowLeft, ArrowRight, Store, RefreshCw, BadgePercent, Leaf, Zap, Minus, Plus } from 'lucide-react';
 
 export function getProductSlug(product) {
@@ -31,21 +30,20 @@ export default function ProductDetails() {
 
    useEffect(() => {
       if (!product?.vendor) return;
-      const usersRef = ref(realtimeDb, 'users');
-      const unsubscribe = onValue(usersRef, (snapshot) => {
-         const data = snapshot.val();
-         if (data) {
-            Object.values(data).forEach(u => {
-               if (u.shops && Array.isArray(u.shops)) {
-                  const foundShop = u.shops.find(s => s.shopName?.trim().toLowerCase() === product.vendor?.trim().toLowerCase());
-                  if (foundShop && foundShop.socialLinks) {
-                     setVendorSocialLinks(foundShop.socialLinks);
+      api.getUsers()
+         .then(data => {
+            if (Array.isArray(data)) {
+               data.forEach(u => {
+                  if (u.shops && Array.isArray(u.shops)) {
+                     const foundShop = u.shops.find(s => s.shopName?.trim().toLowerCase() === product.vendor?.trim().toLowerCase());
+                     if (foundShop && foundShop.socialLinks) {
+                        setVendorSocialLinks(foundShop.socialLinks);
+                     }
                   }
-               }
-            });
-         }
-      });
-      return () => unsubscribe();
+               });
+            }
+         })
+         .catch(err => console.error("Error fetching users for vendor social links:", err));
    }, [product]);
 
    useEffect(() => {
@@ -62,42 +60,42 @@ export default function ProductDetails() {
       if (foundProduct) {
          setProduct(foundProduct);
       } else {
-         const farmsRef = ref(realtimeDb, 'farms');
-         onValue(farmsRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-               Object.values(data).forEach(farmItem => {
-                  const farmProds = farmItem.farmProducts || [];
-                  if (Array.isArray(farmProds)) {
-                     const match = farmProds.find(fp => {
-                        const fpSlug = getProductSlug(fp).toLowerCase();
-                        const fpId = String(fp.id || '').toLowerCase();
-                        const fpNameSlug = String(fp.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-                        return fpSlug === targetSlug || fpId === targetSlug || fpNameSlug === targetSlug || targetSlug.includes(fpNameSlug);
-                     });
-                     if (match) {
-                        const isDeliv = match.isDeliverable !== false && match.fulfillmentType !== 'non_deliverable';
-                        setProduct({
-                           ...match,
-                           id: match.id || id,
-                           name: match.name,
-                           price: Number(match.price) || 50,
-                           unit: match.unit || 'kg',
-                           category: match.category || 'Direct Harvest',
-                           image: match.image || farmItem.image,
-                           vendor: farmItem.farmName || farmItem.vendorName || 'Farm Direct',
-                           vendorId: farmItem.vendorId || match.vendorId || '',
-                           vendorEmail: farmItem.vendorEmail || match.vendorEmail || '',
-                           rating: match.rating || 5.0,
-                           description: match.description || `Fresh ${match.name} harvested directly from ${farmItem.farmName || 'our organic farm'}.`,
-                           isDeliverable: isDeliv,
-                           fulfillmentType: isDeliv ? 'deliverable' : 'non_deliverable'
+         api.getFarms()
+            .then(data => {
+               if (Array.isArray(data)) {
+                  data.forEach(farmItem => {
+                     const farmProds = farmItem.farmProducts || [];
+                     if (Array.isArray(farmProds)) {
+                        const match = farmProds.find(fp => {
+                           const fpSlug = getProductSlug(fp).toLowerCase();
+                           const fpId = String(fp.id || '').toLowerCase();
+                           const fpNameSlug = String(fp.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                           return fpSlug === targetSlug || fpId === targetSlug || fpNameSlug === targetSlug || targetSlug.includes(fpNameSlug);
                         });
+                        if (match) {
+                           const isDeliv = match.isDeliverable !== false && match.fulfillmentType !== 'non_deliverable';
+                           setProduct({
+                              ...match,
+                              id: match.id || id,
+                              name: match.name,
+                              price: Number(match.price) || 50,
+                              unit: match.unit || 'kg',
+                              category: match.category || 'Direct Harvest',
+                              image: match.image || farmItem.image,
+                              vendor: farmItem.farmName || farmItem.vendorName || farmItem.name || 'Farm Direct',
+                              vendorId: farmItem.ownerId || farmItem.vendorId || match.vendorId || '',
+                              vendorEmail: farmItem.vendorEmail || match.vendorEmail || '',
+                              rating: match.rating || 5.0,
+                              description: match.description || `Fresh ${match.name} harvested directly from ${farmItem.farmName || farmItem.name || 'our organic farm'}.`,
+                              isDeliverable: isDeliv,
+                              fulfillmentType: isDeliv ? 'deliverable' : 'non_deliverable'
+                           });
+                        }
                      }
-                  }
-               });
-            }
-         }, { onlyOnce: true });
+                  });
+               }
+            })
+            .catch(err => console.error("Error fetching farms for product match:", err));
       }
    }, [id, products]);
 
