@@ -5,9 +5,8 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';
 import { api } from '../services/api';
-import { getFarmSlug } from './FarmDetails';
 import { getProductSlug } from './ProductDetails';
-import { ensureFarmsInFirebase } from '../services/farmSeeder';
+import { ensureFarmsSeeded } from '../services/farmSeeder';
 
 const MOCK_FARMS_LIST = [
    {
@@ -548,7 +547,7 @@ export default function Marketplace() {
 
    // Fetch Farms directly from PostgreSQL API
    useEffect(() => {
-      ensureFarmsInFirebase();
+      ensureFarmsSeeded();
       api.getFarms()
          .then(data => {
             if (Array.isArray(data)) {

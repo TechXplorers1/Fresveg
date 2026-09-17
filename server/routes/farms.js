@@ -206,8 +206,8 @@ router.get('/bookings/all', async (req, res) => {
   }
 });
 
-// 5. Create Farm Visit Booking
-router.post('/bookings', async (req, res) => {
+// 5. Create Farm Visit Booking (supports /api/farms/bookings and /api/farms/book)
+router.post(['/bookings', '/book'], async (req, res) => {
   const {
     id, farmId, farmName, vendorId, vendorName,
     userId, customerId, userName, customerName, userEmail, customerEmail, userPhone, customerPhone, phone,

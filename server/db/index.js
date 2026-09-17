@@ -58,6 +58,12 @@ export async function initDb() {
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_name VARCHAR(255);`);
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_phone VARCHAR(50);`);
 
+    // Ensure all products columns exist for vendor catalog management
+    await pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';`);
+    await pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS vendor_email VARCHAR(255);`);
+    await pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_quantity INTEGER DEFAULT 100;`);
+    await pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS details JSONB DEFAULT '{}'::jsonb;`);
+
     // Ensure all farms columns exist
     await pool.query(`ALTER TABLE farms ADD COLUMN IF NOT EXISTS farm_name VARCHAR(255);`);
     await pool.query(`ALTER TABLE farms ADD COLUMN IF NOT EXISTS vendor_id VARCHAR(255);`);

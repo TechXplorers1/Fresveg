@@ -378,12 +378,8 @@ export default function Profile() {
             });
             setShowAddForm(false);
         } catch (err) {
-            console.error('Failed to add product to Firebase:', err);
-            if (err.message && err.message.includes('PERMISSION_DENIED')) {
-                alert('⚠️ Firebase Security Rules Notice:\n\nYour Firebase Realtime Database is blocking writes to the "products" node (PERMISSION_DENIED).\n\nTo fix this:\n1. Open Firebase Console -> Realtime Database -> Rules tab.\n2. Set ".read": true and ".write": true\n3. Click Publish!');
-            } else {
-                alert('Error adding product to Firebase: ' + err.message);
-            }
+            console.error('Failed to add product to database:', err);
+            alert('Error adding product: ' + err.message);
         }
     };
 
@@ -1757,7 +1753,7 @@ export default function Profile() {
         }
     };
     // ─── Route Protection & Session Loading ────────────────────────────────────
-    // Show loading state while Firebase restores auth state on refresh
+    // Show loading state while restoring auth session on refresh
     if (loading) {
         return (
             <div className="min-h-[70vh] flex flex-col items-center justify-center">

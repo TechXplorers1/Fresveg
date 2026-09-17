@@ -17,6 +17,7 @@ router.get('/', async (req, res) => {
       subCategory: row.sub_category,
       image: row.image,
       vendor: row.vendor,
+      shop: row.vendor,
       vendorId: row.vendor_id,
       vendorPhone: row.vendor_phone,
       shopLocation: row.shop_location,
@@ -67,6 +68,7 @@ router.post('/', async (req, res) => {
 
     const row = result.rows[0];
     res.status(201).json({
+      ...req.body,
       id: row.id,
       name: row.name,
       price: parseFloat(row.price),
@@ -76,6 +78,7 @@ router.post('/', async (req, res) => {
       subCategory: row.sub_category,
       image: row.image,
       vendor: row.vendor,
+      shop: req.body.shop || row.vendor,
       vendorId: row.vendor_id,
       vendorPhone: row.vendor_phone,
       shopLocation: row.shop_location,
@@ -233,4 +236,39 @@ router.delete('/categories/:name', async (req, res) => {
   }
 });
 
+// 9. Get Product by ID
+router.get('/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await query('SELECT * FROM products WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    const row = result.rows[0];
+    res.json({
+      id: row.id,
+      name: row.name,
+      price: parseFloat(row.price),
+      mrp: row.mrp ? parseFloat(row.mrp) : parseFloat((parseFloat(row.price) * 1.25).toFixed(2)),
+      unit: row.unit,
+      category: row.category,
+      subCategory: row.sub_category,
+      image: row.image,
+      vendor: row.vendor,
+      shop: row.vendor,
+      vendorId: row.vendor_id,
+      vendorPhone: row.vendor_phone,
+      shopLocation: row.shop_location,
+      rating: parseFloat(row.rating || 5.0),
+      isDeliverable: row.is_deliverable,
+      fulfillmentType: row.fulfillment_type,
+      createdAt: row.created_at
+    });
+  } catch (err) {
+    console.error('Error fetching product by ID:', err);
+    res.status(500).json({ error: 'Failed to fetch product' });
+  }
+});
+
 export default router;
+

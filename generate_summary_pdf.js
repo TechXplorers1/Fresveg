@@ -230,7 +230,7 @@ addSectionHeader('2. Detailed Database Table Schemas');
 
 addSubHeader('2.1 `users` Table Schema');
 const userRows = [
-    ['id', 'VARCHAR(255)', 'PRIMARY KEY', 'Firebase Auth UID / Unique User Identifier'],
+    ['id', 'VARCHAR(255)', 'PRIMARY KEY', 'Unique User Identifier (UUID)'],
     ['display_name', 'VARCHAR(255)', 'NOT NULL', 'Full name of user or vendor'],
     ['email', 'VARCHAR(255)', 'UNIQUE NOT NULL', 'Primary email address'],
     ['phone', 'VARCHAR(50)', 'NULLABLE', 'Contact phone number'],

@@ -85,7 +85,7 @@ export default function FarmCheckout() {
     },
   ];
 
-  const commitBookingToFirebase = async (paymentMethod, paymentId = '') => {
+  const commitBookingToDatabase = async (paymentMethod, paymentId = '') => {
     const finalBookingData = {
       ...booking,
       userId: user.uid,
@@ -114,7 +114,7 @@ export default function FarmCheckout() {
   const handleConfirmCOD = async () => {
     try {
       setIsProcessing(true);
-      await commitBookingToFirebase('Cash on Visit');
+      await commitBookingToDatabase('Cash on Visit');
       sessionStorage.removeItem('pendingFarmBooking');
       setBookingSuccess(true);
     } catch (err) {
@@ -161,7 +161,7 @@ export default function FarmCheckout() {
         try {
           setIsProcessing(true);
           const paymentLabel = `Razorpay | pay_id: ${response.razorpay_payment_id}`;
-          await commitBookingToFirebase(paymentLabel, response.razorpay_payment_id);
+          await commitBookingToDatabase(paymentLabel, response.razorpay_payment_id);
           sessionStorage.removeItem('pendingFarmBooking');
           setBookingSuccess(true);
         } catch (err) {

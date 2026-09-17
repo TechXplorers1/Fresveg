@@ -207,9 +207,9 @@ export const CartProvider = ({ children }) => {
 
       const orderData = {
         orderId: orderId,
-        customerId: user.uid,
-        customerName: user.displayName || 'Customer',
-        customerEmail: user.email,
+        customerId: user?.uid || user?.id || 'guest',
+        customerName: user?.displayName || 'Customer',
+        customerEmail: user?.email || '',
         customerPhone: customerPhone,
         vendorPhone: vendorPhone,
         items: cartItems,
@@ -220,7 +220,7 @@ export const CartProvider = ({ children }) => {
       };
       
       const res = await api.placeOrder(orderData);
-      console.log('Order successfully placed in PostgreSQL database:', res.orderId);
+      console.log('Order successfully placed in PostgreSQL database:', res?.orderId || orderId);
       
       clearCart();
       return orderId;

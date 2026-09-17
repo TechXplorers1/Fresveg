@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import ModernDatePicker from '../components/common/ModernDatePicker';
 import ImageUploadField from '../components/common/ImageUploadField';
-import { ensureFarmsInFirebase } from '../services/farmSeeder';
+import { ensureFarmsSeeded } from '../services/farmSeeder';
 import { getProductSlug } from './ProductDetails';
 import { useImageModal } from '../context/ImageModalContext';
 import EditPhotoModal from './Profile/modals/EditPhotoModal';
@@ -137,14 +137,14 @@ export const MOCK_FARM_DATA = {
 };
 
 
-function sanitizeForFirebase(obj) {
+function sanitizePayload(obj) {
   if (obj === undefined) return null;
   if (obj === null || typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(sanitizeForFirebase);
+  if (Array.isArray(obj)) return obj.map(sanitizePayload);
   const sanitized = {};
   for (const key of Object.keys(obj)) {
     if (obj[key] !== undefined) {
-      sanitized[key] = sanitizeForFirebase(obj[key]);
+      sanitized[key] = sanitizePayload(obj[key]);
     }
   }
   return sanitized;
@@ -317,7 +317,7 @@ export default function FarmDetails() {
   // Fetch Farm data from PostgreSQL API
   useEffect(() => {
     window.scrollTo(0, 0);
-    ensureFarmsInFirebase();
+    ensureFarmsSeeded();
     const fetchFarm = async () => {
       try {
         const data = await api.getFarms();
@@ -621,7 +621,7 @@ export default function FarmDetails() {
     }
   };
 
-  // Save All Farm Live Changes to Firebase
+  // Save All Farm Live Changes to PostgreSQL
   const handleSaveAllFarmChanges = async () => {
     if (!farm || !editForm) return;
     setSavingChanges(true);
@@ -671,7 +671,7 @@ export default function FarmDetails() {
     }
   };
 
-  // Add Photo to specific section / gallery with immediate Firebase RTDB persistence
+  // Add Photo to specific section / gallery with immediate backend persistence
   const handleSaveNewPhoto = async (e) => {
     e.preventDefault();
     if (!newPhoto.url.trim()) {

@@ -249,7 +249,7 @@ addSectionTitle('2. Primary Database Entities & Data Contract');
 // Table 1: Users
 addSubTitle('Entity 2.1: `users` Table (User Accounts & Roles)');
 const userFields = [
-    ['id', 'VARCHAR(255)', 'PRIMARY KEY', 'Firebase Auth UID / Unique User Identifier'],
+    ['id', 'VARCHAR(255)', 'PRIMARY KEY', 'Unique User Identifier (UUID)'],
     ['display_name', 'VARCHAR(255)', 'NOT NULL', 'Full name of user or vendor representative'],
     ['email', 'VARCHAR(255)', 'UNIQUE NOT NULL', 'Primary email address'],
     ['phone', 'VARCHAR(50)', 'NULLABLE', 'Contact phone number'],

@@ -4,8 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Instagram, Facebook, Youtube, Globe, MessageCircle, MapPin, Calendar, Users, Compass, Search, Sparkles, CheckCircle, Clock, Trash2, ShieldAlert, ArrowRight, BookOpen, X, Minus, Plus } from 'lucide-react';
 import ModernDatePicker from '../components/common/ModernDatePicker';
-import { getFarmSlug } from './FarmDetails';
-import { ensureFarmsInFirebase } from '../services/farmSeeder';
+import { ensureFarmsSeeded } from '../services/farmSeeder';
 
 const formatUpdatedTime = (isoString) => {
   if (!isoString) return null;
@@ -55,7 +54,7 @@ export default function VisitFarms() {
 
   // 1. Fetch Farms from PostgreSQL API
   useEffect(() => {
-    ensureFarmsInFirebase();
+    ensureFarmsSeeded();
     const loadFarms = async () => {
       try {
         const data = await api.getFarms();
@@ -150,7 +149,7 @@ export default function VisitFarms() {
     setBookingSuccess(false);
   };
 
-  // Submit Booking to Firebase (or route to checkout for payable farms)
+  // Submit Booking to Database (or route to checkout for payable farms)
   const handleConfirmBooking = async (e) => {
     e.preventDefault();
     if (!selectedFarm || !bookingDate) {

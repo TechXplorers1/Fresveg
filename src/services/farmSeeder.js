@@ -53,7 +53,7 @@ export const INITIAL_FARMS_MAP = {
   }
 };
 
-export const ensureFarmsInFirebase = async () => {
+export const ensureFarmsSeeded = async () => {
   try {
     for (const key of Object.keys(INITIAL_FARMS_MAP)) {
       await api.saveFarm(INITIAL_FARMS_MAP[key]);
@@ -62,3 +62,4 @@ export const ensureFarmsInFirebase = async () => {
     console.error('Error seeding farms to PostgreSQL:', err);
   }
 };
+

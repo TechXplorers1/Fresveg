@@ -12,8 +12,8 @@ const formatOrder = (row) => ({
   customerEmail: row.customer_email,
   customerPhone: row.customer_phone,
   vendorPhone: row.vendor_phone,
-  items: row.items,
-  total: parseFloat(row.total),
+  items: typeof row.items === 'string' ? JSON.parse(row.items) : (row.items || []),
+  total: parseFloat(row.total || 0),
   address: row.address,
   paymentMethod: row.payment_method,
   status: row.status,
@@ -21,7 +21,7 @@ const formatOrder = (row) => ({
   deliveryBoyId: row.delivery_boy_id || null,
   deliveryBoyName: row.delivery_boy_name || null,
   deliveryBoyPhone: row.delivery_boy_phone || null,
-  deliveryBoyLocation: row.delivery_boy_location || {},
+  deliveryBoyLocation: typeof row.delivery_boy_location === 'string' ? JSON.parse(row.delivery_boy_location) : (row.delivery_boy_location || {}),
   timestamp: row.timestamp
 });
 
@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
 router.get('/user/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
-    const result = await query('SELECT * FROM orders WHERE customer_id = $1 ORDER BY timestamp DESC', [userId]);
+    const result = await query('SELECT * FROM orders WHERE customer_id = $1 OR LOWER(customer_id) = LOWER($1) ORDER BY timestamp DESC', [userId]);
     res.json(result.rows.map(formatOrder));
   } catch (err) {
     console.error('Error fetching user orders:', err);
@@ -52,7 +52,7 @@ router.get('/user/:userId', async (req, res) => {
 router.get('/:orderId', async (req, res) => {
   const { orderId } = req.params;
   try {
-    const result = await query('SELECT * FROM orders WHERE order_id = $1', [orderId]);
+    const result = await query('SELECT * FROM orders WHERE order_id = $1 OR LOWER(order_id) = LOWER($1)', [orderId]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Order not found' });
     }
@@ -67,11 +67,14 @@ router.get('/:orderId', async (req, res) => {
 router.post('/', async (req, res) => {
   const { orderId, customerId, customerName, customerEmail, customerPhone, vendorPhone, items, total, address, paymentMethod, status } = req.body;
 
-  if (!customerId || !items || items.length === 0) {
+  const resolvedCustomerId = customerId || req.body.userId || (req.body.user && (req.body.user.uid || req.body.user.id));
+  if (!resolvedCustomerId || !items || (Array.isArray(items) && items.length === 0)) {
     return res.status(400).json({ error: 'Customer ID and items are required' });
   }
 
   const generatedId = orderId || `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const itemsJson = typeof items === 'string' ? items : JSON.stringify(items);
+  const numTotal = parseFloat(total || 0);
 
   try {
     const result = await query(
@@ -80,13 +83,13 @@ router.post('/', async (req, res) => {
        RETURNING *`,
       [
         generatedId,
-        customerId,
+        resolvedCustomerId,
         customerName || 'Customer',
         customerEmail || '',
         customerPhone || '',
         vendorPhone || '',
-        JSON.stringify(items),
-        total || 0,
+        itemsJson,
+        numTotal,
         address || '',
         paymentMethod || 'Cash on Delivery',
         status || 'pending'
@@ -201,4 +204,17 @@ router.put('/:orderId/location', async (req, res) => {
   }
 });
 
+// 7. Delete Order
+router.delete('/:orderId', async (req, res) => {
+  const { orderId } = req.params;
+  try {
+    await query('DELETE FROM orders WHERE order_id = $1 OR LOWER(order_id) = LOWER($1)', [orderId]);
+    res.json({ success: true, message: `Order ${orderId} deleted successfully` });
+  } catch (err) {
+    console.error('Error deleting order:', err);
+    res.status(500).json({ error: 'Failed to delete order' });
+  }
+});
+
 export default router;
+
