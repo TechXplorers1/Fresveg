@@ -1,5 +1,6 @@
 import express from 'express';
 import { query } from '../db/index.js';
+import { recordOrderPayouts } from './payouts.js';
 
 const router = express.Router();
 
@@ -16,6 +17,8 @@ const formatOrder = (row) => ({
   total: parseFloat(row.total || 0),
   address: row.address,
   paymentMethod: row.payment_method,
+  paymentStatus: row.payment_status || 'pending',
+  paymentDetails: typeof row.payment_details === 'string' ? JSON.parse(row.payment_details) : (row.payment_details || {}),
   status: row.status,
   deliveryStatus: row.delivery_status || null,
   deliveryBoyId: row.delivery_boy_id || null,
@@ -65,7 +68,7 @@ router.get('/:orderId', async (req, res) => {
 
 // 4. Place New Order
 router.post('/', async (req, res) => {
-  const { orderId, customerId, customerName, customerEmail, customerPhone, vendorPhone, items, total, address, paymentMethod, status } = req.body;
+  const { orderId, customerId, customerName, customerEmail, customerPhone, vendorPhone, items, total, address, paymentMethod, status, paymentDetails, paymentStatus } = req.body;
 
   const resolvedCustomerId = customerId || req.body.userId || (req.body.user && (req.body.user.uid || req.body.user.id));
   if (!resolvedCustomerId || !items || (Array.isArray(items) && items.length === 0)) {
@@ -75,11 +78,12 @@ router.post('/', async (req, res) => {
   const generatedId = orderId || `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const itemsJson = typeof items === 'string' ? items : JSON.stringify(items);
   const numTotal = parseFloat(total || 0);
+  const initialPaymentStatus = paymentStatus || (paymentMethod?.includes('Bank') ? 'pending_verification' : 'pending');
 
   try {
     const result = await query(
-      `INSERT INTO orders (order_id, customer_id, customer_name, customer_email, customer_phone, vendor_phone, items, total, address, payment_method, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO orders (order_id, customer_id, customer_name, customer_email, customer_phone, vendor_phone, items, total, address, payment_method, status, payment_details, payment_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [
         generatedId,
@@ -92,7 +96,9 @@ router.post('/', async (req, res) => {
         numTotal,
         address || '',
         paymentMethod || 'Cash on Delivery',
-        status || 'pending'
+        status || 'pending',
+        JSON.stringify(paymentDetails || {}),
+        initialPaymentStatus
       ]
     );
 
@@ -105,7 +111,7 @@ router.post('/', async (req, res) => {
          VALUES ($1, $2, $3, $4, $5, false, $6)`,
         [
           `notif_${Date.now()}_oc`,
-          customerId,
+          resolvedCustomerId,
           '📦 Order Placed Successfully',
           `Your order #${generatedId} for ₹${parseFloat(total || 0).toFixed(2)} has been placed successfully.`,
           'order',
@@ -114,6 +120,30 @@ router.post('/', async (req, res) => {
       );
     } catch (notifErr) {
       console.warn('Failed to insert order customer notification:', notifErr);
+    }
+
+    // Real Notification for Vendor if Direct Bank Transfer
+    try {
+      const isBank = String(paymentMethod || '').toLowerCase().includes('bank');
+      const firstItem = Array.isArray(items) && items[0];
+      const targetVendorId = (firstItem && (firstItem.vendorId || firstItem.vendor_id)) || null;
+      if (isBank && targetVendorId) {
+        const utr = (paymentDetails && (paymentDetails.utrNumber || paymentDetails.referenceId)) || 'Pending';
+        await query(
+          `INSERT INTO notifications (id, user_id, title, message, type, read, link)
+           VALUES ($1, $2, $3, $4, $5, false, $6)`,
+          [
+            `notif_${Date.now()}_vb`,
+            targetVendorId,
+            '💳 New Bank Transfer Order Received',
+            `Order #${generatedId} of ₹${numTotal.toFixed(2)} received with UTR: ${utr}. Please check your bank account and verify payment.`,
+            'order',
+            '/profile?tab=orders'
+          ]
+        );
+      }
+    } catch (vErr) {
+      console.warn('Notice sending vendor bank order notification:', vErr.message);
     }
 
     res.status(201).json(formatOrder(orderRow));
@@ -213,6 +243,60 @@ router.delete('/:orderId', async (req, res) => {
   } catch (err) {
     console.error('Error deleting order:', err);
     res.status(500).json({ error: 'Failed to delete order' });
+  }
+});
+
+// 8. Verify Vendor Bank Payment
+router.put('/:orderId/verify-payment', async (req, res) => {
+  const targetId = decodeURIComponent(req.params.orderId);
+  const { paymentStatus = 'verified', status = 'confirmed' } = req.body;
+
+  try {
+    const result = await query(
+      `UPDATE orders 
+       SET payment_status = $1,
+           status = COALESCE($2, status)
+       WHERE order_id = $3 OR LOWER(order_id) = LOWER($3)
+       RETURNING *`,
+      [paymentStatus, status, targetId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const updatedRow = result.rows[0];
+
+    // Notification for Customer
+    try {
+      if (updatedRow.customer_id) {
+        await query(
+          `INSERT INTO notifications (id, user_id, title, message, type, read, link)
+           VALUES ($1, $2, $3, $4, $5, false, $6)`,
+          [
+            `notif_${Date.now()}_pv`,
+            updatedRow.customer_id,
+            '✅ Bank Payment Verified by Vendor!',
+            `The vendor has confirmed receipt of your direct bank transfer for order #${targetId}. Your order is now confirmed and packed!`,
+            'order',
+            '/profile?tab=orders'
+          ]
+        );
+      }
+    } catch (notifErr) {
+      console.warn('Failed to insert payment verification notification:', notifErr);
+    }
+    // Record commission & vendor payout
+    try {
+      await recordOrderPayouts(targetId);
+    } catch (pErr) {
+      console.warn('Notice recording order payout on payment verify:', pErr.message);
+    }
+
+    res.json(formatOrder(updatedRow));
+  } catch (err) {
+    console.error('Error verifying order payment:', err);
+    res.status(500).json({ error: 'Failed to verify payment' });
   }
 });
 

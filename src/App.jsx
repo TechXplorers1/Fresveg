@@ -17,6 +17,8 @@ import FarmDetails from './pages/FarmDetails';
 import FarmCheckout from './pages/FarmCheckout';
 import Marketplace from './pages/Marketplace';
 import Admin from './pages/Admin';
+import PhonePeStatus from './pages/PhonePeStatus';
+import PhonePeSimulator from './pages/PhonePeSimulator';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { ProductProvider } from './context/ProductContext';
@@ -99,6 +101,8 @@ function App() {
                       <Route path="/farm-checkout" element={<FarmCheckout />} />
                       <Route path="/marketplace" element={<Marketplace />} />
                       <Route path="/admin" element={<Admin />} />
+                      <Route path="/payment/phonepe-status" element={<PhonePeStatus />} />
+                      <Route path="/payment/phonepe-simulator" element={<PhonePeSimulator />} />
                     </Routes>
                   </main>
                   <Footer />

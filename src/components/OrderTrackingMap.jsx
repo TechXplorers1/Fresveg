@@ -13,24 +13,32 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+import { forwardGeocodeAddress } from '../services/locationService';
+
 // ─── Nominatim Geocoder (OpenStreetMap — free, no API key) ───────────────────
 async function geocodeAddress(address) {
   if (!address || typeof address !== 'string') {
-    return { lat: 14.6819, lon: 77.6006 };
+    return null;
   }
   const cleanAddress = address.trim();
   if (!cleanAddress) {
-    return { lat: 14.6819, lon: 77.6006 };
+    return null;
+  }
+
+  // If address already contains explicit latitude and longitude coordinates, parse directly
+  const coordMatch = cleanAddress.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+  if (coordMatch) {
+    const lat = parseFloat(coordMatch[1]);
+    const lon = parseFloat(coordMatch[2]);
+    if (!isNaN(lat) && !isNaN(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+      return { lat, lon };
+    }
   }
 
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanAddress)}&format=json&limit=1&addressdetails=0`;
-    const res = await fetch(url, {
-      headers: { 'Accept-Language': 'en-US,en', 'User-Agent': 'FresVegApp/1.0' },
-    });
-    const data = await res.json();
-    if (data && data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    const results = await forwardGeocodeAddress(cleanAddress);
+    if (results && results.length > 0) {
+      return { lat: results[0].lat, lon: results[0].lng };
     }
   } catch (err) {
     console.warn('Geocoding failed for:', cleanAddress, err);
@@ -40,31 +48,16 @@ async function geocodeAddress(address) {
     const parts = cleanAddress.split(',').map(s => s.trim()).filter(Boolean);
     if (parts.length > 1) {
       const broaderQuery = parts.slice(-2).join(', ');
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(broaderQuery)}&format=json&limit=1&addressdetails=0`;
-      const res = await fetch(url, {
-        headers: { 'Accept-Language': 'en-US,en', 'User-Agent': 'FresVegApp/1.0' },
-      });
-      const data = await res.json();
-      if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+      const broaderResults = await forwardGeocodeAddress(broaderQuery);
+      if (broaderResults && broaderResults.length > 0) {
+        return { lat: broaderResults[0].lat, lon: broaderResults[0].lng };
       }
     }
   } catch (e) {
     console.warn('Broader geocoding failed:', e);
   }
 
-  let hash = 0;
-  for (let i = 0; i < cleanAddress.length; i++) {
-    hash = (hash << 5) - hash + cleanAddress.charCodeAt(i);
-    hash |= 0;
-  }
-  const latOffset = ((Math.abs(hash) % 100) / 1000) - 0.05;
-  const lonOffset = (((Math.abs(hash) >> 2) % 100) / 1000) - 0.05;
-
-  return {
-    lat: 14.6819 + latOffset,
-    lon: 77.6006 + lonOffset
-  };
+  return null;
 }
 
 // ─── Estimated delivery time (road factor ≈ 1.4×, city speed 30 km/h) ───────────

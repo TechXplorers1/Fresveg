@@ -1,247 +1,43 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Instagram, Facebook, Youtube, Globe, MessageCircle, ShoppingCart, Star, Search, Filter, Plus, Minus, X, ChevronLeft, ChevronRight, MapPin, Clock, Store, ArrowLeft, CheckCircle, Sprout, Compass, Navigation, ExternalLink, Target, Loader2, Sparkles } from 'lucide-react';
+import {
+  Instagram, Facebook, Youtube, Globe, MessageCircle, ShoppingCart, Star,
+  Search, Filter, Plus, Minus, X, ChevronLeft, ChevronRight, MapPin, Clock,
+  Store, ArrowLeft, CheckCircle, Sprout, Compass, Navigation, ExternalLink,
+  Target, Loader2, Sparkles
+} from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';
 import { api } from '../services/api';
 import { getProductSlug } from './ProductDetails';
 import { ensureFarmsSeeded } from '../services/farmSeeder';
+import { getPreciseCurrentPosition, reverseGeocodePrecise } from '../services/locationService';
 
-const MOCK_FARMS_LIST = [
-   {
-      id: 'mock-farm-1',
-      farmName: 'Orchard Berry & Honey Haven',
-      location: 'Mahabaleshwar, Maharashtra',
-      description: 'Experience strawberry harvesting, beehive tours, and fresh jam tasting in cool hill country.',
-      image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80',
-      costPerPerson: 250,
-      vendorId: 'mock-vendor-1',
-      vendorName: 'Orchard Farms',
-      rating: 4.9,
-      farmProducts: [
-         { id: 'fp-1', name: 'Fresh Mahabaleshwar Strawberries (500g)', price: 180, unit: 'box', image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&q=80', vendor: 'Orchard Farms', category: 'Strawberries' },
-         { id: 'fp-2', name: 'Pure Organic Honey Jar (250g)', price: 290, unit: 'jar', image: 'https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=400&q=80', vendor: 'Orchard Farms', category: 'Honey' },
-         { id: 'fp-3', name: 'Fresh Strawberry Jam (300g)', price: 220, unit: 'jar', image: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=400&q=80', vendor: 'Orchard Farms', category: 'Preserves' }
-      ]
-   },
-   {
-      id: 'mock-farm-2',
-      farmName: 'Green Valley Organic Haven',
-      location: 'Karjat, Maharashtra',
-      description: 'Learn about sustainable agriculture, witness our bio-gas plant, pick fresh organic leafy greens, and enjoy open field walks along river streams.',
-      image: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1200&q=80',
-      costPerPerson: 0,
-      vendorId: 'mock-vendor-2',
-      vendorName: 'Green Valley Farm',
-      rating: 4.8,
-      farmProducts: [
-         { id: 'fp-4', name: 'Fresh Organic Spinach (250g)', price: 35, unit: 'bunch', image: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=400&q=80', vendor: 'Green Valley Farm', category: 'Spinach' },
-         { id: 'fp-5', name: 'Organic Cherry Tomatoes (500g)', price: 80, unit: 'pack', image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&q=80', vendor: 'Green Valley Farm', category: 'Tomatoes' }
-      ]
-   },
-   {
-      id: 'mock-farm-3',
-      farmName: 'Sunshine Mango & Citrus Estate',
-      location: 'Ratnagiri, Maharashtra',
-      description: 'Walk through Alphonso mango orchards, enjoy fresh citrus harvests, traditional Maharashtrian meals, and sunset view points.',
-      image: 'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?w=1200&q=80',
-      costPerPerson: 300,
-      vendorId: 'mock-vendor-3',
-      vendorName: 'Sunshine Produce',
-      rating: 4.9,
-      farmProducts: [
-         { id: 'fp-6', name: 'Authentic Ratnagiri Alphonso Mangoes (1 Dozen)', price: 850, unit: 'box', image: 'https://images.unsplash.com/photo-1553279768-865429fa0078?w=400&q=80', vendor: 'Sunshine Produce', category: 'Mangoes' },
-         { id: 'fp-7', name: 'Fresh Farm Oranges (1 kg)', price: 120, unit: 'kg', image: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&q=80', vendor: 'Sunshine Produce', category: 'Citrus' }
-      ]
-   }
-];
+// Modular Marketplace Sub-components & Helpers
+import {
+  MOCK_FARMS_LIST,
+  VITAMINS_LIST,
+  VITAMIN_CATEGORIES_WITH_DETAILS,
+  CITY_COORDINATES
+} from './marketplace/marketplaceConstants';
 
-const VITAMINS_LIST = ['Vitamin A', 'Vitamin B', 'Vitamin C', 'Vitamin D', 'Vitamin E', 'Vitamin K'];
+import {
+  getFarmSlug,
+  normalizeLookupText,
+  getVitaminsForProduct,
+  extractShops,
+  formatUpdatedTime,
+  buildSocialLinks,
+  resolveShopSocialLinks,
+  calculateHaversineDistance,
+  getLocationCoords,
+  getShopDistanceKm as calculateGeodesicDistanceKm
+} from './marketplace/marketplaceHelpers';
 
-const VITAMIN_CATEGORIES_WITH_DETAILS = [
-   {
-      name: 'Vitamin A',
-      code: 'VIT A',
-      image: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=200&q=80'
-   },
-   {
-      name: 'Vitamin B',
-      code: 'VIT B',
-      image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=200&q=80'
-   },
-   {
-      name: 'Vitamin C',
-      code: 'VIT C',
-      image: 'https://images.unsplash.com/photo-1582979512210-99b6a53386f9?w=200&q=80'
-   },
-   {
-      name: 'Vitamin D',
-      code: 'VIT D',
-      image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=200&q=80'
-   },
-   {
-      name: 'Vitamin E',
-      code: 'VIT E',
-      image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200&q=80'
-   },
-   {
-      name: 'Vitamin K',
-      code: 'VIT K',
-      image: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=200&q=80'
-   }
-];
-
-const getVitaminsForProduct = (product) => {
-   if (!product) return [];
-   
-   if (Array.isArray(product.vitamins) && product.vitamins.length > 0) {
-      return product.vitamins;
-   }
-   if (typeof product.vitamins === 'string' && product.vitamins.trim() !== '') {
-      return product.vitamins.split(',').map(v => v.trim());
-   }
-   if (product.vitamin) {
-      if (Array.isArray(product.vitamin)) return product.vitamin;
-      return [String(product.vitamin)];
-   }
-
-   const text = `${product.name || ''} ${product.category || ''} ${product.features || ''} ${product.description || ''}`.toLowerCase();
-   const found = new Set();
-
-   if (/carrot|tomato|spinach|mango|capsicum|sweet potato|butter|milk|cheese|paneer|yogurt|papaya|pumpkin|leafy/i.test(text)) {
-      found.add('Vitamin A');
-   }
-   if (/banana|potato|garlic|onion|milk|cheese|paneer|yogurt|mushroom|corn|spinach|pea|lentil|beans/i.test(text)) {
-      found.add('Vitamin B');
-   }
-   if (/strawberry|strawberries|orange|citrus|tomato|broccoli|capsicum|apple|lemon|guava|kiwi|berry|pineapple/i.test(text)) {
-      found.add('Vitamin C');
-   }
-   if (/milk|butter|cheese|paneer|yogurt|dairy|mushroom|egg|fortified/i.test(text)) {
-      found.add('Vitamin D');
-   }
-   if (/spinach|mango|broccoli|capsicum|almond|nut|oil|seed|avocado|kiwi/i.test(text)) {
-      found.add('Vitamin E');
-   }
-   if (/spinach|broccoli|tomato|brinjal|eggplant|strawberry|strawberries|apple|cabbage|lettuce|green/i.test(text)) {
-      found.add('Vitamin K');
-   }
-
-   if (/vitamin\s*a/i.test(text)) found.add('Vitamin A');
-   if (/vitamin\s*b/i.test(text)) found.add('Vitamin B');
-   if (/vitamin\s*c/i.test(text)) found.add('Vitamin C');
-   if (/vitamin\s*d/i.test(text)) found.add('Vitamin D');
-   if (/vitamin\s*e/i.test(text)) found.add('Vitamin E');
-   if (/vitamin\s*k/i.test(text)) found.add('Vitamin K');
-
-   if (found.size === 0) {
-      const hash = String(product.id || product.name || 'prod').charCodeAt(0);
-      const vit1 = VITAMINS_LIST[hash % VITAMINS_LIST.length];
-      const vit2 = VITAMINS_LIST[(hash + 2) % VITAMINS_LIST.length];
-      found.add(vit1);
-      found.add(vit2);
-   }
-
-   return Array.from(found);
-};
-
-const extractShops = (userObj) => {
-   if (!userObj) return [];
-   if (Array.isArray(userObj.shops)) return userObj.shops;
-   if (userObj.shops && typeof userObj.shops === 'object') {
-      return Object.values(userObj.shops);
-   }
-   return [];
-};
-
-const formatUpdatedTime = (isoString) => {
-   if (!isoString) return null;
-   try {
-      const date = new Date(isoString);
-      if (isNaN(date.getTime())) return null;
-      return date.toLocaleString('en-US', {
-         month: 'short',
-         day: 'numeric',
-         year: 'numeric',
-         hour: 'numeric',
-         minute: '2-digit',
-         hour12: true
-      });
-   } catch {
-      return null;
-   }
-};
-
-const normalizeLookupText = (value) => {
-   return String(value || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '');
-};
-
-const buildSocialLinks = (source) => {
-   const raw = source?.socialLinks || source || {};
-   if (raw && typeof raw === 'object') {
-      const normalizeValue = (field) => {
-         const value = raw[field];
-         if (typeof value !== 'string') return '';
-         const trimmed = value.trim();
-         return trimmed;
-      };
-
-      return {
-         instagram: normalizeValue('instagram'),
-         facebook: normalizeValue('facebook'),
-         youtube: normalizeValue('youtube'),
-         whatsapp: normalizeValue('whatsapp'),
-         website: normalizeValue('website')
-      };
-   }
-
-   return { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' };
-};
-
-const resolveShopSocialLinks = (shopOrFarm, publicShopsData) => {
-   if (!shopOrFarm) return { instagram: '', facebook: '', youtube: '', whatsapp: '', website: '' };
-   
-   const name = shopOrFarm.name || shopOrFarm.shopName || shopOrFarm.farmName || shopOrFarm.vendorName || 'Organic Shop';
-   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '');
-
-   // 1. Direct socialLinks on object
-   const direct = buildSocialLinks(shopOrFarm);
-   
-   // 2. Search in publicShopsData
-   let matchedPublic = {};
-   if (publicShopsData && typeof publicShopsData === 'object') {
-      const targetName = normalizeLookupText(name);
-      const targetVendorId = shopOrFarm.vendorId || shopOrFarm.uid;
-      
-      Object.entries(publicShopsData).forEach(([vUid, vShops]) => {
-         const shopsArr = Array.isArray(vShops) ? vShops : Object.values(vShops || {});
-         if (targetVendorId && vUid === targetVendorId) {
-            shopsArr.forEach(s => {
-               const sSocials = buildSocialLinks(s);
-               matchedPublic = { ...sSocials, ...matchedPublic };
-            });
-         }
-         shopsArr.forEach(s => {
-            const sName = normalizeLookupText(s.shopName || s.name || s.farmName);
-            if (targetName && sName && (targetName === sName || targetName.includes(sName) || sName.includes(targetName))) {
-               const sSocials = buildSocialLinks(s);
-               matchedPublic = { ...sSocials, ...matchedPublic };
-            }
-         });
-      });
-   }
-   
-   const combined = {
-      instagram: direct.instagram || matchedPublic.instagram || '',
-      facebook: direct.facebook || matchedPublic.facebook || '',
-      youtube: direct.youtube || matchedPublic.youtube || '',
-      whatsapp: direct.whatsapp || matchedPublic.whatsapp || '',
-      website: direct.website || matchedPublic.website || ''
-   };
-
-   return combined;
-};
+import ProductCategoryCarousel from './marketplace/components/ProductCategoryCarousel';
+import VitaminCategoryCarousel from './marketplace/components/VitaminCategoryCarousel';
+import MarketplaceSidebarFilters from './marketplace/components/MarketplaceSidebarFilters';
 
 export default function Marketplace() {
    const { cartItems, addToCart, updateQuantity } = useCart();
@@ -433,107 +229,46 @@ export default function Marketplace() {
    const [isFetchingGps, setIsFetchingGps] = useState(false);
    const [gpsMessage, setGpsMessage] = useState('');
 
-   // Known City Coordinates Map for Haversine Distance Calculation
-   const CITY_COORDINATES = React.useMemo(() => ({
-      karjat: { lat: 18.9107, lng: 73.3282, name: 'Karjat' },
-      mahabaleshwar: { lat: 17.9237, lng: 73.6586, name: 'Mahabaleshwar' },
-      anantapur: { lat: 14.6819, lng: 77.6006, name: 'Anantapur' },
-      'maruthi nagar': { lat: 14.6750, lng: 77.6050, name: 'Maruthi Nagar' },
-      pune: { lat: 18.5204, lng: 73.8567, name: 'Pune' },
-      nashik: { lat: 19.9975, lng: 73.7898, name: 'Nashik' },
-      satara: { lat: 17.6805, lng: 74.0183, name: 'Satara' },
-      ratnagiri: { lat: 16.9902, lng: 73.3120, name: 'Ratnagiri' },
-      mumbai: { lat: 19.0760, lng: 72.8777, name: 'Mumbai' }
-   }), []);
-
-   // Haversine Formula: calculates exact geodesic distance in km between 2 GPS coordinates
-   const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
-      const R = 6371; // Earth's radius in km
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a =
-         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-         Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-         Math.sin(dLon / 2) * Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-   };
-
-   // Helper to extract coordinates for a given location string
-   const getLocationCoords = React.useCallback((locationStr) => {
-      if (!locationStr) return CITY_COORDINATES.karjat;
-      const locLower = locationStr.toLowerCase();
-      for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
-         if (locLower.includes(key)) return coords;
-      }
-      let hash = 0;
-      for (let i = 0; i < locLower.length; i++) {
-         hash = ((hash << 5) - hash) + locLower.charCodeAt(i);
-         hash |= 0;
-      }
-      const latOffset = (Math.abs(hash % 100) / 1000);
-      const lngOffset = (Math.abs((hash >> 2) % 100) / 1000);
-      return { lat: 18.9107 + latOffset, lng: 73.3282 + lngOffset, name: locationStr };
-   }, [CITY_COORDINATES]);
-
    // Helper to calculate distance in km from current user location (GPS or reference city) to shop/farm address
-   const getShopDistanceKm = React.useCallback((locationStr) => {
-      const targetCoords = getLocationCoords(locationStr);
-      
-      // If user enabled Live GPS
-      if (userGpsCoords && userGpsCoords.lat && userGpsCoords.lng) {
-         const dist = calculateHaversineDistance(
-            userGpsCoords.lat,
-            userGpsCoords.lng,
-            targetCoords.lat,
-            targetCoords.lng
-         );
-         return Math.max(0.8, Number(dist.toFixed(1)));
-      }
+   const getShopDistanceKm = useCallback((locationStr) => {
+      return calculateGeodesicDistanceKm(locationStr, userGpsCoords);
+   }, [userGpsCoords]);
 
-      // Default reference city distance (relative to Karjat center)
-      const refCoords = CITY_COORDINATES.karjat;
-      const dist = calculateHaversineDistance(
-         refCoords.lat,
-         refCoords.lng,
-         targetCoords.lat,
-         targetCoords.lng
-      );
-      return Math.max(1.2, Number(dist.toFixed(1)));
-   }, [userGpsCoords, getLocationCoords, CITY_COORDINATES]);
-
-   // Handler to trigger browser GPS location fetch
-   const handleDetectUserLocation = () => {
-      if (!navigator.geolocation) {
-         setGpsMessage('Geolocation is not supported by your browser.');
-         return;
-      }
+   // Handler to trigger browser GPS location fetch with multi-sample high accuracy
+   const handleDetectUserLocation = async () => {
       setIsFetchingGps(true);
-      setGpsMessage('');
-      navigator.geolocation.getCurrentPosition(
-         (position) => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            setUserGpsCoords({
-               lat,
-               lng,
-               label: `Live GPS (${lat.toFixed(2)}°, ${lng.toFixed(2)}°)`
-            });
-            setIsFetchingGps(false);
-            setGpsMessage('📍 Precise GPS position detected! Distances recalculated live.');
-         },
-         (err) => {
-            console.warn('GPS location fetch error:', err.message);
-            setUserGpsCoords({
-               lat: 18.9107,
-               lng: 73.3282,
-               label: 'Default Base Location (Karjat)'
-            });
-            setIsFetchingGps(false);
-            setGpsMessage('📍 Using base reference location (Karjat, Maharashtra).');
-         },
-         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-      );
+      setGpsMessage('🛰️ Acquiring high-precision GPS satellite fix...');
+      try {
+         const pos = await getPreciseCurrentPosition({ targetAccuracyMeters: 40, maxWaitMs: 6500 });
+         const { latitude, longitude, accuracy, isCoarse } = pos;
+         
+         // Reverse geocode to find exact locality & city
+         const geoInfo = await reverseGeocodePrecise(latitude, longitude);
+         const placeLabel = geoInfo.shortLabel || `${latitude.toFixed(3)}°, ${longitude.toFixed(3)}°`;
+
+         setUserGpsCoords({
+            lat: latitude,
+            lng: longitude,
+            accuracy,
+            label: `Live GPS: ${placeLabel}`
+         });
+
+         if (isCoarse) {
+            setGpsMessage(`⚠️ Approximate network location detected near ${placeLabel} (±${Math.round(accuracy)}m). Distances recalculated.`);
+         } else {
+            setGpsMessage(`📍 High-precision GPS locked at ${placeLabel} (±${accuracy}m). Distances recalculated live.`);
+         }
+      } catch (err) {
+         console.warn('GPS location fetch error:', err.message);
+         setUserGpsCoords({
+            lat: 18.9107,
+            lng: 73.3282,
+            label: 'Default Base Location (Karjat)'
+         });
+         setGpsMessage(`📍 ${err.message || 'Using base reference location (Karjat, Maharashtra).'}`);
+      } finally {
+         setIsFetchingGps(false);
+      }
    };
 
    // Listen to publicShops
@@ -994,267 +729,46 @@ export default function Marketplace() {
       });
    }, [products, shopActiveCategory, activeCategory, shopSearchQuery, farmSearchQuery, searchQuery, ratingFilters, priceRanges, discountFilters, selectedVitamin, sortBy]);
 
+   const hasActiveFilters = Boolean(
+      activeCategory !== 'All' || farmActiveCategory !== 'All' || shopActiveCategory !== 'All' ||
+      sortBy !== 'none' || searchQuery !== '' || farmSearchQuery !== '' || shopSearchQuery !== '' ||
+      priceRanges.length > 0 || ratingFilters.length > 0 || selectedBrands.length > 0 ||
+      discountFilters.length > 0 || selectedRadius !== 'all' || selectedVitamin !== 'All'
+   );
+
+   const handleClearAllFilters = () => {
+      setPriceRanges([]);
+      setRatingFilters([]);
+      setSelectedBrands([]);
+      setDiscountFilters([]);
+      setSearchQuery('');
+      setShopSearchQuery('');
+      setFarmSearchQuery('');
+      setSortBy('none');
+      setActiveCategory('All');
+      setShopActiveCategory('All');
+      setFarmActiveCategory('All');
+      setSelectedRadius('all');
+      setSelectedVitamin('All');
+   };
+
    const renderSidebarFilters = () => (
-      <div className="w-full lg:w-56 shrink-0 text-left lg:sticky lg:top-24 h-fit">
-         <div className="bg-white/70 backdrop-blur-md rounded-3xl p-4 sm:p-5 shadow-xl shadow-emerald-950/[0.02] border border-white max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pr-2">
-            <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
-               <h3 className="text-base font-extrabold text-gray-900 font-headings">Filters</h3>
-               <div className="flex gap-2 items-center">
-                  <button
-                     type="button"
-                     onClick={() => setShowFilters(!showFilters)}
-                     className="px-3 py-1.5 text-[11px] font-extrabold bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors cursor-pointer"
-                  >
-                     Hide
-                  </button>
-                  {(activeCategory !== 'All' || farmActiveCategory !== 'All' || shopActiveCategory !== 'All' || sortBy !== 'none' || searchQuery !== '' || farmSearchQuery !== '' || shopSearchQuery !== '' || priceRanges.length > 0 || ratingFilters.length > 0 || selectedBrands.length > 0 || discountFilters.length > 0 || selectedRadius !== 'all' || selectedVitamin !== 'All') && (
-                     <button
-                        type="button"
-                        onClick={() => {
-                           setPriceRanges([]);
-                           setRatingFilters([]);
-                           setSelectedBrands([]);
-                           setDiscountFilters([]);
-                           setSearchQuery('');
-                           setShopSearchQuery('');
-                           setFarmSearchQuery('');
-                           setSortBy('none');
-                           setActiveCategory('All');
-                           setShopActiveCategory('All');
-                           setFarmActiveCategory('All');
-                           setSelectedRadius('all');
-                           setSelectedVitamin('All');
-                        }}
-                        className="px-3 py-1.5 text-[11px] font-extrabold border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-600 hover:text-white transition-all cursor-pointer font-headings"
-                     >
-                        Clear All
-                     </button>
-                  )}
-               </div>
-            </div>
-
-            {/* Sort By */}
-            <div className="mb-6">
-               <div className="flex justify-between items-center mb-3">
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider font-headings">Sort By</label>
-                  {sortBy !== 'none' && (
-                     <button
-                        type="button"
-                        onClick={() => setSortBy('none')}
-                        className="text-[10px] font-bold text-emerald-600 hover:underline cursor-pointer"
-                     >
-                        Clear
-                     </button>
-                  )}
-               </div>
-               <div className="space-y-1.5 font-body">
-                  <button onClick={() => setSortBy('none')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all cursor-pointer ${sortBy === 'none' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'}`}>Recommended</button>
-                  <button onClick={() => setSortBy('price-low')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all cursor-pointer ${sortBy === 'price-low' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'}`}>Price: Low to High</button>
-                  <button onClick={() => setSortBy('price-high')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all cursor-pointer ${sortBy === 'price-high' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'}`}>Price: High to Low</button>
-                  <button onClick={() => setSortBy('rating')} className={`w-full text-left px-3 py-2 text-xs rounded-xl font-bold transition-all cursor-pointer ${sortBy === 'rating' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'}`}>Highest Rated</button>
-               </div>
-            </div>
-
-            {/* Vitamins Dropdown (Above Price Range) */}
-            <div className="mb-6">
-               <div className="flex justify-between items-center mb-3">
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider font-headings flex items-center gap-1">🧪 Vitamins</label>
-                  {selectedVitamin !== 'All' && (
-                     <button
-                        type="button"
-                        onClick={() => setSelectedVitamin('All')}
-                        className="text-[10px] font-bold text-emerald-600 hover:underline cursor-pointer"
-                     >
-                        Clear
-                     </button>
-                  )}
-               </div>
-               <div className="font-body">
-                  <select
-                     value={selectedVitamin}
-                     onChange={(e) => setSelectedVitamin(e.target.value)}
-                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer shadow-xs"
-                  >
-                     <option value="All">All Vitamins</option>
-                     <option value="Vitamin A">Vitamin A</option>
-                     <option value="Vitamin B">Vitamin B</option>
-                     <option value="Vitamin C">Vitamin C</option>
-                     <option value="Vitamin D">Vitamin D</option>
-                     <option value="Vitamin E">Vitamin E</option>
-                     <option value="Vitamin K">Vitamin K</option>
-                  </select>
-               </div>
-            </div>
-
-            {/* Price Range */}
-            <div className="mb-6">
-               <div className="flex justify-between items-center mb-3">
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider font-headings">Price Range</label>
-                  {priceRanges.length > 0 && (
-                     <button
-                        type="button"
-                        onClick={() => setPriceRanges([])}
-                        className="text-[10px] font-bold text-emerald-600 hover:underline cursor-pointer"
-                     >
-                        Clear
-                     </button>
-                  )}
-               </div>
-               <div className="space-y-2.5 font-body">
-                  <label className="flex items-center cursor-pointer group">
-                     <input
-                        type="checkbox"
-                        checked={priceRanges.includes('under5')}
-                        onChange={(e) => {
-                           if (e.target.checked) setPriceRanges([...priceRanges, 'under5']);
-                           else setPriceRanges(priceRanges.filter(r => r !== 'under5'));
-                        }}
-                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                     />
-                     <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-emerald-600 transition-colors">Under ₹50</span>
-                  </label>
-                  <label className="flex items-center cursor-pointer group">
-                     <input
-                        type="checkbox"
-                        checked={priceRanges.includes('5to10')}
-                        onChange={(e) => {
-                           if (e.target.checked) setPriceRanges([...priceRanges, '5to10']);
-                           else setPriceRanges(priceRanges.filter(r => r !== '5to10'));
-                        }}
-                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                     />
-                     <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-emerald-600 transition-colors">₹50 - ₹100</span>
-                  </label>
-                  <label className="flex items-center cursor-pointer group">
-                     <input
-                        type="checkbox"
-                        checked={priceRanges.includes('10to20')}
-                        onChange={(e) => {
-                           if (e.target.checked) setPriceRanges([...priceRanges, '10to20']);
-                           else setPriceRanges(priceRanges.filter(r => r !== '10to20'));
-                        }}
-                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                     />
-                     <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-emerald-600 transition-colors">₹100 - ₹200</span>
-                  </label>
-                  <label className="flex items-center cursor-pointer group">
-                     <input
-                        type="checkbox"
-                        checked={priceRanges.includes('over20')}
-                        onChange={(e) => {
-                           if (e.target.checked) setPriceRanges([...priceRanges, 'over20']);
-                           else setPriceRanges(priceRanges.filter(r => r !== 'over20'));
-                        }}
-                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                     />
-                     <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-emerald-600 transition-colors">Over ₹200</span>
-                  </label>
-               </div>
-            </div>
-
-            {/* Rating */}
-            <div className="mb-6">
-               <div className="flex justify-between items-center mb-3">
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider font-headings">Rating</label>
-                  {ratingFilters.length > 0 && (
-                     <button
-                        type="button"
-                        onClick={() => setRatingFilters([])}
-                        className="text-[10px] font-bold text-emerald-600 hover:underline cursor-pointer"
-                     >
-                        Clear
-                     </button>
-                  )}
-               </div>
-               <div className="space-y-2.5 font-body">
-                  <label className="flex items-center cursor-pointer group">
-                     <input
-                        type="checkbox"
-                        checked={ratingFilters.includes('4.5')}
-                        onChange={(e) => {
-                           if (e.target.checked) setRatingFilters([...ratingFilters, '4.5']);
-                           else setRatingFilters(ratingFilters.filter(r => r !== '4.5'));
-                        }}
-                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                     />
-                     <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-emerald-600 transition-colors flex items-center">
-                        <Star size={13} className="fill-amber-400 text-amber-400 mr-1" /> 4.5 & above
-                     </span>
-                  </label>
-                  <label className="flex items-center cursor-pointer group">
-                     <input
-                        type="checkbox"
-                        checked={ratingFilters.includes('4.0')}
-                        onChange={(e) => {
-                           if (e.target.checked) setRatingFilters([...ratingFilters, '4.0']);
-                           else setRatingFilters(ratingFilters.filter(r => r !== '4.0'));
-                        }}
-                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                     />
-                     <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-emerald-600 transition-colors flex items-center">
-                        <Star size={13} className="fill-amber-400 text-amber-400 mr-1" /> 4.0 & above
-                     </span>
-                  </label>
-                  <label className="flex items-center cursor-pointer group">
-                     <input
-                        type="checkbox"
-                        checked={ratingFilters.includes('3.5')}
-                        onChange={(e) => {
-                           if (e.target.checked) setRatingFilters([...ratingFilters, '3.5']);
-                           else setRatingFilters(ratingFilters.filter(r => r !== '3.5'));
-                        }}
-                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                     />
-                     <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-emerald-600 transition-colors flex items-center">
-                        <Star size={13} className="fill-amber-400 text-amber-400 mr-1" /> 3.5 & above
-                     </span>
-                  </label>
-               </div>
-            </div>
-
-            {/* Discount */}
-            <div className="mb-6">
-               <div className="flex justify-between items-center mb-3">
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider font-headings">Discount</label>
-                  {discountFilters.length > 0 && (
-                     <button
-                        type="button"
-                        onClick={() => setDiscountFilters([])}
-                        className="text-[10px] font-bold text-emerald-600 hover:underline cursor-pointer"
-                     >
-                        Clear
-                     </button>
-                  )}
-               </div>
-               <div className="space-y-2.5 font-body">
-                  <label className="flex items-center cursor-pointer group">
-                     <input
-                        type="checkbox"
-                        checked={discountFilters.includes('10')}
-                        onChange={(e) => {
-                           if (e.target.checked) setDiscountFilters([...discountFilters, '10']);
-                           else setDiscountFilters(discountFilters.filter(d => d !== '10'));
-                        }}
-                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                     />
-                     <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-emerald-600 transition-colors">10% or more</span>
-                  </label>
-                  <label className="flex items-center cursor-pointer group">
-                     <input
-                        type="checkbox"
-                        checked={discountFilters.includes('20')}
-                        onChange={(e) => {
-                           if (e.target.checked) setDiscountFilters([...discountFilters, '20']);
-                           else setDiscountFilters(discountFilters.filter(d => d !== '20'));
-                        }}
-                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                     />
-                     <span className="ml-2.5 text-xs text-gray-600 font-semibold group-hover:text-emerald-600 transition-colors">20% or more</span>
-                  </label>
-               </div>
-            </div>
-         </div>
-      </div>
+      <MarketplaceSidebarFilters
+         showFilters={showFilters}
+         setShowFilters={setShowFilters}
+         sortBy={sortBy}
+         setSortBy={setSortBy}
+         selectedVitamin={selectedVitamin}
+         setSelectedVitamin={setSelectedVitamin}
+         priceRanges={priceRanges}
+         setPriceRanges={setPriceRanges}
+         ratingFilters={ratingFilters}
+         setRatingFilters={setRatingFilters}
+         discountFilters={discountFilters}
+         setDiscountFilters={setDiscountFilters}
+         onClearAll={handleClearAllFilters}
+         hasActiveFilters={hasActiveFilters}
+      />
    );
 
    return (
@@ -1266,164 +780,29 @@ export default function Marketplace() {
                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
 
                   {/* Product Categories Row */}
-                  <div>
-                     <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-2">
-                           <h2 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2 font-headings">
-                              🥦 Product Categories
-                           </h2>
-                           {activeCategory !== 'All' && (
-                              <button
-                                 type="button"
-                                 onClick={() => setActiveCategory('All')}
-                                 className="text-[11px] font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer font-headings"
-                              >
-                                 Clear ({activeCategory})
-                              </button>
-                           )}
-                        </div>
-
-                        {/* Navigation Controls for Mouse Users */}
-                        <div className="flex items-center gap-2">
-                           <button
-                              type="button"
-                              onClick={() => scrollRow(categoriesTilesRef, 'left')}
-                              className="w-8 h-8 rounded-xl bg-white/80 border border-gray-200 text-gray-600 hover:text-brand hover:border-brand/40 hover:bg-brand-light/30 shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                              title="Scroll Left"
-                           >
-                              <ChevronLeft size={16} />
-                           </button>
-                           <button
-                              type="button"
-                              onClick={() => scrollRow(categoriesTilesRef, 'right')}
-                              className="w-8 h-8 rounded-xl bg-white/80 border border-gray-200 text-gray-600 hover:text-brand hover:border-brand/40 hover:bg-brand-light/30 shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                              title="Scroll Right"
-                           >
-                              <ChevronRight size={16} />
-                           </button>
-                        </div>
-                     </div>
-
-                     <div
-                        ref={categoriesTilesRef}
-                        onMouseDown={handleMouseDownTiles}
-                        onMouseMove={handleMouseMoveTiles}
-                        onMouseUp={handleMouseUpTiles}
-                        onMouseLeave={handleMouseUpTiles}
-                        className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide snap-x items-center select-none cursor-grab active:cursor-grabbing"
-                     >
-                        {[{ name: 'All Categories', isAll: true, image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&q=80' }, ...categoriesWithDetails].map((cat, idx) => {
-                           const isAllTile = cat.isAll;
-                           const isSelected = isAllTile ? activeCategory === 'All' : activeCategory === cat.name;
-                           const displayName = isAllTile ? 'ALL' : cat.name;
-
-                           return (
-                              <button
-                                 key={cat.name || idx}
-                                 onClick={() => handleCategoryClick(isAllTile ? 'All' : cat.name)}
-                                 className={`flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start cursor-pointer ${
-                                    isSelected ? 'ring-2 ring-brand bg-brand-light/30 border-brand scale-102 shadow-md' : ''
-                                 }`}
-                              >
-                                 <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm flex items-center justify-center bg-slate-100">
-                                    <img
-                                       src={cat.image || '/cherry_tomatoes.png'}
-                                       alt={displayName}
-                                       data-no-modal="true"
-                                       className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300 no-modal"
-                                       onError={(e) => {
-                                          e.target.src = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&q=80';
-                                       }}
-                                    />
-                                 </div>
-                                 <span className="text-[10px] uppercase tracking-wider text-gray-700 font-extrabold truncate max-w-[90px] text-center font-headings">
-                                    {displayName}
-                                 </span>
-                              </button>
-                           );
-                        })}
-                     </div>
-                  </div>
+                  <ProductCategoryCarousel
+                     categoriesTilesRef={categoriesTilesRef}
+                     activeCategory={activeCategory}
+                     onCategoryClick={handleCategoryClick}
+                     categoriesWithDetails={categoriesWithDetails}
+                     onScrollLeft={() => scrollRow(categoriesTilesRef, 'left')}
+                     onScrollRight={() => scrollRow(categoriesTilesRef, 'right')}
+                     onMouseDown={handleMouseDownTiles}
+                     onMouseMove={handleMouseMoveTiles}
+                     onMouseUp={handleMouseUpTiles}
+                  />
 
                   {/* Vitamin Categories Row (Right below standard categories) */}
-                  <div className="pt-4 border-t border-emerald-100/60">
-                     <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-2">
-                           <h2 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2 font-headings">
-                              🧪 Vitamins Categories
-                           </h2>
-                           {selectedVitamin !== 'All' && (
-                              <button
-                                 type="button"
-                                 onClick={() => setSelectedVitamin('All')}
-                                 className="text-[11px] font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer font-headings"
-                              >
-                                 Clear ({selectedVitamin})
-                              </button>
-                           )}
-                        </div>
-
-                        {/* Navigation Controls for Vitamin Tiles */}
-                        <div className="flex items-center gap-2">
-                           <button
-                              type="button"
-                              onClick={() => scrollRow(vitaminTilesRef, 'left')}
-                              className="w-8 h-8 rounded-xl bg-white/80 border border-gray-200 text-gray-600 hover:text-brand hover:border-brand/40 hover:bg-brand-light/30 shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                              title="Scroll Left"
-                           >
-                              <ChevronLeft size={16} />
-                           </button>
-                           <button
-                              type="button"
-                              onClick={() => scrollRow(vitaminTilesRef, 'right')}
-                              className="w-8 h-8 rounded-xl bg-white/80 border border-gray-200 text-gray-600 hover:text-brand hover:border-brand/40 hover:bg-brand-light/30 shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                              title="Scroll Right"
-                           >
-                              <ChevronRight size={16} />
-                           </button>
-                        </div>
-                     </div>
-
-                     <div
-                        ref={vitaminTilesRef}
-                        onMouseDown={handleMouseDownVitTiles}
-                        onMouseMove={handleMouseMoveVitTiles}
-                        onMouseUp={handleMouseUpVitTiles}
-                        onMouseLeave={handleMouseUpVitTiles}
-                        className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide snap-x items-center select-none cursor-grab active:cursor-grabbing"
-                     >
-                        {[{ name: 'All Vitamins', isAll: true, image: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&q=80' }, ...VITAMIN_CATEGORIES_WITH_DETAILS].map((vit, idx) => {
-                           const isAllTile = vit.isAll;
-                           const isSelected = isAllTile ? selectedVitamin === 'All' : selectedVitamin === vit.name;
-                           const displayName = isAllTile ? 'ALL' : vit.name;
-
-                           return (
-                              <button
-                                 key={vit.name || idx}
-                                 onClick={() => setSelectedVitamin(isAllTile ? 'All' : (isSelected ? 'All' : vit.name))}
-                                 className={`flex-shrink-0 w-28 flex flex-col items-center gap-2.5 bg-white/60 backdrop-blur-md border border-white rounded-3xl p-3.5 hover:shadow-xl hover:shadow-emerald-950/[0.03] hover:border-brand/35 transition-all duration-300 group snap-start cursor-pointer ${
-                                    isSelected ? 'ring-2 ring-emerald-600 bg-emerald-50/80 border-emerald-500 scale-102 shadow-md' : ''
-                                 }`}
-                              >
-                                 <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-50 bg-emerald-50/20 shadow-sm flex items-center justify-center bg-slate-100">
-                                    <img
-                                       src={vit.image}
-                                       alt={displayName}
-                                       data-no-modal="true"
-                                       className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-300 no-modal"
-                                       onError={(e) => {
-                                          e.target.src = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&q=80';
-                                       }}
-                                    />
-                                 </div>
-                                 <span className="text-[10px] uppercase tracking-wider text-gray-700 font-extrabold truncate max-w-[90px] text-center font-headings">
-                                    {displayName}
-                                 </span>
-                              </button>
-                           );
-                        })}
-                     </div>
-                  </div>
+                  <VitaminCategoryCarousel
+                     vitaminTilesRef={vitaminTilesRef}
+                     selectedVitamin={selectedVitamin}
+                     onVitaminClick={(vit) => setSelectedVitamin(vit)}
+                     onScrollLeft={() => scrollRow(vitaminTilesRef, 'left')}
+                     onScrollRight={() => scrollRow(vitaminTilesRef, 'right')}
+                     onMouseDown={handleMouseDownVitTiles}
+                     onMouseMove={handleMouseMoveVitTiles}
+                     onMouseUp={handleMouseUpVitTiles}
+                  />
 
                </div>
             </section>

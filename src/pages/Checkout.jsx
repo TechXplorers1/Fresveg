@@ -4,10 +4,21 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import {
   CheckCircle, MapPin, Package, Banknote, CreditCard,
-  Check, ShieldCheck, Zap, AlertTriangle, Loader, ChevronRight, Store, Phone, MessageCircle
+  Check, ShieldCheck, Zap, AlertTriangle, Loader, ChevronRight, Store, Phone, MessageCircle,
+  Landmark, Copy, CheckCheck, QrCode, ArrowRight, ExternalLink, Info, Building2, Smartphone
 } from 'lucide-react';
+import { api } from '../services/api';
+
+// ─── PhonePe Config ─────────────────────────────────────────────────────────
+const PHONEPE_METHODS = [
+  { label: 'PhonePe App', color: '#5f259f', abbr: 'पे' },
+  { label: 'UPI QR Code',  color: '#16a34a', abbr: 'QR' },
+  { label: 'GPay · Paytm', color: '#2563eb', abbr: 'UPI' },
+  { label: 'Cards & NB',   color: '#d97706', abbr: 'CARD' },
+];
 
 // ─── Razorpay Config ──────────────────────────────────────────────────────────
+
 // ✅ Key ID is safe to use in frontend code
 // 🚫 NEVER put key-secret here — it belongs only on a backend server
 const RAZORPAY_KEY_ID = 'rzp_test_SYC9m4DXT1gjeY';
@@ -45,10 +56,50 @@ export default function Checkout() {
     }
   }, [user, loading, navigate]);
 
-  const [selectedPayment, setSelectedPayment] = React.useState('Cash on Delivery');
+  const [selectedPayment, setSelectedPayment] = React.useState('PhonePe UPI & Online');
   const [isProcessing,    setIsProcessing]    = React.useState(false);
   const [rzpLoading,      setRzpLoading]      = React.useState(false);
   const [rzpError,        setRzpError]        = React.useState('');
+  const [phonePeLoading,  setPhonePeLoading]  = React.useState(false);
+  const [phonePeError,    setPhonePeError]    = React.useState('');
+
+  // ── Vendor Direct Bank Transfer State ─────────────────────────────────────────
+  const [vendorBankDetails, setVendorBankDetails] = React.useState(null);
+  const [loadingBankDetails, setLoadingBankDetails] = React.useState(false);
+  const [utrNumber, setUtrNumber] = React.useState('');
+  const [paymentNote, setPaymentNote] = React.useState('');
+  const [copiedBankField, setCopiedBankField] = React.useState(null);
+
+  const handleCopyBankField = (text, fieldName) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedBankField(fieldName);
+    setTimeout(() => setCopiedBankField(null), 2500);
+  };
+
+  // Fetch primary vendor's bank details for items in cart
+  React.useEffect(() => {
+    if (cartItems.length > 0) {
+      const firstItem = cartItems[0];
+      const vId = firstItem.vendorId || firstItem.vendor_id || null;
+      const sName = firstItem.shopName || firstItem.farmName || firstItem.shop || firstItem.vendor || '';
+      const vEmail = firstItem.vendorEmail || firstItem.vendor_email || '';
+
+      setLoadingBankDetails(true);
+      api.getVendorBankDetails({ vendorId: vId, shopName: sName, vendorEmail: vEmail })
+        .then(res => {
+          if (res && res.bankDetails) {
+            setVendorBankDetails({
+              ...res.bankDetails,
+              vendorName: res.vendorName || firstItem.vendor || 'Verified Vendor',
+              shopName: res.shopName || sName || 'Organic Store'
+            });
+          }
+        })
+        .catch(err => console.warn('Could not load vendor bank details:', err))
+        .finally(() => setLoadingBankDetails(false));
+    }
+  }, [cartItems]);
 
   if (loading) {
     return (
@@ -64,18 +115,125 @@ export default function Checkout() {
 
   const PAYMENT_METHODS = [
     {
+      id:   'phonepe',
+      name: 'PhonePe UPI & Online',
+      icon: Smartphone,
+      desc: 'Instant UPI, QR scan, Cards & Net Banking via PhonePe Gateway',
+      badge: 'Fast & Secure',
+      isPhonePe: true
+    },
+    {
       id:   'cod',
       name: 'Cash on Delivery',
       icon: Banknote,
       desc: 'Pay cash when your order arrives',
+      badge: 'COD'
+    },
+    {
+      id:   'vendor_bank',
+      name: 'Direct Vendor Bank / UPI',
+      icon: Landmark,
+      desc: 'Transfer directly to Vendor Bank Account or scan UPI QR Code',
+      badge: 'Zero Gateway Fees'
     },
     {
       id:   'razorpay',
-      name: 'Pay Online',
+      name: 'Pay Online (Razorpay)',
       icon: CreditCard,
-      desc: 'Cards · UPI · Net Banking · Wallets via Razorpay',
+      desc: 'Cards · Net Banking · Wallets via Razorpay',
+      badge: 'Alternative Gateway'
     },
   ];
+
+  // ── Handle PhonePe Payment ─────────────────────────────────────────────────
+  const handlePhonePePayment = async () => {
+    if (!address) {
+      alert('Please select a delivery address in the cart first.');
+      navigate('/cart');
+      return;
+    }
+    if (cartItems.length === 0) { navigate('/'); return; }
+
+    setPhonePeError('');
+    setPhonePeLoading(true);
+
+    try {
+      const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const firstItem = cartItems[0] || {};
+      const customerPhone = userProfile?.phone || userProfile?.phoneNumber || user?.phoneNumber || '+91 98765 43210';
+      const vendorPhone = firstItem.vendorPhone || firstItem.phone || '+91 98765 43210';
+
+      const payload = {
+        orderType: 'order',
+        orderId,
+        customerId: user?.uid || user?.id || 'guest',
+        customerName: userProfile?.displayName || user?.displayName || 'Customer',
+        customerEmail: user?.email || '',
+        customerPhone,
+        vendorPhone,
+        items: cartItems,
+        total: getTotal(),
+        address
+      };
+
+      const res = await api.initiatePhonePePayment(payload);
+
+      if (res && res.success && res.redirectUrl) {
+        window.location.href = res.redirectUrl;
+      } else {
+        throw new Error(res?.message || 'Could not initiate PhonePe payment.');
+      }
+    } catch (err) {
+      console.error('PhonePe initiation error:', err);
+      setPhonePeError(err.message || 'Failed to connect to PhonePe gateway. Please try again.');
+      setPhonePeLoading(false);
+    }
+  };
+
+
+  // ── Handle Vendor Direct Bank Transfer ─────────────────────────────────────
+  const handleVendorBankPayment = async () => {
+    if (!address) {
+      alert('Please select a delivery address in the cart first.');
+      navigate('/cart');
+      return;
+    }
+    if (cartItems.length === 0) { navigate('/'); return; }
+
+    if (!utrNumber.trim()) {
+      alert('Please enter your Bank Transfer UTR / UPI Transaction Reference Number so the vendor can verify your payment.');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      const paymentDetails = {
+        paymentType: 'vendor_bank_transfer',
+        utrNumber: utrNumber.trim(),
+        vendorBank: vendorBankDetails ? {
+          bankName: vendorBankDetails.bankName,
+          accountHolderName: vendorBankDetails.accountHolderName,
+          accountNumber: vendorBankDetails.accountNumber,
+          ifscCode: vendorBankDetails.ifscCode,
+          upiId: vendorBankDetails.upiId
+        } : null,
+        note: paymentNote.trim(),
+        paidAt: new Date().toISOString()
+      };
+
+      const orderId = await placeOrder('Vendor Bank Transfer', paymentDetails, 'pending_verification');
+      if (orderId) {
+        navigate(`/order/${orderId}`);
+      } else {
+        throw new Error('Empty order ID returned');
+      }
+    } catch (err) {
+      console.error('Vendor Bank order failed:', err);
+      alert('Failed to place order. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // ── Handle COD ─────────────────────────────────────────────────────────────
   const handleConfirmCOD = async () => {
@@ -206,13 +364,20 @@ export default function Checkout() {
   const handleConfirm = () => {
     if (selectedPayment === 'Cash on Delivery') {
       handleConfirmCOD();
+    } else if (selectedPayment === 'Direct Vendor Bank / UPI') {
+      handleVendorBankPayment();
+    } else if (selectedPayment === 'PhonePe UPI & Online') {
+      handlePhonePePayment();
     } else {
       handleRazorpayPayment();
     }
   };
 
-  const canConfirm = cartItems.length > 0 && address && !isProcessing && !rzpLoading;
-  const isRazorpay = selectedPayment === 'Pay Online';
+  const isVendorBank = selectedPayment === 'Direct Vendor Bank / UPI';
+  const isRazorpay = selectedPayment === 'Pay Online (Razorpay)' || selectedPayment === 'Pay Online';
+  const isPhonePe = selectedPayment === 'PhonePe UPI & Online';
+  const canConfirm = cartItems.length > 0 && address && !isProcessing && !rzpLoading && !phonePeLoading && (!isVendorBank || utrNumber.trim().length >= 4);
+
 
   // Extract unique vendor / shop details from items in cart
   const vendorInfoList = React.useMemo(() => {
@@ -222,9 +387,10 @@ export default function Checkout() {
       const sName = item.shopName || item.farmName || item.storeName || item.vendorName || 'FresVeg Organic Partner Store';
       const loc = item.location || item.shopLocation || item.farmLocation || item.address || '';
       const phone = item.vendorPhone || item.phone || item.mobile || '+91 98765 43210';
+      const vendorId = item.vendorId || item.vendor_id || null;
       const key = `${sName}-${vName}`;
       if (!vendorMap.has(key)) {
-        vendorMap.set(key, { vendorName: vName, shopName: sName, location: loc, phone: phone });
+        vendorMap.set(key, { vendorName: vName, shopName: sName, location: loc, phone: phone, vendorId });
       }
     });
     return Array.from(vendorMap.values());
@@ -425,40 +591,298 @@ export default function Checkout() {
                 return (
                   <div key={method.id}>
                     <button
-                      onClick={() => { setSelectedPayment(method.name); setRzpError(''); }}
+                      onClick={() => { setSelectedPayment(method.name); setRzpError(''); setPhonePeError(''); }}
                       className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-300 text-left cursor-pointer ${
                         isSelected
-                          ? 'border-emerald-500 bg-emerald-50/40 animate-payment-heartbeat shadow-lg shadow-emerald-500/10'
+                          ? method.id === 'phonepe'
+                            ? 'border-[#5f259f] bg-purple-50/40 animate-payment-heartbeat shadow-lg shadow-purple-900/10'
+                            : 'border-emerald-500 bg-emerald-50/40 animate-payment-heartbeat shadow-lg shadow-emerald-500/10'
+                          : method.id === 'phonepe'
+                          ? 'border-purple-200/80 hover:border-[#5f259f] hover:animate-payment-heartbeat bg-white/40 hover:bg-purple-50/20'
                           : 'border-slate-200 hover:border-emerald-400 hover:animate-payment-heartbeat bg-white/40 hover:bg-white/80'
                       }`}
                     >
                       <div className={`p-3 rounded-xl transition-all duration-300 ${
-                        isSelected ? 'bg-emerald-600 text-white animate-pulse' : 'bg-slate-50 text-slate-400'
+                        isSelected
+                          ? method.id === 'phonepe'
+                            ? 'bg-[#5f259f] text-white animate-pulse'
+                            : 'bg-emerald-600 text-white animate-pulse'
+                          : method.id === 'phonepe'
+                          ? 'bg-purple-50 text-[#5f259f]'
+                          : 'bg-slate-50 text-slate-400'
                       }`}>
-                        <method.icon size={20} />
+                        {method.id === 'phonepe' ? (
+                          <span className="font-black text-sm flex items-center justify-center w-5 h-5 leading-none">पे</span>
+                        ) : (
+                          <method.icon size={20} />
+                        )}
                       </div>
                       <div className="flex-grow">
                         <div className="flex items-center gap-2">
-                          <p className={`font-bold font-headings text-sm ${isSelected ? 'text-emerald-800' : 'text-slate-800'}`}>
+                          <p className={`font-bold font-headings text-sm ${
+                            isSelected
+                              ? method.id === 'phonepe'
+                                ? 'text-[#5f259f]'
+                                : 'text-emerald-800'
+                              : 'text-slate-800'
+                          }`}>
                             {method.name}
                           </p>
                           {isSelected && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 font-headings border border-emerald-300/60 uppercase tracking-widest animate-pulse">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black font-headings uppercase tracking-widest animate-pulse ${
+                              method.id === 'phonepe'
+                                ? 'bg-purple-100 text-[#5f259f] border border-purple-300/60'
+                                : 'bg-emerald-100 text-emerald-800 border border-emerald-300/60'
+                            }`}>
                               Active Method
+                            </span>
+                          )}
+                          {method.id === 'phonepe' && !isSelected && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-50 text-[#5f259f] border border-purple-200">
+                              Instant UPI
                             </span>
                           )}
                         </div>
                         <p className="text-xs text-slate-400 mt-0.5">{method.desc}</p>
                       </div>
                       {isSelected ? (
-                        <div className="bg-emerald-500 text-white p-1 rounded-full relative flex items-center justify-center">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <div className={`text-white p-1 rounded-full relative flex items-center justify-center ${
+                          method.id === 'phonepe' ? 'bg-[#5f259f]' : 'bg-emerald-500'
+                        }`}>
+                          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                            method.id === 'phonepe' ? 'bg-purple-400' : 'bg-emerald-400'
+                          }`}></span>
                           <Check size={12} strokeWidth={3} className="relative z-10" />
                         </div>
                       ) : (
                         <ChevronRight size={14} className="text-slate-300" />
                       )}
                     </button>
+
+
+                    {/* Vendor Direct Bank Transfer Expanded Panel */}
+                    {method.id === 'vendor_bank' && isSelected && (
+                      <div className="mt-3 rounded-2xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50/60 via-teal-50/40 to-slate-50 p-4 sm:p-5 space-y-4 shadow-sm text-left animate-fade-in">
+                        {/* Header */}
+                        <div className="flex items-center justify-between pb-3 border-b border-emerald-200/60">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                              <Landmark size={16} />
+                            </div>
+                            <div>
+                              <span className="text-xs font-black text-slate-800 font-headings block">
+                                {vendorBankDetails?.bankName || 'Vendor Bank Account'}
+                              </span>
+                              <span className="text-[10px] text-emerald-700 font-semibold">
+                                Beneficiary: {vendorBankDetails?.accountHolderName || vendorInfoList[0]?.vendorName || 'Verified Vendor'}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="bg-emerald-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full font-mono tracking-wider shadow-2xs">
+                            Direct Settlement
+                          </span>
+                        </div>
+
+                        {/* Bank Details Table */}
+                        <div className="bg-white/95 p-3.5 rounded-2xl border border-emerald-100 space-y-2.5 text-xs shadow-2xs">
+                          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                            <span className="text-slate-400 font-medium">Bank Name</span>
+                            <span className="font-bold text-slate-800">{vendorBankDetails?.bankName || 'HDFC Bank'}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                            <span className="text-slate-400 font-medium">Account Holder</span>
+                            <span className="font-bold text-slate-800">{vendorBankDetails?.accountHolderName || vendorInfoList[0]?.vendorName || 'Vendor'}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                            <span className="text-slate-400 font-medium">Account Number</span>
+                            <div className="flex items-center gap-2 font-mono">
+                              <span className="font-bold text-emerald-800 text-sm tracking-wider">
+                                {vendorBankDetails?.accountNumber || '50100492817291'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyBankField(vendorBankDetails?.accountNumber || '50100492817291', 'acc')}
+                                className="p-1 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold transition-all text-[10px] flex items-center gap-1 cursor-pointer font-headings"
+                                title="Copy Account Number"
+                              >
+                                {copiedBankField === 'acc' ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                                {copiedBankField === 'acc' ? 'Copied' : 'Copy'}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                            <span className="text-slate-400 font-medium">IFSC Code</span>
+                            <div className="flex items-center gap-2 font-mono">
+                              <span className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                                {vendorBankDetails?.ifscCode || 'HDFC0001234'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyBankField(vendorBankDetails?.ifscCode || 'HDFC0001234', 'ifsc')}
+                                className="p-1 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold transition-all text-[10px] flex items-center gap-1 cursor-pointer font-headings"
+                                title="Copy IFSC Code"
+                              >
+                                {copiedBankField === 'ifsc' ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                                {copiedBankField === 'ifsc' ? 'Copied' : 'Copy'}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between py-1">
+                            <span className="text-slate-400 font-medium">Account Type & Branch</span>
+                            <span className="font-medium text-slate-600 text-[11px]">
+                              {vendorBankDetails?.accountType || 'Current'} Account {vendorBankDetails?.branchName ? `· ${vendorBankDetails.branchName}` : ''}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* UPI Instant QR Code Box */}
+                        <div className="bg-white/95 p-3.5 rounded-2xl border border-emerald-100 space-y-3 shadow-2xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-black uppercase text-emerald-900 font-headings flex items-center gap-1.5">
+                              <QrCode size={14} className="text-emerald-600" /> Scan or Pay via UPI
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium">GPay · PhonePe · Paytm</span>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row items-center gap-3 bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100">
+                            <div className="bg-white p-1.5 rounded-xl border border-emerald-200/80 shadow-2xs flex-shrink-0">
+                              <img
+                                src={
+                                  vendorBankDetails?.qrCodeUrl ||
+                                  `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+                                    `upi://pay?pa=${vendorBankDetails?.upiId || 'greenearth@okhdfcbank'}&pn=${encodeURIComponent(vendorBankDetails?.accountHolderName || 'Vendor')}&am=${getTotal().toFixed(2)}&cu=INR&tn=${encodeURIComponent('FresVeg Order')}`
+                                  )}`
+                                }
+                                alt="Vendor UPI QR"
+                                className="w-20 h-20 object-contain"
+                              />
+                            </div>
+
+                            <div className="min-w-0 flex-grow text-center sm:text-left space-y-1.5">
+                              <span className="text-[10px] text-slate-400 block font-medium">Vendor UPI ID</span>
+                              <div className="flex items-center justify-center sm:justify-start gap-1.5">
+                                <span className="font-mono font-bold text-slate-800 text-xs">
+                                  {vendorBankDetails?.upiId || 'greenearth@okhdfcbank'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyBankField(vendorBankDetails?.upiId || 'greenearth@okhdfcbank', 'upi')}
+                                  className="p-1 px-2 rounded-lg bg-emerald-100/70 hover:bg-emerald-200/70 text-emerald-800 font-bold transition-all text-[10px] flex items-center gap-1 cursor-pointer font-headings"
+                                >
+                                  {copiedBankField === 'upi' ? <Check size={10} /> : <Copy size={10} />}
+                                  {copiedBankField === 'upi' ? 'Copied' : 'Copy'}
+                                </button>
+                              </div>
+                              <p className="text-[10px] text-slate-500 font-body">
+                                Total to transfer: <strong className="text-emerald-800 font-sans">₹{getTotal().toFixed(2)}</strong>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Vendor Instructions */}
+                        {vendorBankDetails?.paymentInstructions && (
+                          <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-2.5 text-xs text-amber-900 flex items-start gap-2">
+                            <Info size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-[11px] leading-relaxed font-body">
+                              <strong className="font-headings">Vendor Note:</strong> {vendorBankDetails.paymentInstructions}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Customer Payment Reference / UTR Input */}
+                        <div className="bg-white p-3.5 rounded-2xl border border-emerald-200/80 space-y-2 shadow-2xs">
+                          <label className="text-[11px] font-black uppercase text-slate-800 font-headings block">
+                            Enter Bank Transfer UTR / Transaction Reference Number <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={utrNumber}
+                            onChange={(e) => setUtrNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
+                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold uppercase tracking-wider outline-none focus:border-emerald-500 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400 placeholder:font-normal placeholder:normal-case font-headings"
+                            placeholder="e.g. 423456789012 or UPI Ref ID"
+                          />
+                          <div className="flex items-center justify-between text-[10px] text-slate-400">
+                            <span>Enter 12-digit UTR from your bank or UPI transaction screen</span>
+                            {utrNumber.trim().length >= 4 && (
+                              <span className="text-emerald-600 font-bold flex items-center gap-0.5">
+                                <CheckCheck size={12} /> Reference entered
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* PhonePe Expanded Panel */}
+                    {method.id === 'phonepe' && isSelected && (
+                      <div className="mt-3 rounded-2xl border border-purple-200/90 bg-gradient-to-br from-purple-50/50 via-indigo-50/20 to-slate-50 p-4 space-y-4 shadow-inner text-left animate-fade-in">
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-[10px] font-bold text-purple-900 uppercase tracking-widest font-headings flex items-center gap-1.5">
+                              <Zap size={12} className="text-amber-500 fill-amber-500" />
+                              PhonePe Instant Gateway Methods
+                            </p>
+                            <span className="bg-purple-100 text-[#5f259f] text-[9px] font-extrabold px-2 py-0.5 rounded-full font-mono">
+                              0% Surcharge
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-2">
+                            {PHONEPE_METHODS.map((m) => (
+                              <div
+                                key={m.label}
+                                className="flex flex-col items-center gap-1.5 bg-white/90 backdrop-blur-md border border-purple-100/80 rounded-xl p-2.5 shadow-xs"
+                              >
+                                <div
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-black shadow-xs"
+                                  style={{ backgroundColor: m.color }}
+                                >
+                                  {m.abbr}
+                                </div>
+                                <span className="text-[10px] font-semibold text-slate-700 text-center leading-tight">
+                                  {m.label}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* PhonePe Trust Seal */}
+                        <div className="flex items-center gap-2.5 bg-white/90 border border-purple-100 rounded-xl p-3 shadow-xs">
+                          <div className="w-8 h-8 rounded-lg bg-[#5f259f] text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
+                            पे
+                          </div>
+                          <div className="flex-grow min-w-0">
+                            <p className="text-xs font-bold text-slate-800">PhonePe Certified Gateway</p>
+                            <p className="text-[10px] text-slate-400 leading-tight">UPI Apps · Dynamic QR · Net Banking · Cards</p>
+                          </div>
+                          <div className="bg-[#5f259f] text-white text-[9px] font-black px-2 py-0.5 rounded tracking-wider">
+                            SECURE
+                          </div>
+                        </div>
+
+                        {/* Amount Preview */}
+                        <div className="flex items-center justify-between bg-gradient-to-r from-[#5f259f] to-indigo-800 text-white rounded-xl px-4 py-3 shadow-md shadow-purple-950/20">
+                          <div className="flex items-center gap-2">
+                            <Zap size={14} className="text-amber-300 fill-amber-300" />
+                            <span className="text-xs font-bold font-headings">Total Payable via PhonePe</span>
+                          </div>
+                          <span className="text-lg font-black font-sans">₹{getTotal().toFixed(2)}</span>
+                        </div>
+
+                        {phonePeError && (
+                          <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-xl p-3">
+                            <AlertTriangle size={14} className="text-rose-500 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-rose-600 font-medium leading-relaxed">{phonePeError}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Razorpay Expanded Panel */}
                     {method.id === 'razorpay' && isSelected && (
@@ -525,23 +949,37 @@ export default function Checkout() {
             <button
               onClick={handleConfirm}
               disabled={!canConfirm}
-              className={`w-full py-4 px-4 rounded-2xl font-bold transition-all duration-300 mt-6 active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 ${
+              className={`w-full py-4 px-4 rounded-2xl font-bold transition-all duration-300 mt-6 active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
                 canConfirm
-                  ? isRazorpay
+                  ? isPhonePe
+                    ? 'bg-gradient-to-r from-[#5f259f] to-indigo-700 hover:from-[#4e1e82] hover:to-indigo-800 text-white shadow-purple-900/20 hover:shadow-purple-900/30'
+                    : isRazorpay
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-900/10 hover:shadow-emerald-900/20'
+                    : isVendorBank
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-900/10 hover:shadow-emerald-900/20'
                     : 'bg-gradient-to-r from-emerald-700 to-emerald-800 hover:from-emerald-800 hover:to-emerald-900 text-white shadow-emerald-950/10 hover:shadow-emerald-950/20'
                   : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200/50 shadow-none'
               }`}
             >
-              {isProcessing || rzpLoading ? (
+              {isProcessing || rzpLoading || phonePeLoading ? (
                 <>
                   <Loader size={18} className="animate-spin" />
-                  {rzpLoading ? 'Loading Secure Gateway…' : 'Processing order…'}
+                  {phonePeLoading ? 'Connecting to PhonePe Secure Gateway…' : rzpLoading ? 'Loading Secure Gateway…' : 'Processing order…'}
+                </>
+              ) : isPhonePe ? (
+                <>
+                  <span className="w-5 h-5 rounded-full bg-white text-[#5f259f] font-black text-xs flex items-center justify-center shadow-xs">पे</span>
+                  Pay ₹{getTotal().toFixed(2)} with PhonePe
                 </>
               ) : isRazorpay ? (
                 <>
                   <Zap size={16} className="text-amber-300 fill-amber-300" />
                   Pay ₹{getTotal().toFixed(2)} Securely
+                </>
+              ) : isVendorBank ? (
+                <>
+                  <Landmark size={16} />
+                  Confirm Order & Submit Bank Transfer (₹{getTotal().toFixed(2)})
                 </>
               ) : (
                 <>
@@ -551,12 +989,27 @@ export default function Checkout() {
               )}
             </button>
 
+            {isPhonePe && (
+              <p className="text-center text-[10px] text-slate-400 mt-3 flex items-center justify-center gap-1">
+                <ShieldCheck size={12} className="text-[#5f259f]" />
+                Secured by PhonePe 256-bit bank grade encryption. Supports UPI, QR & Cards.
+              </p>
+            )}
+
             {isRazorpay && (
               <p className="text-center text-[10px] text-slate-400 mt-3 flex items-center justify-center gap-1">
                 <ShieldCheck size={12} className="text-emerald-500" />
                 Payments processed via Razorpay secure layers.
               </p>
             )}
+
+            {isVendorBank && (
+              <p className="text-center text-[10px] text-slate-400 mt-3 flex items-center justify-center gap-1">
+                <ShieldCheck size={12} className="text-emerald-500" />
+                Direct Bank Transfer: Vendor confirms order upon receiving payment in their bank account.
+              </p>
+            )}
+
           </div>
         </div>
       </div>

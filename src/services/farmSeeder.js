@@ -10,6 +10,8 @@ export const INITIAL_FARMS_MAP = {
     pricePerPerson: 350,
     ownerId: 'mock-vendor-1',
     rating: 4.9,
+    crops: ['Sweet Corn', 'Organic Wheat'],
+    fruits: ['Organic Strawberries', 'Mahabaleshwar Strawberries'],
     activities: ['Self Berry-Picking', 'Guided Tour', 'Organic Breakfast', 'Tractor Ride', 'Pet Friendly', 'Free Parking'],
     cropPhotos: [
       { id: 'cp1', url: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=800&q=80', caption: 'Strawberry Harvest Patch' },

@@ -12,6 +12,16 @@ export default defineConfig({
         changeOrigin: true,
         secure: false
       },
+      '/api/payment': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        secure: false
+      },
+      '/api/payouts': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        secure: false
+      },
       '/api/farms': {
         target: 'http://127.0.0.1:5000',
         changeOrigin: true,
@@ -33,6 +43,11 @@ export default defineConfig({
         secure: false
       },
       '/api/carts': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        secure: false
+      },
+      '/api/subscriptions': {
         target: 'http://127.0.0.1:5000',
         changeOrigin: true,
         secure: false

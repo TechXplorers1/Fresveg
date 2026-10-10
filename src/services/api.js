@@ -1,19 +1,36 @@
-// FresVeg API Client — Connected to Spring Boot API Gateway (Port 8080)
+// ============================================================================
+// FresVeg API Client — Unified Gateway & Express Backend Communication
+// ============================================================================
 
 const GATEWAY_PREFIX = '/api/v1';
 
-// Generate a valid RFC-compliant correlation ID
+/**
+ * Generates an RFC-compliant correlation ID for end-to-end request tracing.
+ * @returns {string} Unique correlation identifier (e.g., 'fresveg-l3x9a-9k2j4')
+ */
 function generateCorrelationId() {
-  const ts = Date.now().toString(36);
-  const rand = Math.random().toString(36).substring(2, 9);
-  return `fresveg-${ts}-${rand}`;
+  const timestamp = Date.now().toString(36);
+  const randomSuffix = Math.random().toString(36).substring(2, 9);
+  return `fresveg-${timestamp}-${randomSuffix}`;
 }
 
-// Generate idempotency key for mutations
+/**
+ * Generates an idempotency key for safe mutation retries.
+ * @param {string} prefix - Key namespace prefix (default: 'cmd')
+ * @returns {string} Unique idempotency key
+ */
 function generateIdempotencyKey(prefix = 'cmd') {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 }
 
+/**
+ * Core HTTP fetch wrapper with automatic JWT injection, error normalization,
+ * and correlation ID tracking.
+ *
+ * @param {string} endpoint - API path (e.g., '/api/products' or '/accounts/me')
+ * @param {RequestInit} [options={}] - Fetch configuration options
+ * @returns {Promise<any>} Parsed response data
+ */
 async function request(endpoint, options = {}) {
   // Normalize endpoint:
   // - If it starts with /api/ or /api/v1, keep it intact
@@ -57,7 +74,11 @@ async function request(endpoint, options = {}) {
   }
 }
 
-// Automatically unpack Spring Boot ApiResponse / CollectionResponse envelope
+/**
+ * Unpacks Spring Boot ApiResponse / CollectionResponse envelopes into raw data.
+ * @param {any} res - Raw backend response JSON
+ * @returns {any} Unboxed data payload
+ */
 function unboxResponse(res) {
   if (res && typeof res === 'object' && 'data' in res) {
     if (Array.isArray(res.data)) {
@@ -71,7 +92,11 @@ function unboxResponse(res) {
   return res;
 }
 
-// Normalize backend product response to match frontend UI component expectations
+/**
+ * Normalizes backend product schema into a consistent shape for UI components.
+ * @param {object} item - Raw product object from backend
+ * @returns {object} Normalized product
+ */
 function normalizeProduct(item) {
   if (!item) return item;
   const id = item.productId || item.id || `prod-${Date.now()}`;
@@ -92,7 +117,11 @@ function normalizeProduct(item) {
   };
 }
 
-// Normalize category item
+/**
+ * Normalizes category object structure.
+ * @param {object} cat - Raw category object from backend
+ * @returns {object} Normalized category
+ */
 function normalizeCategory(cat) {
   if (!cat) return cat;
   return {
@@ -145,46 +174,26 @@ export const api = {
   }),
   getVendors: () => request('/accounts/vendors'),
 
-  // Auth helper for development session token
+  // Keycloak Authentication API for Login & Registration
   loginUser: async (email, password) => {
-    try {
-      return await request('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-      });
-    } catch {
-      // Create local session token for client authentication
-      const demoUser = {
-        uid: 'user_' + Date.now(),
-        email: email.trim(),
-        displayName: email.split('@')[0],
-        role: email.includes('admin') ? 'admin' : (email.includes('vendor') ? 'vendor' : 'customer'),
-        photoURL: '',
-        addresses: []
-      };
-      const demoToken = 'fresveg-dev-token-' + btoa(JSON.stringify(demoUser));
-      return { token: demoToken, user: demoUser };
-    }
+    return await request('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    });
   },
 
   registerUser: async (userData) => {
-    try {
-      return await request('/api/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(userData)
-      });
-    } catch {
-      const newUser = {
-        uid: 'user_' + Date.now(),
-        email: userData.email,
-        displayName: userData.displayName || userData.email.split('@')[0],
-        role: userData.role || 'customer',
-        photoURL: '',
-        addresses: []
-      };
-      const newToken = 'fresveg-dev-token-' + btoa(JSON.stringify(newUser));
-      return { token: newToken, user: newUser };
-    }
+    return await request('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData)
+    });
+  },
+
+  refreshToken: async (refreshToken) => {
+    return await request('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken })
+    });
   },
 
   getUsers: () => request('/api/auth/users').catch(() => []),
@@ -193,6 +202,19 @@ export const api = {
   updateUserRole: (uid, role) => request(`/api/auth/users/${uid}/role`, { method: 'PUT', body: JSON.stringify({ role }) }).catch(() => ({})),
   updateUserProfile: (uid, profileData) => request(`/api/auth/user/${uid}`, { method: 'PUT', body: JSON.stringify(profileData) }).catch(() => ({})),
   getPublicShops: () => request('/api/auth/public-shops').catch(() => []),
+  getVendorBankDetails: async (params = {}) => {
+    try {
+      const cleanParams = {};
+      if (params.vendorId) cleanParams.vendorId = params.vendorId;
+      if (params.shopName) cleanParams.shopName = params.shopName;
+      if (params.vendorEmail) cleanParams.vendorEmail = params.vendorEmail;
+      const qs = new URLSearchParams(cleanParams).toString();
+      return await request(`/api/auth/vendor-bank-details${qs ? `?${qs}` : ''}`);
+    } catch (err) {
+      console.warn('Failed to fetch vendor bank details:', err);
+      return null;
+    }
+  },
 
   // --- Catalog API (Spring Boot catalog-service via Gateway & PostgreSQL Express backend) ---
   getProducts: async () => {
@@ -421,6 +443,18 @@ export const api = {
     }
   },
 
+  verifyOrderPayment: async (orderId, paymentStatus = 'verified', status = 'confirmed') => {
+    try {
+      return await request(`/api/orders/${orderId}/verify-payment`, {
+        method: 'PUT',
+        body: JSON.stringify({ paymentStatus, status })
+      });
+    } catch (err) {
+      console.error('Failed to verify order payment:', err);
+      throw err;
+    }
+  },
+
   updateDeliveryLocation: async (orderId, lat, lng) => {
     try {
       return await request(`/api/orders/${orderId}/location`, {
@@ -447,7 +481,10 @@ export const api = {
   deleteNotification: (id) => request(`/api/notifications/${id}`, { method: 'DELETE' }).catch(() => ({})),
 
   // --- Farms & Agri-Tourism API ---
-  getFarms: () => request('/api/farms').catch(() => []),
+  getFarms: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/api/farms${query ? `?${query}` : ''}`).catch(() => []);
+  },
   getFarmById: (id) => request(`/api/farms/${id}`),
   saveFarm: (farmData) => request('/api/farms', { method: 'POST', body: JSON.stringify(farmData) }),
   deleteFarm: (id) => request(`/api/farms/${id}`, { method: 'DELETE' }),
@@ -457,5 +494,38 @@ export const api = {
   getFarmReviews: (farmId) => request(`/api/farms/${farmId}/reviews`).catch(() => []),
   addFarmReview: (farmId, reviewData) => request(`/api/farms/${farmId}/reviews`, { method: 'POST', body: JSON.stringify(reviewData) }),
   createFarmReview: (reviewData) => request(`/api/farms/${reviewData.farmId || reviewData.farm_id}/reviews`, { method: 'POST', body: JSON.stringify(reviewData) }),
-  deleteFarmReview: (reviewId) => request(`/api/farms/reviews/${reviewId}`, { method: 'DELETE' })
+  deleteFarmReview: (reviewId) => request(`/api/farms/reviews/${reviewId}`, { method: 'DELETE' }),
+
+  // --- Farm Subscription Plans API (1 Mo, 3 Mos, 6 Mos) ---
+  getSubscriptionPlans: () => request('/api/subscriptions/plans'),
+  getVendorSubscriptionStatus: (vendorId) => request(`/api/subscriptions/status/${encodeURIComponent(vendorId)}`),
+  getSubscriptionHistory: (vendorId) => request(`/api/subscriptions/history/${encodeURIComponent(vendorId)}`).catch(() => ({ history: [] })),
+  subscribeToFarmPlan: (data) => request('/api/subscriptions/subscribe', { method: 'POST', body: JSON.stringify(data) }),
+  cancelFarmSubscription: (vendorId) => request('/api/subscriptions/cancel', { method: 'POST', body: JSON.stringify({ vendorId }) }),
+
+  // --- PhonePe Payment Gateway API ---
+  initiatePhonePePayment: (paymentData) => request('/api/payment/phonepe/initiate', {
+    method: 'POST',
+    body: JSON.stringify(paymentData)
+  }),
+  getPhonePePaymentStatus: (transactionId) => request(`/api/payment/phonepe/status/${encodeURIComponent(transactionId)}`),
+  simulatePhonePePayment: (simulationData) => request('/api/payment/phonepe/simulate', {
+    method: 'POST',
+    body: JSON.stringify(simulationData)
+  }),
+
+  // --- Vendor Payouts & Platform Commission Ledger API ---
+  getVendorPayouts: (vendorId) => request(`/api/payouts/vendor/${encodeURIComponent(vendorId)}`),
+  getAdminPayoutSummary: () => request('/api/payouts/admin/summary'),
+  getAllPayouts: (status) => request(`/api/payouts/admin/all${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  disbursePayout: (payoutId, data = {}) => request(`/api/payouts/${encodeURIComponent(payoutId)}/disburse`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  getCommissionSettings: () => request('/api/payouts/settings'),
+  updateCommissionSettings: (defaultRate) => request('/api/payouts/settings', {
+    method: 'PUT',
+    body: JSON.stringify({ defaultRate })
+  })
 };
+

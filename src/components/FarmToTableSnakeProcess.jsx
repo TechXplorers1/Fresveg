@@ -175,7 +175,7 @@ export default function FarmToTableSnakeProcess({ homeContent = {} }) {
             <svg className="w-full h-full" viewBox="0 0 1000 900" preserveAspectRatio="none" fill="none">
               {/* Soft Ambient Glow Under Path */}
               <path
-                d="M 250 110 C 650 110, 750 180, 750 340 C 750 500, 350 580, 250 580 C 150 580, 350 810, 750 810"
+                d="M 250 110 C 650 110, 750 180, 750 340 C 350 340, 250 420, 250 580 C 650 580, 750 650, 750 810"
                 stroke="#10b981"
                 strokeWidth="12"
                 strokeOpacity="0.18"
@@ -185,7 +185,7 @@ export default function FarmToTableSnakeProcess({ homeContent = {} }) {
               {/* Normal Clean Emerald Path Guideline (Referenced by JS) */}
               <path
                 ref={pathRef}
-                d="M 250 110 C 650 110, 750 180, 750 340 C 750 500, 350 580, 250 580 C 150 580, 350 810, 750 810"
+                d="M 250 110 C 650 110, 750 180, 750 340 C 350 340, 250 420, 250 580 C 650 580, 750 650, 750 810"
                 stroke="#059669"
                 strokeWidth="4"
                 strokeDasharray="8 8"
@@ -219,6 +219,13 @@ export default function FarmToTableSnakeProcess({ homeContent = {} }) {
             const displayAngle = isMovingLeft ? bikePos.angle - 180 : bikePos.angle;
             const flipTransform = isMovingLeft ? 'scaleX(-1)' : 'scaleX(1)';
 
+            // Determine if delivery boy is currently over any of the 4 step cards
+            const isOnCard =
+              (bikePos.x <= 490 && bikePos.y <= 245) || // Card 1: Fresh Harvest (Left)
+              (bikePos.x >= 510 && bikePos.y >= 220 && bikePos.y <= 475) || // Card 2: Eco Packaging (Right)
+              (bikePos.x <= 490 && bikePos.y >= 465 && bikePos.y <= 715) || // Card 3: Swift Transit (Left)
+              (bikePos.x >= 510 && bikePos.y >= 695); // Card 4: Doorstep Joy (Right)
+
             return (
               <div
                 className="absolute transition-transform duration-75 ease-out z-30 pointer-events-none hidden md:flex items-center justify-center"
@@ -228,7 +235,13 @@ export default function FarmToTableSnakeProcess({ homeContent = {} }) {
                   transform: `translate(-50%, -50%) rotate(${displayAngle}deg)`
                 }}
               >
-                <div className="w-16 h-16 rounded-full bg-white/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/40 border-2 border-emerald-500 flex items-center justify-center relative">
+                <div
+                  className={`w-16 h-16 rounded-full p-1.5 flex items-center justify-center relative transition-all duration-300 ease-out ${
+                    isOnCard
+                      ? 'bg-white/40 border-2 border-emerald-400/50 shadow-sm opacity-50 blur-[1.5px]'
+                      : 'bg-white/95 backdrop-blur-md border-2 border-emerald-500 shadow-2xl shadow-emerald-950/40 opacity-100 blur-none'
+                  }`}
+                >
                   <img
                     src="/delivery_boy_rider.png"
                     alt="Delivery Boy Rider"

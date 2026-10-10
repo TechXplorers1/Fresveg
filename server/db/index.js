@@ -53,10 +53,57 @@ export async function initDb() {
     const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf-8');
     await pool.query(schemaSql);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS addresses JSONB DEFAULT '[]'::jsonb;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_details JSONB DEFAULT '{}'::jsonb;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS farm_subscription JSONB DEFAULT '{}'::jsonb;`);
+    await pool.query(`ALTER TABLE shops ADD COLUMN IF NOT EXISTS bank_details JSONB DEFAULT '{}'::jsonb;`);
+    await pool.query(`ALTER TABLE farms ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT true;`);
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_status VARCHAR(50);`);
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_id VARCHAR(255);`);
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_name VARCHAR(255);`);
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_phone VARCHAR(50);`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_details JSONB DEFAULT '{}'::jsonb;`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'pending';`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS platform_commission NUMERIC(10, 2) DEFAULT 0;`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS vendor_payout_amount NUMERIC(10, 2) DEFAULT 0;`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payout_status VARCHAR(50) DEFAULT 'pending';`);
+
+    // Ensure Vendor Payouts & Commission Ledger table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS vendor_payouts (
+        id VARCHAR(255) PRIMARY KEY,
+        order_id VARCHAR(255),
+        vendor_id VARCHAR(255) NOT NULL,
+        vendor_name VARCHAR(255),
+        vendor_email VARCHAR(255),
+        order_amount NUMERIC(10, 2) NOT NULL,
+        commission_rate NUMERIC(5, 2) DEFAULT 10.00,
+        commission_amount NUMERIC(10, 2) NOT NULL,
+        payout_amount NUMERIC(10, 2) NOT NULL,
+        payment_method VARCHAR(100) DEFAULT 'PhonePe',
+        bank_details JSONB DEFAULT '{}'::jsonb,
+        payout_status VARCHAR(50) DEFAULT 'pending',
+        payout_reference VARCHAR(255),
+        disbursed_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Ensure Platform Settings table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS platform_settings (
+        key VARCHAR(100) PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Seed default commission setting if not present
+    await pool.query(`
+      INSERT INTO platform_settings (key, value)
+      VALUES ('commission', '{"defaultRate": 10, "model": "percentage", "description": "Platform service & maintenance fee"}'::jsonb)
+      ON CONFLICT (key) DO NOTHING;
+    `);
+
 
     // Ensure all products columns exist for vendor catalog management
     await pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';`);
@@ -95,8 +142,9 @@ export async function initDb() {
     await pool.query(`ALTER TABLE farm_bookings ADD COLUMN IF NOT EXISTS visitors_count INTEGER DEFAULT 1;`);
     await pool.query(`ALTER TABLE farm_bookings ADD COLUMN IF NOT EXISTS total_amount NUMERIC(10, 2) DEFAULT 0;`);
     await pool.query(`ALTER TABLE farm_bookings ADD COLUMN IF NOT EXISTS include_stay BOOLEAN DEFAULT false;`);
-    await pool.query(`ALTER TABLE farm_bookings ADD COLUMN IF NOT EXISTS accommodation_title VARCHAR(255);`);
     await pool.query(`ALTER TABLE farm_bookings ADD COLUMN IF NOT EXISTS payment_method VARCHAR(100);`);
+    await pool.query(`ALTER TABLE farm_bookings ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'pending';`);
+    await pool.query(`ALTER TABLE farm_bookings ADD COLUMN IF NOT EXISTS payment_details JSONB DEFAULT '{}'::jsonb;`);
 
     // Sync existing vendor shops into shops table
     try {

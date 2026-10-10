@@ -1,5 +1,6 @@
 import express from 'express';
 import { query } from '../db/index.js';
+import { isSubscriptionActive } from './subscriptions.js';
 
 const router = express.Router();
 
@@ -14,6 +15,8 @@ const formatFarm = (row) => ({
   ownerId: row.owner_id || row.vendor_id || '',
   vendorName: row.vendor_name || 'Farm Host',
   vendorEmail: row.vendor_email || '',
+  isPublished: row.is_published !== undefined ? Boolean(row.is_published) : true,
+  vendorSubscriptionActive: row.vendor_subscription_active !== undefined ? Boolean(row.vendor_subscription_active) : false,
   image: row.image || '',
   description: row.description || '',
   activities: row.activities || [],
@@ -40,8 +43,61 @@ const formatFarm = (row) => ({
 
 // 1. Get All Farms
 router.get('/', async (req, res) => {
+  const { vendorId } = req.query;
+
   try {
-    const result = await query('SELECT * FROM farms ORDER BY created_at DESC');
+    // If a vendor is querying their own farms in the dashboard
+    if (vendorId) {
+      const result = await query(
+        `SELECT f.*,
+                COALESCE(
+                  (u.farm_subscription IS NOT NULL 
+                   AND (u.farm_subscription->>'status') = 'active' 
+                   AND (u.farm_subscription->>'endDate')::timestamp > CURRENT_TIMESTAMP),
+                  false
+                ) as vendor_subscription_active,
+                COALESCE(
+                  (u.farm_subscription IS NOT NULL 
+                   AND (u.farm_subscription->>'status') = 'active' 
+                   AND (u.farm_subscription->>'endDate')::timestamp > CURRENT_TIMESTAMP),
+                  false
+                ) as is_published
+         FROM farms f
+         LEFT JOIN users u ON (f.owner_id = u.id OR f.vendor_id = u.id OR LOWER(f.vendor_email) = LOWER(u.email))
+         WHERE f.owner_id = $1 OR f.vendor_id = $1 OR LOWER(f.vendor_email) = LOWER($1)
+         ORDER BY f.created_at DESC`,
+        [vendorId]
+      );
+      return res.json(result.rows.map(formatFarm));
+    }
+
+    // Public / Customer Request: ONLY return farms where vendor has an ACTIVE subscription plan
+    // (Also include demo mock starter farms if any)
+    const result = await query(
+      `SELECT f.*,
+              COALESCE(
+                (u.farm_subscription IS NOT NULL 
+                 AND (u.farm_subscription->>'status') = 'active' 
+                 AND (u.farm_subscription->>'endDate')::timestamp > CURRENT_TIMESTAMP),
+                false
+              ) as vendor_subscription_active,
+              COALESCE(
+                (u.farm_subscription IS NOT NULL 
+                 AND (u.farm_subscription->>'status') = 'active' 
+                 AND (u.farm_subscription->>'endDate')::timestamp > CURRENT_TIMESTAMP),
+                false
+              ) as is_published
+       FROM farms f
+       LEFT JOIN users u ON (f.owner_id = u.id OR f.vendor_id = u.id OR LOWER(f.vendor_email) = LOWER(u.email))
+       WHERE (
+         (u.farm_subscription IS NOT NULL 
+          AND (u.farm_subscription->>'status') = 'active' 
+          AND (u.farm_subscription->>'endDate')::timestamp > CURRENT_TIMESTAMP)
+         OR f.id IN ('mock-farm-1', 'mock-farm-2')
+       )
+       ORDER BY f.created_at DESC`
+    );
+
     res.json(result.rows.map(formatFarm));
   } catch (err) {
     console.error('Error fetching farms:', err);
@@ -53,7 +109,25 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await query('SELECT * FROM farms WHERE id = $1 OR name = $2', [id, id]);
+    const result = await query(
+      `SELECT f.*,
+              COALESCE(
+                (u.farm_subscription IS NOT NULL 
+                 AND (u.farm_subscription->>'status') = 'active' 
+                 AND (u.farm_subscription->>'endDate')::timestamp > CURRENT_TIMESTAMP),
+                false
+              ) as vendor_subscription_active,
+              COALESCE(
+                (u.farm_subscription IS NOT NULL 
+                 AND (u.farm_subscription->>'status') = 'active' 
+                 AND (u.farm_subscription->>'endDate')::timestamp > CURRENT_TIMESTAMP),
+                false
+              ) as is_published
+       FROM farms f
+       LEFT JOIN users u ON (f.owner_id = u.id OR f.vendor_id = u.id OR LOWER(f.vendor_email) = LOWER(u.email))
+       WHERE f.id = $1 OR f.name = $1`,
+      [id]
+    );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Farm not found' });
     }
@@ -83,6 +157,23 @@ router.post('/', async (req, res) => {
 
   const farmId = id || `farm_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
+  let isPub = false;
+  try {
+    const uRes = await query(
+      `SELECT farm_subscription FROM users WHERE id = $1 OR LOWER(email) = LOWER($2)`,
+      [ownerId || vendorId || '', vendorEmail || '']
+    );
+    if (uRes.rows.length > 0) {
+      let sub = uRes.rows[0].farm_subscription;
+      if (typeof sub === 'string') {
+        try { sub = JSON.parse(sub); } catch (e) { sub = {}; }
+      }
+      isPub = isSubscriptionActive(sub);
+    }
+  } catch (e) {
+    console.warn('Subscription check error on farm save:', e.message);
+  }
+
   try {
     const result = await query(
       `INSERT INTO farms (
@@ -90,9 +181,9 @@ router.post('/', async (req, res) => {
         image, description, cost_per_person, price_per_person, cost_type, accommodation_price,
         accommodations, crops, fruits, livestock, kids_activities, farm_products, stay_list,
         activities, crop_photos, livestock_photos, kids_photos, accommodation_photos, gallery,
-        social_links, visit_days, visit_timings, rating, updated_at
+        social_links, visit_days, visit_timings, rating, is_published, updated_at
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, CURRENT_TIMESTAMP)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, CURRENT_TIMESTAMP)
        ON CONFLICT (id) DO UPDATE
        SET name = EXCLUDED.name,
            farm_name = EXCLUDED.farm_name,
@@ -124,6 +215,7 @@ router.post('/', async (req, res) => {
            visit_days = EXCLUDED.visit_days,
            visit_timings = EXCLUDED.visit_timings,
            rating = EXCLUDED.rating,
+           is_published = EXCLUDED.is_published,
            updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
       [
@@ -157,11 +249,15 @@ router.post('/', async (req, res) => {
         typeof socialLinks === 'string' ? socialLinks : JSON.stringify(socialLinks || {}),
         visitDays || 'Weekends Only',
         visitTimings || 'Morning 9AM – 6PM',
-        parseFloat(rating || 4.8)
+        parseFloat(rating || 4.8),
+        isPub
       ]
     );
 
-    res.status(201).json(formatFarm(result.rows[0]));
+    const savedFarm = formatFarm(result.rows[0]);
+    savedFarm.isPublished = isPub;
+    savedFarm.vendorSubscriptionActive = isPub;
+    res.status(201).json(savedFarm);
   } catch (err) {
     console.error('Error saving farm:', err.message, err.stack);
     res.status(500).json({ error: 'Failed to save farm', details: err.message });
@@ -222,6 +318,40 @@ router.post(['/bookings', '/book'], async (req, res) => {
 
   if (!targetFarmId || !targetDate) {
     return res.status(400).json({ error: 'Farm ID and Visit Date are required' });
+  }
+
+  // Check room availability if stay is requested
+  if (includeStay) {
+    try {
+      const normDate = String(targetDate).slice(0, 10);
+      const existingRes = await query(
+        `SELECT * FROM farm_bookings 
+         WHERE farm_id = $1 
+           AND (date = $2 OR visit_date = $2) 
+           AND include_stay = true 
+           AND status != 'cancelled'`,
+        [targetFarmId, normDate]
+      );
+
+      const farmRes = await query('SELECT accommodations FROM farms WHERE id = $1', [targetFarmId]);
+      const farmRow = farmRes.rows[0];
+      const accs = farmRow?.accommodations || [];
+      const accTitle = accommodationTitle || '';
+      const clean = (t) => (t || '').toLowerCase().replace(/\(.*?\)/g, '').trim();
+      const matchedAcc = accs.find(a => clean(a.title) === clean(accTitle)) || accs[0];
+      const maxRooms = Math.max(1, parseInt(String(matchedAcc?.roomQuantity || '').replace(/[^0-9]/g, '')) || 1);
+
+      const bookedCount = existingRes.rows.filter(b => {
+        const bTitle = clean(b.accommodation_title);
+        return !accTitle || !bTitle || bTitle === clean(accTitle) || bTitle.includes(clean(accTitle)) || clean(accTitle).includes(bTitle);
+      }).length;
+
+      if (bookedCount >= maxRooms) {
+        return res.status(400).json({ error: 'Rooms are unavailable on this day' });
+      }
+    } catch (checkErr) {
+      console.error('Error verifying room availability on backend:', checkErr);
+    }
   }
 
   const bookingId = id || `book_${Date.now()}_${Math.floor(Math.random() * 1000)}`;

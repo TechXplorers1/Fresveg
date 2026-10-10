@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS users (
   phone VARCHAR(50),
   shops JSONB DEFAULT '[]'::jsonb,
   addresses JSONB DEFAULT '[]'::jsonb,
+  bank_details JSONB DEFAULT '{}'::jsonb,
+  farm_subscription JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -61,6 +63,8 @@ CREATE TABLE IF NOT EXISTS orders (
   total NUMERIC(10, 2) NOT NULL,
   address TEXT,
   payment_method VARCHAR(100) DEFAULT 'Cash on Delivery',
+  payment_status VARCHAR(50) DEFAULT 'pending',
+  payment_details JSONB DEFAULT '{}'::jsonb,
   status VARCHAR(50) DEFAULT 'pending',
   delivery_status VARCHAR(50),
   delivery_boy_id VARCHAR(255),
@@ -161,6 +165,55 @@ CREATE TABLE IF NOT EXISTS shops (
   gst_number VARCHAR(100),
   image TEXT,
   banner TEXT,
+  bank_details JSONB DEFAULT '{}'::jsonb,
   social_links JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 12. Farm Subscriptions Table (Vendor Agritourism Listing Plans: 1 Mo, 3 Mos, 6 Mos)
+CREATE TABLE IF NOT EXISTS farm_subscriptions (
+  id VARCHAR(255) PRIMARY KEY,
+  vendor_id VARCHAR(255) NOT NULL,
+  vendor_email VARCHAR(255),
+  vendor_name VARCHAR(255),
+  plan_id VARCHAR(50) NOT NULL,
+  plan_name VARCHAR(100) NOT NULL,
+  duration_months INTEGER NOT NULL,
+  days INTEGER NOT NULL,
+  amount NUMERIC(10, 2) NOT NULL,
+  start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  status VARCHAR(50) DEFAULT 'active',
+  payment_method VARCHAR(100) DEFAULT 'Direct Bank / UPI',
+  payment_reference VARCHAR(255),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 13. Vendor Payouts & Commission Ledger Table
+CREATE TABLE IF NOT EXISTS vendor_payouts (
+  id VARCHAR(255) PRIMARY KEY,
+  order_id VARCHAR(255),
+  vendor_id VARCHAR(255) NOT NULL,
+  vendor_name VARCHAR(255),
+  vendor_email VARCHAR(255),
+  order_amount NUMERIC(10, 2) NOT NULL,
+  commission_rate NUMERIC(5, 2) DEFAULT 10.00,
+  commission_amount NUMERIC(10, 2) NOT NULL,
+  payout_amount NUMERIC(10, 2) NOT NULL,
+  payment_method VARCHAR(100) DEFAULT 'PhonePe',
+  bank_details JSONB DEFAULT '{}'::jsonb,
+  payout_status VARCHAR(50) DEFAULT 'pending',
+  payout_reference VARCHAR(255),
+  disbursed_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 14. Platform Settings Table
+CREATE TABLE IF NOT EXISTS platform_settings (
+  key VARCHAR(100) PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+

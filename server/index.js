@@ -9,6 +9,9 @@ import cartRoutes from './routes/carts.js';
 import orderRoutes from './routes/orders.js';
 import notificationRoutes from './routes/notifications.js';
 import farmRoutes from './routes/farms.js';
+import subscriptionRoutes from './routes/subscriptions.js';
+import phonepeRoutes from './routes/phonepe.js';
+import payoutRoutes from './routes/payouts.js';
 
 dotenv.config();
 
@@ -32,6 +35,9 @@ app.use('/api/carts', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/farms', farmRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/payment/phonepe', phonepeRoutes);
+app.use('/api/payouts', payoutRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

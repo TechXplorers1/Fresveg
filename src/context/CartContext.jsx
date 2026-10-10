@@ -193,7 +193,7 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const placeOrder = async (paymentMethod = 'Cash on Delivery') => {
+  const placeOrder = async (paymentMethod = 'Cash on Delivery', paymentDetails = {}, paymentStatus) => {
     if (!user || cartItems.length === 0) {
       console.warn('PlaceOrder aborted: No user or empty cart');
       return;
@@ -216,6 +216,8 @@ export const CartProvider = ({ children }) => {
         total: getTotal(),
         address: address,
         paymentMethod: paymentMethod,
+        paymentDetails: paymentDetails,
+        paymentStatus: paymentStatus || (String(paymentMethod).toLowerCase().includes('bank') ? 'pending_verification' : 'pending'),
         status: 'pending'
       };
       

@@ -74,7 +74,7 @@ export default function SavedAddressesTab({
                                             <Navigation size={18} className={`text-emerald-600 ${isGeocodingAddress ? 'animate-spin' : ''}`} />
                                             <div>
                                                 <p className="text-xs font-bold text-emerald-808 font-headings">Location Services</p>
-                                                <p className="text-[10px] text-slate-400 font-body">Detecting details automatically via GPS reverse geocoding</p>
+                                                <p className="text-[10px] text-slate-400 font-body">Detecting approximate house & street address automatically via GPS</p>
                                             </div>
                                         </div>
                                         <div className="flex gap-2 w-full sm:w-auto">
@@ -106,9 +106,9 @@ export default function SavedAddressesTab({
                                         </div>
                                         <div className="md:col-span-2">
                                             <label className={labelCls}>
-                                                Street Address <span className="text-[10px] text-gray-400 font-normal">(Include Door/Flat/Plot No. if missing)</span>
+                                                Street & House Address <span className="text-[10px] text-emerald-600 font-normal">(House No. & Area auto-detected)</span>
                                             </label>
-                                            <input required type="text" name="street" value={newAddress.street} onChange={handleAddressInputChange} className={inputCls} placeholder="e.g. Door No. 45, Main St" />
+                                            <input required type="text" name="street" value={newAddress.street} onChange={handleAddressInputChange} className={inputCls} placeholder="e.g. House No. 24, Samira Hospital Area, Main Road" />
                                         </div>
                                         <div>
                                             <label className={labelCls}>City</label>

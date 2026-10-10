@@ -1,16 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Compass, Plus, X, MapPin, Search, Locate, Loader2, Pencil, Trash2, Camera,
     Tent, PawPrint, Smile, ExternalLink, Calendar, Users, Check, Clock, Home as HomeIcon,
     Footprints, Feather, ShoppingBag, ShieldCheck, Star, Navigation, ArrowLeft, CheckCircle,
-    Mail, Phone, MessageCircle, Store
+    Mail, Phone, MessageCircle, Store, Lock, Crown, Sparkles, AlertCircle
 } from 'lucide-react';
 import ImageUploadField from '../../../components/common/ImageUploadField';
+import FruitIcon from '../../../components/common/FruitIcon';
 import { getFarmSlug } from '../../FarmDetails';
+import { api } from '../../../services/api';
 
 export default function VendorFarmsTab({
     isVendor,
     activeTab,
+    user,
+    userProfile,
+    onTabChange,
     myFarms = [],
     bookingsList = [],
     showAddFarmForm,
@@ -92,6 +97,17 @@ export default function VendorFarmsTab({
     const [livestockInputText, setLivestockInputText] = useState('');
     const [kidsInputText, setKidsInputText] = useState('');
     const [isSubmittingFarm, setIsSubmittingFarm] = useState(false);
+    const [subStatus, setSubStatus] = useState(null);
+
+    useEffect(() => {
+        if (user) {
+            api.getVendorSubscriptionStatus(user.uid || user.id || user.email)
+                .then(res => setSubStatus(res))
+                .catch(err => console.error('Subscription check error:', err));
+        }
+    }, [user, userProfile, activeTab]);
+
+    const isSubscribed = Boolean(subStatus?.hasActiveSubscription);
 
     return (
         <React.Fragment>
@@ -131,6 +147,56 @@ export default function VendorFarmsTab({
                                     {(showAddFarmForm || editingFarmId) ? <X size={14} /> : <Plus size={14} />}
                                     {(showAddFarmForm || editingFarmId) ? 'Cancel' : 'Add New Farm'}
                                 </button>
+                            </div>
+
+                            {/* Farm Display Subscription Status Callout Banner */}
+                            <div className={`p-4 sm:p-6 rounded-3xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-md ${
+                                isSubscribed
+                                    ? 'bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-emerald-500/10 border-emerald-500/30 text-emerald-950'
+                                    : 'bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border-amber-500/40 text-amber-950 ring-1 ring-amber-500/20'
+                            }`}>
+                                <div className="flex items-start sm:items-center gap-3.5">
+                                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm ${
+                                        isSubscribed
+                                            ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white'
+                                            : 'bg-gradient-to-br from-amber-500 to-orange-600 text-white'
+                                    }`}>
+                                        {isSubscribed ? <Sparkles size={22} className="animate-pulse" /> : <Lock size={22} />}
+                                    </div>
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h4 className="font-bold text-sm sm:text-base font-headings text-slate-900">
+                                                {isSubscribed ? 'Farm Display Subscription Active' : 'Farms Hidden From Customers — Subscription Required'}
+                                            </h4>
+                                            <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full font-headings shadow-2xs border ${
+                                                isSubscribed
+                                                    ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                                    : 'bg-amber-100 text-amber-900 border-amber-300 animate-pulse'
+                                            }`}>
+                                                {isSubscribed ? `Plan: ${subStatus?.subscription?.planName || 'Active'}` : 'Unpublished (No Active Plan)'}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-slate-600 font-medium mt-1 font-body leading-relaxed">
+                                            {isSubscribed
+                                                ? `All your paid & unpaid farms are published on the Agritourism directory (${subStatus?.subscription?.daysRemaining || 0} days remaining on your plan).`
+                                                : `FresVeg requires vendors to maintain an active subscription plan (Monthly, 3 Months, or 6 Months) to display paid or unpaid farms to customers.`}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 self-end sm:self-auto flex-shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => onTabChange && onTabChange('farm_subscription')}
+                                        className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer font-headings active:scale-95 ${
+                                            isSubscribed
+                                                ? 'bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                                : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white shadow-amber-900/15 ring-2 ring-amber-400/30'
+                                        }`}
+                                    >
+                                        <Crown size={15} />
+                                        {isSubscribed ? 'Manage / Extend Plan' : 'Subscribe to Publish Farms'}
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Add / Edit Farm Step-by-Step Wizard Form */}
@@ -677,7 +743,7 @@ export default function VendorFarmsTab({
                                                                 <div className="flex flex-wrap gap-2 p-2.5 bg-amber-50/60 rounded-xl border border-amber-200">
                                                                     {selectedFruits.map((fruit, idx) => (
                                                                         <span key={idx} className="bg-amber-600 text-white border border-amber-700 px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shadow-xs">
-                                                                            🍎 {fruit}
+                                                                            <FruitIcon name={fruit} /> {fruit}
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={() => handleRemoveFruitChip(fruit)}
@@ -747,6 +813,7 @@ export default function VendorFarmsTab({
                                                                                     : 'bg-white text-slate-700 border-slate-200 hover:border-amber-400 hover:text-amber-700 shadow-xs'
                                                                                     }`}
                                                                             >
+                                                                                <FruitIcon name={chip} />
                                                                                 <span>{chip}</span>
                                                                                 {isSelected ? <span>✓</span> : <span className="text-slate-400 text-[10px]">+</span>}
                                                                             </button>
@@ -1637,7 +1704,21 @@ export default function VendorFarmsTab({
                                                         <>
                                                             <div className="relative h-36 bg-slate-50">
                                                                 <img src={farm.image} alt={farm.farmName} className="w-full h-full object-cover group-hover:scale-103 transition-transform" />
-                                                                <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                                                                
+                                                                {/* Publishing / Subscription Status Badge */}
+                                                                <div className="absolute top-2 left-2 z-10">
+                                                                    {(farm.isPublished || farm.vendorSubscriptionActive || isSubscribed) ? (
+                                                                        <span className="bg-emerald-600/95 backdrop-blur-md text-white px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm font-headings">
+                                                                            <CheckCircle size={10} /> Live to Customers
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="bg-amber-600/95 backdrop-blur-md text-white px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm font-headings">
+                                                                            <Lock size={10} /> Hidden (No Plan)
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
                                                                     <button
                                                                         onClick={() => handleEditFarmClick(farm)}
                                                                         className="bg-white/95 text-emerald-600 hover:bg-emerald-50 p-2 rounded-xl transition-colors shadow-md border border-slate-100"

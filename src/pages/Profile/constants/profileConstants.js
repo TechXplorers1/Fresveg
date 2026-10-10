@@ -34,10 +34,10 @@ export const SUB_CATEGORIES_MAP = {
 
 export const STANDARD_UNITS = ['kg', 'gm', 'litre', 'ml', 'BOX', 'Packet', 'Bunch', 'Piece', 'Dozen'];
 
-export const INITIAL_CROPS = ['Wheat', 'Sugarcane', 'Organic Strawberries', 'Fresh Tomatoes', 'Sweet Corn', 'Carrots', 'Leafy Spinach', 'Basmati Rice'];
-export const EXTRA_CROPS = ['Cotton', 'Soybean', 'Groundnut', 'Organic Garlic', 'Green Peas', 'Brinjal (Eggplant)', 'Capsicum', 'Red Onions', 'Turmeric', 'Bio Millets'];
+export const INITIAL_CROPS = ['Wheat', 'Sugarcane', 'Capsicum', 'Fresh Tomatoes', 'Sweet Corn', 'Carrots', 'Leafy Spinach', 'Basmati Rice'];
+export const EXTRA_CROPS = ['Cotton', 'Soybean', 'Groundnut', 'Organic Garlic', 'Green Peas', 'Brinjal (Eggplant)', 'Red Onions', 'Turmeric', 'Bio Millets'];
 
-export const INITIAL_FRUITS = ['Ratnagiri Alphonso Mangoes', 'Mahabaleshwar Strawberries', 'Guava Orchards', 'Nagpur Oranges', 'Papaya Grove', 'Chiku (Sapodilla)', 'Pomegranate'];
+export const INITIAL_FRUITS = ['Ratnagiri Alphonso Mangoes', 'Strawberries', 'Mahabaleshwar Strawberries', 'Guava Orchards', 'Nagpur Oranges', 'Papaya Grove', 'Chiku (Sapodilla)', 'Pomegranate'];
 export const EXTRA_FRUITS = ['Custard Apple (Sitaphal)', 'Dragon Fruit', 'Organic Bananas', 'Fresh Grapes', 'Figs (Anjeer)', 'Watermelon', 'Muskmelon', 'Amla (Gooseberry)'];
 
 export const INITIAL_LIVESTOCK = ['Gir Cows & Cattle', 'Free Range Poultry Hens', 'Desi Goats & Sheep', 'Organic Beehives'];
@@ -69,17 +69,17 @@ export const formatUpdatedTime = (isoString) => {
 
 export const geocodeAddress = async (addressStr) => {
     if (!addressStr || typeof addressStr !== 'string') {
-        return { lat: 14.6819, lon: 77.6006, displayName: 'Default Location' };
+        return null;
     }
     const cleanAddress = addressStr.trim();
     if (!cleanAddress) {
-        return { lat: 14.6819, lon: 77.6006, displayName: 'Default Location' };
+        return null;
     }
 
     try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanAddress)}&format=json&limit=1`;
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanAddress)}&format=jsonv2&limit=1&addressdetails=1&accept-language=en`;
         const res = await fetch(url, {
-            headers: { 'User-Agent': 'FresVegApp/1.0' }
+            headers: { 'User-Agent': 'FresVegPlatform/2.0' }
         });
         const data = await res.json();
         if (data && data.length > 0) {
@@ -93,14 +93,14 @@ export const geocodeAddress = async (addressStr) => {
         console.warn("Geocoding failed:", err);
     }
 
-    // Try broader search
+    // Try broader search with last components (e.g. city, state)
     try {
         const parts = cleanAddress.split(',').map(s => s.trim()).filter(Boolean);
         if (parts.length > 1) {
             const broaderQuery = parts.slice(-2).join(', ');
-            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(broaderQuery)}&format=json&limit=1`;
+            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(broaderQuery)}&format=jsonv2&limit=1&addressdetails=1&accept-language=en`;
             const res = await fetch(url, {
-                headers: { 'User-Agent': 'FresVegApp/1.0' }
+                headers: { 'User-Agent': 'FresVegPlatform/2.0' }
             });
             const data = await res.json();
             if (data && data.length > 0) {
@@ -115,18 +115,5 @@ export const geocodeAddress = async (addressStr) => {
         console.warn("Broader geocoding failed:", e);
     }
 
-    // Fallback deterministic coordinates based on hash
-    let hash = 0;
-    for (let i = 0; i < cleanAddress.length; i++) {
-        hash = (hash << 5) - hash + cleanAddress.charCodeAt(i);
-        hash |= 0;
-    }
-    const latOffset = ((Math.abs(hash) % 100) / 1000) - 0.05;
-    const lonOffset = (((Math.abs(hash) >> 2) % 100) / 1000) - 0.05;
-
-    return {
-        lat: 14.6819 + latOffset,
-        lon: 77.6006 + lonOffset,
-        displayName: cleanAddress
-    };
+    return null;
 };

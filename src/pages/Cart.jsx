@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { Minus, Plus, Trash2, MapPin, PlusCircle, CheckCircle2, Pencil, Navigation, RefreshCw, Loader, X } from 'lucide-react';
+import { Minus, Plus, Trash2, MapPin, PlusCircle, CheckCircle2, Pencil, Navigation, RefreshCw, Loader, X, AlertCircle } from 'lucide-react';
+import { getPreciseCurrentPosition, reverseGeocodePrecise, forwardGeocodeAddress } from '../services/locationService';
 
 export default function Cart() {
   const { cartItems, setAddress, removeFromCart, updateQuantity, getTotal } = useCart();
@@ -28,62 +29,23 @@ export default function Cart() {
   const cartMapRef = React.useRef(null);
   const cartMarkerRef = React.useRef(null);
   const [detectingLocation, setDetectingLocation] = useState(false);
-
-  const geocodeAddress = async (address) => {
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&addressdetails=0`;
-      const res = await fetch(url, {
-        headers: { 'Accept-Language': 'en-US,en', 'User-Agent': 'FresVegApp/1.0' },
-      });
-      const data = await res.json();
-      if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-      }
-    } catch (err) {
-      console.warn('Geocoding failed for:', address, err);
-    }
-    return null;
-  };
+  const [gpsStatusMessage, setGpsStatusMessage] = useState(null);
 
   const handleReverseGeocode = async (lat, lng, addressSetter) => {
     try {
-      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`;
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'FresVegApp/1.0' }
+      const geo = await reverseGeocodePrecise(lat, lng);
+      addressSetter(prev => ({
+        ...prev,
+        street: geo.street || prev.street,
+        city: geo.city || prev.city,
+        state: geo.state || prev.state,
+        zipCode: geo.zipCode || prev.zipCode,
+        country: geo.country || prev.country
+      }));
+      setGpsStatusMessage({
+        text: `📍 Pin set: ${geo.shortLabel} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`,
+        type: 'success'
       });
-      const data = await res.json();
-      if (data && data.address) {
-        const addr = data.address;
-        
-        // Extract all possible door/house/building identifiers to form an approximate door number
-        const doorNumberParts = [
-          addr.house_number,
-          addr.house_name,
-          addr.building,
-          addr.flat,
-          addr.apartment,
-          addr.unit
-        ].filter(Boolean);
-        const doorNumber = doorNumberParts.join(', ');
-        
-        const streetName = addr.road || addr.suburb || addr.neighbourhood || '';
-        const street = doorNumber 
-          ? `${doorNumber}, ${streetName}` 
-          : streetName || addr.amenity || 'Selected Location';
-        
-        const city = addr.city || addr.town || addr.village || addr.state_district || '';
-        const state = addr.state || '';
-        const zipCode = addr.postcode || '';
-        const country = addr.country || 'India';
-        addressSetter(prev => ({
-          ...prev,
-          street,
-          city,
-          state,
-          zipCode,
-          country
-        }));
-      }
     } catch (err) {
       console.error("Reverse geocoding failed:", err);
     }
@@ -97,87 +59,57 @@ export default function Cart() {
       return;
     }
     const queryStr = queryParts.join(', ');
-    const coords = await geocodeAddress(queryStr);
-    if (coords) {
-      const newCoords = { lat: coords.lat, lng: coords.lon };
+    const matches = await forwardGeocodeAddress(queryStr);
+    if (matches && matches.length > 0) {
+      const newCoords = { lat: matches[0].lat, lng: matches[0].lng };
       setCartMapCoords(newCoords);
-      // Automatically reverse geocode to get precise details (like door number) for this coordinate!
       await handleReverseGeocode(newCoords.lat, newCoords.lng, setAddressForm);
     } else {
-      alert("Could not locate the typed address on the map. Try checking the spelling.");
+      alert("Could not locate the typed address on the map. Try checking the spelling or specifying a landmark.");
     }
   };
 
   const handleDetectLocation = async () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
-
     setDetectingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          console.log(`Detecting address for coordinates: ${latitude}, ${longitude}`);
-          
-          const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en`;
-          const res = await fetch(url, {
-            headers: { 'User-Agent': 'FresVegApp/1.0' }
-          });
-          const data = await res.json();
-          
-          if (data && data.address) {
-            const addr = data.address;
-            
-            // Extract all possible door/house/building identifiers to form an approximate door number
-            const doorNumberParts = [
-              addr.house_number,
-              addr.house_name,
-              addr.building,
-              addr.flat,
-              addr.apartment,
-              addr.unit
-            ].filter(Boolean);
-            const doorNumber = doorNumberParts.join(', ');
-            
-            const streetName = addr.road || addr.suburb || addr.neighbourhood || '';
-            const street = doorNumber 
-              ? `${doorNumber}, ${streetName}` 
-              : streetName || addr.amenity || 'Current Location';
-            
-            const city = addr.city || addr.town || addr.village || addr.state_district || '';
-            const state = addr.state || '';
-            const zipCode = addr.postcode || '';
-            const country = addr.country || 'India';
-            
-            setAddressForm(prev => ({
-              ...prev,
-              street,
-              city,
-              state,
-              zipCode,
-              country
-            }));
-            setCartMapCoords({ lat: latitude, lng: longitude });
-            console.log("Automatically detected and filled address details:", data.address);
-          } else {
-            alert("Could not retrieve address details for your location. Please enter manually.");
-          }
-        } catch (err) {
-          console.error("Reverse geocoding failed:", err);
-          alert("Reverse geocoding failed. Please enter your address details manually.");
-        } finally {
-          setDetectingLocation(false);
-        }
-      },
-      (error) => {
-        console.error("Geolocation error:", error);
-        alert("Failed to acquire location. Please check browser permissions and GPS status.");
-        setDetectingLocation(false);
-      },
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
+    setGpsStatusMessage({ text: '🛰️ Acquiring high-precision GPS satellite fix...', type: 'info' });
+
+    try {
+      const pos = await getPreciseCurrentPosition({ targetAccuracyMeters: 35, maxWaitMs: 6500 });
+      const { latitude, longitude, accuracy, isCoarse } = pos;
+      console.log(`GPS fix acquired: ${latitude}, ${longitude} (±${accuracy}m)`);
+
+      const geo = await reverseGeocodePrecise(latitude, longitude);
+
+      setAddressForm(prev => ({
+        ...prev,
+        street: geo.street || prev.street,
+        city: geo.city || prev.city,
+        state: geo.state || prev.state,
+        zipCode: geo.zipCode || prev.zipCode,
+        country: geo.country || prev.country
+      }));
+      setCartMapCoords({ lat: latitude, lng: longitude, accuracy });
+
+      if (isCoarse) {
+        setGpsStatusMessage({
+          text: `⚠️ Network location detected near ${geo.shortLabel} (±${accuracy}m). Please drag the map pin to pinpoint your exact doorstep.`,
+          type: 'warn'
+        });
+      } else {
+        setGpsStatusMessage({
+          text: `📍 GPS locked at ${geo.shortLabel} (±${accuracy}m)! House No. & Area pre-filled.`,
+          type: 'success'
+        });
+      }
+    } catch (err) {
+      console.error("Geolocation error:", err);
+      setGpsStatusMessage({
+        text: `❌ ${err.message || 'Failed to acquire location. Please drag the pin on the map.'}`,
+        type: 'error'
+      });
+    } finally {
+      setDetectingLocation(false);
+    }
   };
 
   useEffect(() => {
@@ -636,6 +568,21 @@ export default function Cart() {
                 </div>
               </div>
 
+              {/* GPS Status / Precision Feedback Banner */}
+              {gpsStatusMessage && (
+                <div className={`p-2.5 rounded-xl text-[11px] font-medium flex items-center gap-2 transition-all ${
+                  gpsStatusMessage.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : gpsStatusMessage.type === 'warn'
+                    ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                    : gpsStatusMessage.type === 'info'
+                    ? 'bg-blue-50 text-blue-800 border border-blue-200'
+                    : 'bg-red-50 text-red-800 border border-red-200'
+                }`}>
+                  <span>{gpsStatusMessage.text}</span>
+                </div>
+              )}
+
               {/* Leaflet Map Pin Container */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 font-headings uppercase tracking-wider mb-2">Pin Delivery Location</label>
@@ -667,8 +614,9 @@ export default function Cart() {
                    {errors.label && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.label}</p>}
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-bold text-slate-500 font-headings uppercase tracking-wider mb-1.5">
-                    Street Address
+                  <label className="block text-xs font-bold text-slate-500 font-headings uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                    <span>Street & House Address</span>
+                    <span className="text-[10px] text-emerald-600 font-normal lowercase">(House No. & Area auto-filled via GPS)</span>
                   </label>
                   <input
                     type="text"
@@ -678,7 +626,7 @@ export default function Cart() {
                     className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm ${
                        errors.street ? 'border-red-400 bg-red-50/10' : 'border-slate-200 bg-white/50'
                      }`}
-                    placeholder="e.g. Flat 101, Oak Apartments, Main Road"
+                    placeholder="e.g. House No. 24, Samira Hospital Area, Main Road"
                   />
                   {errors.street && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.street}</p>}
                 </div>

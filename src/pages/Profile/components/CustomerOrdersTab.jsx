@@ -1,5 +1,6 @@
-import React from 'react';
-import { Package, Truck, Check, Clock, MapPin, Shield, Bike, ShoppingBag, ArrowRight, Phone, MessageCircle, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Package, Truck, Check, Clock, MapPin, Shield, Bike, ShoppingBag, ArrowRight, Phone, MessageCircle, User, Landmark, CheckCircle2 } from 'lucide-react';
+import { api } from '../../../services/api';
 
 export default function CustomerOrdersTab({
     activeTab,
@@ -9,8 +10,30 @@ export default function CustomerOrdersTab({
     isVendor = false,
     loadingOrders = false,
     handleUpdateOrderStatus,
-    navigate
+    navigate,
+    onVerifyPayment
 }) {
+    const [verifyingOrderId, setVerifyingOrderId] = useState(null);
+
+    const handleVerifyBankPayment = async (orderId) => {
+        setVerifyingOrderId(orderId);
+        try {
+            if (onVerifyPayment) {
+                await onVerifyPayment(orderId);
+            } else {
+                await api.verifyOrderPayment(orderId, 'paid', 'confirmed');
+                if (handleUpdateOrderStatus) {
+                    await handleUpdateOrderStatus(orderId, 'confirmed', { paymentStatus: 'paid' });
+                }
+            }
+        } catch (error) {
+            console.error('Failed to verify payment:', error);
+            alert('Failed to verify payment: ' + (error.message || 'Unknown error'));
+        } finally {
+            setVerifyingOrderId(null);
+        }
+    };
+
     if (activeTab !== 'orders') return null;
 
     return (
@@ -25,7 +48,7 @@ export default function CustomerOrdersTab({
                             <h2 className="text-xl font-bold font-headings text-slate-800">{userProfile?.role === 'vendor' ? 'Customer Orders' : 'My Orders'}</h2>
                             <p className="text-xs text-slate-400 font-medium">
                                 {userProfile?.role === 'vendor'
-                                    ? 'Manage orders for your products'
+                                    ? 'Manage orders for your products and verify bank payments'
                                     : 'Track your recent purchases and delivery status'}
                             </p>
                         </div>
@@ -67,6 +90,32 @@ export default function CustomerOrdersTab({
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
+                                            {/* Payment Badge */}
+                                            {String(order.paymentMethod || '').toLowerCase().includes('phonepe') ? (
+                                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 border ${
+                                                    order.paymentStatus === 'paid'
+                                                        ? 'bg-purple-50 text-[#5f259f] border-purple-200'
+                                                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                                                }`}>
+                                                    <span className="w-3.5 h-3.5 rounded-full bg-[#5f259f] text-white flex items-center justify-center text-[8px] font-black leading-none">पे</span>
+                                                    {order.paymentStatus === 'paid' ? 'PhonePe Paid' : 'PhonePe Pending'}
+                                                </span>
+                                            ) : order.paymentMethod === 'bank_transfer' ? (
+                                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 border ${
+                                                    order.paymentStatus === 'paid'
+                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                                                }`}>
+                                                    <Landmark size={10} />
+                                                    {order.paymentStatus === 'paid' ? 'Bank Paid' : 'Bank UTR Pending'}
+                                                </span>
+                                            ) : (
+                                                <span className="bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase">
+                                                    {order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod || 'COD'}
+                                                </span>
+                                            )}
+
+
                                             <span className="bg-emerald-50 text-emerald-805 border border-emerald-100/50 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 font-headings">
                                                 <Clock size={10} /> {order.status}
                                             </span>
@@ -78,6 +127,52 @@ export default function CustomerOrdersTab({
                                             </button>
                                         </div>
                                     </div>
+
+                                    {/* Direct Bank / UPI Transfer Info Banner */}
+                                    {order.paymentMethod === 'bank_transfer' && (
+                                        <div className={`px-6 py-3 border-b text-xs flex flex-wrap items-center justify-between gap-3 ${
+                                            order.paymentStatus === 'paid'
+                                                ? 'bg-emerald-500/[0.04] border-emerald-100 text-emerald-900'
+                                                : 'bg-amber-500/[0.06] border-amber-100 text-amber-900'
+                                        }`}>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Landmark size={14} className={order.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-amber-600'} />
+                                                <span className="font-bold font-headings">Direct Vendor Bank / UPI:</span>
+                                                <span className="font-mono font-bold bg-white/90 px-2 py-0.5 rounded-md border border-slate-200 text-slate-700 text-[11px] shadow-xs">
+                                                    UTR: {order.paymentDetails?.utrNumber || 'N/A'}
+                                                </span>
+                                                {order.paymentDetails?.vendorBankName && (
+                                                    <span className="text-slate-500 text-[11px]">
+                                                        • Deposited to: {order.paymentDetails.vendorBankName} ({order.paymentDetails.vendorAccountNumber ? `••••${order.paymentDetails.vendorAccountNumber.slice(-4)}` : ''})
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                                                    order.paymentStatus === 'paid'
+                                                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                                        : 'bg-amber-100 text-amber-800 border-amber-200 animate-pulse'
+                                                }`}>
+                                                    {order.paymentStatus === 'paid' ? '✓ Bank Payment Confirmed' : 'Verification Awaiting'}
+                                                </span>
+                                                {isVendor && order.paymentStatus === 'pending_verification' && (
+                                                    <button
+                                                        onClick={() => handleVerifyBankPayment(order.id)}
+                                                        disabled={verifyingOrderId === order.id}
+                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] px-3 py-1 rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                                    >
+                                                        {verifyingOrderId === order.id ? (
+                                                            <div className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full" />
+                                                        ) : (
+                                                            <CheckCircle2 size={13} />
+                                                        )}
+                                                        Verify Payment
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Main Content */}
                                     <div className="p-6">
@@ -218,7 +313,21 @@ export default function CustomerOrdersTab({
                                                 <Shield size={14} className="text-emerald-600" /> Vendor Controls
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                {order.status === 'pending' && (
+                                                {order.paymentMethod === 'bank_transfer' && order.paymentStatus === 'pending_verification' && (
+                                                    <button
+                                                        onClick={() => handleVerifyBankPayment(order.id)}
+                                                        disabled={verifyingOrderId === order.id}
+                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 font-headings cursor-pointer disabled:opacity-50"
+                                                    >
+                                                        {verifyingOrderId === order.id ? (
+                                                            <div className="animate-spin w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" />
+                                                        ) : (
+                                                            <CheckCircle2 size={14} />
+                                                        )}
+                                                        Verify & Confirm Bank Payment
+                                                    </button>
+                                                )}
+                                                {order.status === 'pending' && (!order.paymentMethod || order.paymentMethod !== 'bank_transfer' || order.paymentStatus === 'paid') && (
                                                     <button
                                                         onClick={() => handleUpdateOrderStatus(order.id, 'confirmed')}
                                                         className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 font-headings cursor-pointer"

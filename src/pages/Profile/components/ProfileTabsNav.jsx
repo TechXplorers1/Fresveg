@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, Store, Compass, Bike, CheckCircle, BarChart2 } from 'lucide-react';
+import { Package, Store, Compass, Bike, CheckCircle, BarChart2, Landmark, Crown, DollarSign } from 'lucide-react';
 
 export default function ProfileTabsNav({
     userProfile,
@@ -48,6 +48,20 @@ export default function ProfileTabsNav({
 
                     <button
                         onClick={() => {
+                            setActiveTab('earnings');
+                            setSearchParams({ tab: 'earnings' });
+                        }}
+                        className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer font-headings ${
+                            activeTab === 'earnings'
+                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                                : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                    >
+                        <DollarSign size={16} /> Earnings & Payouts
+                    </button>
+
+                    <button
+                        onClick={() => {
                             setActiveTab('shops');
                             setSearchParams({ tab: 'shops' });
                         }}
@@ -72,6 +86,34 @@ export default function ProfileTabsNav({
                         }`}
                     >
                         <Compass size={16} /> My Farms ({vendorFarmsLength})
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            setActiveTab('bank');
+                            setSearchParams({ tab: 'bank' });
+                        }}
+                        className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer font-headings ${
+                            activeTab === 'bank'
+                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                                : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                    >
+                        <Landmark size={16} /> Bank Details
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            setActiveTab('farm_subscription');
+                            setSearchParams({ tab: 'farm_subscription' });
+                        }}
+                        className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer font-headings ${
+                            activeTab === 'farm_subscription'
+                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                                : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                    >
+                        <Crown size={16} /> Farm Subscription
                     </button>
                 </>
             )}

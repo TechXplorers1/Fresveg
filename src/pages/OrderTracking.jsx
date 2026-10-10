@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import OrderTrackingMap from '../components/OrderTrackingMap';
+import { forwardGeocodeAddress } from '../services/locationService';
 import {
   ArrowLeft, Package, MapPin, Clock, CheckCircle, Truck,
   ShoppingBag, Store, CreditCard, Calendar, AlertCircle,
@@ -74,21 +75,27 @@ function TimelineStep({ step, isActive, isCompleted, isLast }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 async function geocodeAddress(address) {
   if (!address || typeof address !== 'string') {
-    return { lat: 14.6819, lon: 77.6006 };
+    return null;
   }
   const cleanAddress = address.trim();
   if (!cleanAddress) {
-    return { lat: 14.6819, lon: 77.6006 };
+    return null;
+  }
+
+  // If address already contains explicit latitude and longitude coordinates, parse directly
+  const coordMatch = cleanAddress.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+  if (coordMatch) {
+    const lat = parseFloat(coordMatch[1]);
+    const lon = parseFloat(coordMatch[2]);
+    if (!isNaN(lat) && !isNaN(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+      return { lat, lon };
+    }
   }
 
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanAddress)}&format=json&limit=1&addressdetails=0`;
-    const res = await fetch(url, {
-      headers: { 'Accept-Language': 'en-US,en', 'User-Agent': 'FresVegApp/1.0' },
-    });
-    const data = await res.json();
-    if (data && data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    const results = await forwardGeocodeAddress(cleanAddress);
+    if (results && results.length > 0) {
+      return { lat: results[0].lat, lon: results[0].lng };
     }
   } catch (err) {
     console.warn('Geocoding failed for:', cleanAddress, err);
@@ -98,32 +105,16 @@ async function geocodeAddress(address) {
     const parts = cleanAddress.split(',').map(s => s.trim()).filter(Boolean);
     if (parts.length > 1) {
       const broaderQuery = parts.slice(-2).join(', ');
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(broaderQuery)}&format=json&limit=1&addressdetails=0`;
-      const res = await fetch(url, {
-        headers: { 'Accept-Language': 'en-US,en', 'User-Agent': 'FresVegApp/1.0' },
-      });
-      const data = await res.json();
-      if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+      const broaderResults = await forwardGeocodeAddress(broaderQuery);
+      if (broaderResults && broaderResults.length > 0) {
+        return { lat: broaderResults[0].lat, lon: broaderResults[0].lng };
       }
     }
   } catch (e) {
     console.warn('Broader geocoding failed:', e);
   }
 
-  // Fallback deterministic coordinates based on hash
-  let hash = 0;
-  for (let i = 0; i < cleanAddress.length; i++) {
-    hash = (hash << 5) - hash + cleanAddress.charCodeAt(i);
-    hash |= 0;
-  }
-  const latOffset = ((Math.abs(hash) % 100) / 1000) - 0.05;
-  const lonOffset = (((Math.abs(hash) >> 2) % 100) / 1000) - 0.05;
-
-  return {
-    lat: 14.6819 + latOffset,
-    lon: 77.6006 + lonOffset
-  };
+  return null;
 }
 
 export default function OrderTracking() {
@@ -173,8 +164,11 @@ export default function OrderTracking() {
     await new Promise((r) => setTimeout(r, 600));
     let endCoords = await geocodeAddress(deliveryAddr);
 
-    if (!startCoords) startCoords = { lat: 14.6819, lon: 77.6006 };
-    if (!endCoords) endCoords = { lat: 14.6989, lon: 77.6186 };
+    if (!startCoords || !endCoords) {
+      console.warn("Could not determine precise route coordinates for simulation");
+      setSimulating(false);
+      return;
+    }
 
     // Generate 15 steps along the line
     const totalSteps = 15;
@@ -401,8 +395,36 @@ export default function OrderTracking() {
               </div>
               <div className="flex items-center justify-between py-2 border-b border-slate-100/50">
                 <span className="text-slate-400">Payment Option</span>
-                <span className="text-slate-700 font-bold uppercase tracking-wider">{order.paymentMethod || 'COD'}</span>
+                <div className="text-right">
+                  <span className="text-slate-700 font-bold uppercase tracking-wider block">{order.paymentMethod || 'COD'}</span>
+                  {order.paymentDetails?.merchantTransactionId && (
+                    <span className="text-[10px] font-mono text-[#5f259f] font-bold block truncate max-w-[180px]">
+                      Txn: {order.paymentDetails.phonepeTransactionId || order.paymentDetails.merchantTransactionId}
+                    </span>
+                  )}
+                  {order.paymentDetails?.utrNumber && (
+                    <span className="text-[10px] font-mono text-emerald-700 font-bold block">
+                      UTR: {order.paymentDetails.utrNumber}
+                    </span>
+                  )}
+                </div>
               </div>
+              {order.paymentStatus && (
+                <div className="flex items-center justify-between py-2 border-b border-slate-100/50">
+                  <span className="text-slate-400">Payment Status</span>
+                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full font-mono ${
+                    order.paymentStatus === 'paid' || order.paymentStatus === 'verified'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {order.paymentStatus === 'paid'
+                      ? '✓ Paid (PhonePe Verified)'
+                      : order.paymentStatus === 'verified'
+                      ? '✓ Verified by Vendor'
+                      : '⏳ Verification Pending'}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between py-2 border-b border-slate-100/50">
                 <span className="text-slate-400">Store / Vendor</span>
                 <span className="text-slate-700 font-bold truncate max-w-[180px]">{vendorName}</span>

@@ -26,25 +26,60 @@ export const AuthProvider = ({ children }) => {
 
   const [loading, setLoading] = useState(true);
 
-  // Restore authenticated session from PostgreSQL via JWT token on App load
+  // Restore authenticated session from Keycloak via JWT token on App load
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('fresveg_jwt_token');
+      const refreshToken = localStorage.getItem('fresveg_refresh_token');
+
       if (token) {
         try {
           const profileData = await api.getAuthMe();
-          const userObj = {
-            uid: profileData.uid,
-            email: profileData.email,
-            displayName: profileData.displayName,
-            photoURL: profileData.photoURL
-          };
-          setUser(userObj);
-          setUserProfile(profileData);
-          localStorage.setItem('fresveg_user', JSON.stringify(userObj));
-          localStorage.setItem('fresveg_profile', JSON.stringify(profileData));
+          if (profileData && profileData.uid) {
+            const userObj = {
+              uid: profileData.uid,
+              email: profileData.email,
+              displayName: profileData.displayName,
+              photoURL: profileData.photoURL || '',
+              role: profileData.role || 'customer'
+            };
+            setUser(userObj);
+            setUserProfile(profileData);
+            localStorage.setItem('fresveg_user', JSON.stringify(userObj));
+            localStorage.setItem('fresveg_profile', JSON.stringify(profileData));
+          } else {
+            throw new Error('Incomplete profile');
+          }
         } catch (err) {
-          console.warn('PostgreSQL JWT session expired or invalid:', err.message);
+          console.warn('Keycloak session expired or invalid, attempting refresh...', err.message);
+          // Try refreshing token if available
+          if (refreshToken) {
+            try {
+              const refreshRes = await api.refreshToken(refreshToken);
+              if (refreshRes && refreshRes.token) {
+                localStorage.setItem('fresveg_jwt_token', refreshRes.token);
+                if (refreshRes.refreshToken) {
+                  localStorage.setItem('fresveg_refresh_token', refreshRes.refreshToken);
+                }
+                const profileData = await api.getAuthMe();
+                const userObj = {
+                  uid: profileData.uid,
+                  email: profileData.email,
+                  displayName: profileData.displayName,
+                  photoURL: profileData.photoURL || '',
+                  role: profileData.role || 'customer'
+                };
+                setUser(userObj);
+                setUserProfile(profileData);
+                localStorage.setItem('fresveg_user', JSON.stringify(userObj));
+                localStorage.setItem('fresveg_profile', JSON.stringify(profileData));
+                setLoading(false);
+                return;
+              }
+            } catch (refErr) {
+              console.warn('Keycloak refresh token also expired:', refErr.message);
+            }
+          }
           logout();
         }
       }
@@ -54,13 +89,16 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  // PostgreSQL + JWT Login
+  // Keycloak OIDC Login
   const login = async (email, password) => {
     try {
       const response = await api.loginUser(email, password);
-      const { token, user: userObj } = response;
+      const { token, refreshToken, user: userObj } = response;
 
       localStorage.setItem('fresveg_jwt_token', token);
+      if (refreshToken) {
+        localStorage.setItem('fresveg_refresh_token', refreshToken);
+      }
       localStorage.setItem('fresveg_user', JSON.stringify(userObj));
       localStorage.setItem('fresveg_profile', JSON.stringify(userObj));
 
@@ -69,12 +107,12 @@ export const AuthProvider = ({ children }) => {
 
       return userObj;
     } catch (error) {
-      console.error('PostgreSQL Login Error:', error);
+      console.error('Keycloak Login Error:', error);
       throw error;
     }
   };
 
-  // PostgreSQL + JWT Register
+  // Keycloak OIDC Register
   const register = async (email, password, displayName, role = 'customer') => {
     try {
       const response = await api.registerUser({
@@ -83,9 +121,12 @@ export const AuthProvider = ({ children }) => {
         displayName,
         role
       });
-      const { token, user: userObj } = response;
+      const { token, refreshToken, user: userObj } = response;
 
       localStorage.setItem('fresveg_jwt_token', token);
+      if (refreshToken) {
+        localStorage.setItem('fresveg_refresh_token', refreshToken);
+      }
       localStorage.setItem('fresveg_user', JSON.stringify(userObj));
       localStorage.setItem('fresveg_profile', JSON.stringify(userObj));
 
@@ -94,7 +135,7 @@ export const AuthProvider = ({ children }) => {
 
       return userObj;
     } catch (error) {
-      console.error('PostgreSQL Register Error:', error);
+      console.error('Keycloak Register Error:', error);
       throw error;
     }
   };
@@ -111,6 +152,7 @@ export const AuthProvider = ({ children }) => {
   // Logout
   const logout = async () => {
     localStorage.removeItem('fresveg_jwt_token');
+    localStorage.removeItem('fresveg_refresh_token');
     localStorage.removeItem('fresveg_user');
     localStorage.removeItem('fresveg_profile');
     setUser(null);

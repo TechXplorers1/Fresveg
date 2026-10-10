@@ -36,17 +36,17 @@ export default function Auth() {
     
     try {
       if (isLogin) {
-        // PostgreSQL + JWT Login
+        // Keycloak OIDC Direct Access Grant Login
         await login(formData.email, formData.password);
         navigate(redirect);
       } else {
-        // PostgreSQL + JWT Registration
+        // Keycloak OIDC Admin Registration + Automatic Login
         const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim() || 'User';
         await register(formData.email, formData.password, fullName, formData.role);
         navigate(redirect);
       }
     } catch (err) {
-      console.error("Auth submit error:", err);
+      console.error("Keycloak Auth submit error:", err);
       setError(err.message || 'Authentication failed');
     } finally {
       setSubmitting(false);
@@ -206,6 +206,11 @@ export default function Auth() {
             </button>
           </div>
 
+          {/* Keycloak Authentication Security Badge */}
+          <div className="mt-6 pt-5 border-t border-gray-100 flex items-center justify-center gap-2 text-[11px] font-medium text-gray-400">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Secured with <strong className="text-gray-700 font-semibold">Keycloak OIDC</strong> (OAuth 2.0)</span>
+          </div>
         </div>
       </div>
     </div>

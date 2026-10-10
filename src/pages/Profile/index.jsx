@@ -5,7 +5,7 @@ import { useProducts } from '../../context/ProductContext';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../services/api';
 import OrderTrackingMap from '../../components/OrderTrackingMap';
-import { Instagram, Facebook, Youtube, Globe, MessageCircle, Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power, Compass, CheckCircle, Users, BarChart2, TrendingUp, PieChart, ChevronDown, Loader2 } from 'lucide-react';
+import { Instagram, Facebook, Youtube, Globe, MessageCircle, Plus, Package, DollarSign, Tag, Image as ImageIcon, User, Store, Mail, Calendar, Shield, MapPin, FileText, Pencil, Trash2, Check, X, Clock, ShoppingBag, ArrowRight, ArrowLeft, RefreshCw, ExternalLink, Navigation, LogOut as LogOutIcon, Bike, Power, Compass, CheckCircle, Users, BarChart2, TrendingUp, PieChart, ChevronDown, Loader2, Landmark, Crown } from 'lucide-react';
 import ImageUploadField from '../../components/common/ImageUploadField';
 import AddStayModal from './modals/AddStayModal';
 import AddFarmProductModal from './modals/AddFarmProductModal';
@@ -20,6 +20,9 @@ import DeliveryOrdersTab from './components/DeliveryOrdersTab';
 import VendorFarmsTab from './components/VendorFarmsTab';
 import VendorShopsTab from './components/VendorShopsTab';
 import VendorProductsTab from './components/VendorProductsTab';
+import VendorBankDetailsTab from './components/VendorBankDetailsTab';
+import VendorEarningsTab from './components/VendorEarningsTab';
+import VendorFarmSubscriptionTab from './components/VendorFarmSubscriptionTab';
 import AddShopModal from './modals/AddShopModal';
 import AddProductModal from './modals/AddProductModal';
 import EditProductModal from './modals/EditProductModal';
@@ -29,6 +32,7 @@ import ProfileTabsNav from './components/ProfileTabsNav';
 import VendorAnalyticsTab from './components/VendorAnalyticsTab';
 import { SUB_CATEGORIES_MAP, CATEGORIES, STANDARD_UNITS, INITIAL_CROPS, EXTRA_CROPS, INITIAL_FRUITS, EXTRA_FRUITS, INITIAL_LIVESTOCK, EXTRA_LIVESTOCK, INITIAL_KIDS_ACTIVITIES, EXTRA_KIDS_ACTIVITIES, INITIAL_ACCOMMODATIONS, EXTRA_ACCOMMODATIONS, formatUpdatedTime, geocodeAddress } from './constants/profileConstants';
 import { useImageModal } from '../../context/ImageModalContext';
+import { getPreciseCurrentPosition, reverseGeocodePrecise, forwardGeocodeAddress } from '../../services/locationService';
 
 
 
@@ -149,37 +153,20 @@ export default function Profile() {
     const [isSavingModalProduct, setIsSavingModalProduct] = useState(false);
     const [isSavingStayState, setIsSavingStayState] = useState(false);
 
-    const handleGetCurrentLocation = (setter, formState) => {
-        if (!navigator.geolocation) {
-            alert("Geolocation is not supported by your browser.");
-            return;
-        }
+    const handleGetCurrentLocation = async (setter, formState) => {
         setDetectingShopLocation(true);
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const { latitude, longitude } = position.coords;
-                try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        const address = data.display_name || `${latitude}, ${longitude}`;
-                        setter({ ...formState, location: address });
-                    } else {
-                        setter({ ...formState, location: `${latitude}, ${longitude}` });
-                    }
-                } catch (error) {
-                    setter({ ...formState, location: `${latitude}, ${longitude}` });
-                } finally {
-                    setDetectingShopLocation(false);
-                }
-            },
-            (error) => {
-                console.error(error);
-                alert("Unable to retrieve your location. Make sure location access is enabled.");
-                setDetectingShopLocation(false);
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
+        try {
+            const pos = await getPreciseCurrentPosition({ targetAccuracyMeters: 40, maxWaitMs: 6500 });
+            const { latitude, longitude } = pos;
+            const geo = await reverseGeocodePrecise(latitude, longitude);
+            const address = geo.displayName || [geo.street, geo.city, geo.state].filter(Boolean).join(', ') || `${latitude}, ${longitude}`;
+            setter({ ...formState, location: address });
+        } catch (error) {
+            console.error(error);
+            alert("Unable to retrieve your location: " + (error.message || "Make sure location access is enabled."));
+        } finally {
+            setDetectingShopLocation(false);
+        }
     };
 
 
@@ -642,10 +629,10 @@ export default function Profile() {
         setPhotoToEdit(null);
     };
 
-    const INITIAL_CROPS = ['Strawberries', 'Cherry Tomatoes', 'Sweet Corn', 'Spinach', 'Carrots'];
-    const EXTRA_CROPS = ['Capsicum', 'Broccoli', 'Organic Wheat', 'Red Onions', 'Potatoes', 'Herbs', 'Lettuce', 'Cabbage', 'Radish'];
+    const INITIAL_CROPS = ['Cherry Tomatoes', 'Sweet Corn', 'Spinach', 'Carrots', 'Capsicum'];
+    const EXTRA_CROPS = ['Broccoli', 'Organic Wheat', 'Red Onions', 'Potatoes', 'Herbs', 'Lettuce', 'Cabbage', 'Radish'];
 
-    const INITIAL_FRUITS = ['Mango Orchards', 'Guava Groves', 'Papaya', 'Apple Trees', 'Banana Plantation'];
+    const INITIAL_FRUITS = ['Strawberries', 'Mango Orchards', 'Guava Groves', 'Papaya', 'Apple Trees', 'Banana Plantation'];
     const EXTRA_FRUITS = ['Pomegranate', 'Orange Groves', 'Coconut Palms', 'Dragonfruit', 'Custard Apple', 'Pineapple', 'Lemon Trees', 'Jackfruit'];
 
     const INITIAL_LIVESTOCK = ['Pure Gir Cows', 'Goats & Sheep', 'Free-Range Poultry', 'Rabbits & Ducks', 'Honey Bees'];
@@ -841,15 +828,12 @@ export default function Profile() {
 
     const handleFarmReverseGeocode = async (lat, lng) => {
         try {
-            const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`;
-            const res = await fetch(url, {
-                headers: { 'User-Agent': 'FresVegApp/1.0' }
-            });
-            const data = await res.json();
-            if (data && data.display_name) {
+            const geo = await reverseGeocodePrecise(lat, lng);
+            if (geo) {
+                const fullAddr = geo.displayName || [geo.street, geo.city, geo.state].filter(Boolean).join(', ');
                 setNewFarmForm(prev => ({
                     ...prev,
-                    location: data.display_name
+                    location: fullAddr
                 }));
             }
         } catch (err) {
@@ -868,30 +852,24 @@ export default function Profile() {
             setFarmMapCoords(newCoords);
             await handleFarmReverseGeocode(newCoords.lat, newCoords.lng);
         } else {
-            alert("Could not locate the farm address on the map.");
+            alert("Could not locate the farm address on the map. Try checking the spelling or specifying a landmark.");
         }
     };
 
-    const handleDetectFarmLocation = () => {
-        if (!navigator.geolocation) {
-            alert("Geolocation is not supported by your browser.");
-            return;
-        }
+    const handleDetectFarmLocation = async () => {
         setDetectingFarmLocation(true);
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const { latitude, longitude } = position.coords;
-                const coords = { lat: latitude, lng: longitude };
-                setFarmMapCoords(coords);
-                await handleFarmReverseGeocode(latitude, longitude);
-                setDetectingFarmLocation(false);
-            },
-            (err) => {
-                console.error("GPS error:", err);
-                setDetectingFarmLocation(false);
-            },
-            { enableHighAccuracy: true }
-        );
+        try {
+            const pos = await getPreciseCurrentPosition({ targetAccuracyMeters: 40, maxWaitMs: 6500 });
+            const { latitude, longitude } = pos;
+            const coords = { lat: latitude, lng: longitude };
+            setFarmMapCoords(coords);
+            await handleFarmReverseGeocode(latitude, longitude);
+        } catch (err) {
+            console.error("GPS error:", err);
+            alert("Could not get GPS location: " + err.message);
+        } finally {
+            setDetectingFarmLocation(false);
+        }
     };
 
     useEffect(() => {
@@ -972,10 +950,9 @@ export default function Profile() {
     const loadVendorFarms = async () => {
         if (!user || userProfile?.role !== 'vendor') return;
         try {
-            const data = await api.getFarms();
+            const data = await api.getFarms({ vendorId: user.uid || user.id || user.email });
             if (Array.isArray(data)) {
-                const list = data.filter(f => f.ownerId === user.uid || f.vendorId === user.uid);
-                setVendorFarms(list);
+                setVendorFarms(data);
             }
         } catch (err) {
             console.error('Failed to load farms from PostgreSQL:', err);
@@ -1225,41 +1202,16 @@ export default function Profile() {
 
     const handleReverseGeocode = async (lat, lng, addressSetter) => {
         try {
-            const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`;
-            const res = await fetch(url, {
-                headers: { 'User-Agent': 'FresVegApp/1.0' }
-            });
-            const data = await res.json();
-            if (data && data.address) {
-                const addr = data.address;
-
-                // Extract all possible door/house/building identifiers to form an approximate door number
-                const doorNumberParts = [
-                    addr.house_number,
-                    addr.house_name,
-                    addr.building,
-                    addr.flat,
-                    addr.apartment,
-                    addr.unit
-                ].filter(Boolean);
-                const doorNumber = doorNumberParts.join(', ');
-
-                const streetName = addr.road || addr.suburb || addr.neighbourhood || '';
-                const street = doorNumber
-                    ? `${doorNumber}, ${streetName}`
-                    : streetName || addr.amenity || 'Selected Location';
-
-                const city = addr.city || addr.town || addr.village || addr.state_district || '';
-                const state = addr.state || '';
-                const zipCode = addr.postcode || '';
-                const country = addr.country || 'India';
+            const geo = await reverseGeocodePrecise(lat, lng);
+            if (geo) {
+                const street = geo.street || geo.landmark || 'Selected Location';
                 addressSetter(prev => ({
                     ...prev,
-                    street,
-                    city,
-                    state,
-                    zipCode,
-                    country
+                    street: street || prev.street || '',
+                    city: geo.city || prev.city || '',
+                    state: geo.state || prev.state || '',
+                    zipCode: geo.zipCode || prev.zipCode || '',
+                    country: geo.country || 'India'
                 }));
             }
         } catch (err) {
@@ -1373,75 +1325,36 @@ export default function Profile() {
     }, [profileMapCoords]);
 
     const handleDetectLocation = async () => {
-        if (!navigator.geolocation) {
-            alert("Geolocation is not supported by your browser.");
-            return;
-        }
-
         setDetectingLocation(true);
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                try {
-                    const { latitude, longitude } = position.coords;
-                    console.log(`Detecting address for coordinates: ${latitude}, ${longitude}`);
+        try {
+            const pos = await getPreciseCurrentPosition({
+                targetAccuracyMeters: 30,
+                maxWaitMs: 7000
+            });
+            const { latitude, longitude, accuracy } = pos;
+            console.log(`Detected precise GPS coordinates: ${latitude}, ${longitude} (±${Math.round(accuracy)}m)`);
 
-                    const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en`;
-                    const res = await fetch(url, {
-                        headers: { 'User-Agent': 'FresVegApp/1.0' }
-                    });
-                    const data = await res.json();
+            const newCoords = { lat: latitude, lng: longitude };
+            setProfileMapCoords(newCoords);
 
-                    if (data && data.address) {
-                        const addr = data.address;
-
-                        // Extract all possible door/house/building identifiers to form an approximate door number
-                        const doorNumberParts = [
-                            addr.house_number,
-                            addr.house_name,
-                            addr.building,
-                            addr.flat,
-                            addr.apartment,
-                            addr.unit
-                        ].filter(Boolean);
-                        const doorNumber = doorNumberParts.join(', ');
-
-                        const streetName = addr.road || addr.suburb || addr.neighbourhood || '';
-                        const street = doorNumber
-                            ? `${doorNumber}, ${streetName}`
-                            : streetName || addr.amenity || 'Current Location';
-
-                        const city = addr.city || addr.town || addr.village || addr.state_district || '';
-                        const state = addr.state || '';
-                        const zipCode = addr.postcode || '';
-                        const country = addr.country || 'India';
-
-                        setNewAddress(prev => ({
-                            ...prev,
-                            street,
-                            city,
-                            state,
-                            zipCode,
-                            country
-                        }));
-                        setProfileMapCoords({ lat: latitude, lng: longitude });
-                        console.log("Automatically detected and filled address details:", data.address);
-                    } else {
-                        alert("Could not retrieve address details for your location. Please enter manually.");
-                    }
-                } catch (err) {
-                    console.error("Reverse geocoding failed:", err);
-                    alert("Reverse geocoding failed. Please enter your address details manually.");
-                } finally {
-                    setDetectingLocation(false);
-                }
-            },
-            (error) => {
-                console.error("Geolocation error:", error);
-                alert("Failed to acquire location. Please check browser permissions and GPS status.");
-                setDetectingLocation(false);
-            },
-            { enableHighAccuracy: true, timeout: 8000 }
-        );
+            const geo = await reverseGeocodePrecise(latitude, longitude);
+            if (geo) {
+                const street = geo.street || geo.landmark || 'Current Location';
+                setNewAddress(prev => ({
+                    ...prev,
+                    street: street || prev.street || '',
+                    city: geo.city || prev.city || '',
+                    state: geo.state || prev.state || '',
+                    zipCode: geo.zipCode || prev.zipCode || '',
+                    country: geo.country || 'India'
+                }));
+            }
+        } catch (err) {
+            console.error("Precise geolocation error:", err);
+            alert(err.message || "Failed to acquire location. Please check browser permissions and GPS status.");
+        } finally {
+            setDetectingLocation(false);
+        }
     };
 
     const handleAddressInputChange = (e) => {
@@ -1634,13 +1547,9 @@ export default function Profile() {
     // Geocoder helper
     const geocodeAddress = async (address) => {
         try {
-            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&addressdetails=0`;
-            const res = await fetch(url, {
-                headers: { 'Accept-Language': 'en-US,en', 'User-Agent': 'FresVegApp/1.0' },
-            });
-            const data = await res.json();
-            if (data && data.length > 0) {
-                return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+            const results = await forwardGeocodeAddress(address);
+            if (results && results.length > 0) {
+                return { lat: results[0].lat, lon: results[0].lng };
             }
         } catch (err) {
             console.warn('Geocoding failed for:', address, err);
@@ -1749,6 +1658,19 @@ export default function Profile() {
         } catch (error) {
             console.error('Failed to update order status:', error);
             alert('Error updating order status: ' + error.message);
+            fetchProfileOrders();
+        }
+    };
+
+    const handleVerifyOrderPayment = async (orderId) => {
+        // Optimistically update payment status and order status in React state
+        setOrders(prev => prev.map(o => (String(o.id) === String(orderId) || String(o.orderId) === String(orderId)) ? { ...o, paymentStatus: 'paid', status: 'confirmed' } : o));
+        try {
+            await api.verifyOrderPayment(orderId, 'paid', 'confirmed');
+            fetchProfileOrders();
+        } catch (error) {
+            console.error('Failed to verify payment:', error);
+            alert('Error verifying payment: ' + error.message);
             fetchProfileOrders();
         }
     };
@@ -1865,6 +1787,36 @@ export default function Profile() {
                                         >
                                             <Compass size={18} />
                                             My Farms
+                                        </button>
+                                        <button
+                                            onClick={() => handleTabChange('earnings')}
+                                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'earnings'
+                                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                                                : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
+                                                }`}
+                                        >
+                                            <DollarSign size={18} />
+                                            Earnings & Payouts
+                                        </button>
+                                        <button
+                                            onClick={() => handleTabChange('bank')}
+                                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'bank'
+                                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                                                : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
+                                                }`}
+                                        >
+                                            <Landmark size={18} />
+                                            Bank Details
+                                        </button>
+                                        <button
+                                            onClick={() => handleTabChange('farm_subscription')}
+                                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-left ${activeTab === 'farm_subscription'
+                                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/15 animate-pulse-glow'
+                                                : 'text-slate-600 hover:bg-emerald-50/50 hover:text-emerald-700'
+                                                }`}
+                                        >
+                                            <Crown size={18} />
+                                            Farm Subscription
                                         </button>
                                     </>
                                 )}
@@ -1995,6 +1947,7 @@ export default function Profile() {
                         isVendor={isVendor}
                         handleUpdateOrderStatus={handleUpdateOrderStatus}
                         navigate={navigate}
+                        onVerifyPayment={handleVerifyOrderPayment}
                     />
 
                     {/* Delivery Partner Orders Tab */}
@@ -2012,6 +1965,9 @@ export default function Profile() {
                     <VendorFarmsTab
                         isVendor={isVendor}
                         activeTab={activeTab}
+                        user={user}
+                        userProfile={userProfile}
+                        onTabChange={handleTabChange}
                         myFarms={vendorFarms}
                         bookingsList={incomingFarmBookings}
                         showAddFarmForm={showAddFarmForm}
@@ -2133,6 +2089,35 @@ export default function Profile() {
                         handleDeleteProduct={handleDeleteProduct}
                         updateProduct={updateProduct}
                         navigate={navigate}
+                    />
+
+                    {/* Vendor Earnings & PhonePe Payouts Tab */}
+                    <VendorEarningsTab
+                        activeTab={activeTab}
+                        isVendor={isVendor}
+                        user={user}
+                        userProfile={userProfile}
+                        onSwitchToBank={() => handleTabChange('bank')}
+                    />
+
+                    {/* Vendor Bank Account & Settings Tab */}
+                    <VendorBankDetailsTab
+                        activeTab={activeTab}
+                        isVendor={isVendor}
+                        userProfile={userProfile}
+                        updateProfile={updateProfile}
+                        onSwitchToEarnings={() => handleTabChange('earnings')}
+                    />
+
+                    {/* Vendor Farm Display Subscription Tab */}
+                    <VendorFarmSubscriptionTab
+                        user={user}
+                        userProfile={userProfile}
+                        activeTab={activeTab}
+                        onTabChange={handleTabChange}
+                        onSubscriptionUpdated={() => {
+                            loadVendorFarms();
+                        }}
                     />
 
                 </div>
