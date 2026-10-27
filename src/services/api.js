@@ -100,6 +100,11 @@ function unboxResponse(res) {
 function normalizeProduct(item) {
   if (!item) return item;
   const id = item.productId || item.id || `prod-${Date.now()}`;
+  const rawStock = item.stockQuantity !== undefined ? item.stockQuantity : item.stock_quantity;
+  const rawInitial = item.initialStock !== undefined ? item.initialStock : item.initial_stock;
+  const stockQuantity = rawStock !== undefined && rawStock !== null ? Number(rawStock) : 100;
+  const initialStock = rawInitial !== undefined && rawInitial !== null ? Math.max(stockQuantity, Number(rawInitial)) : Math.max(stockQuantity, 100);
+
   return {
     ...item,
     id,
@@ -110,6 +115,8 @@ function normalizeProduct(item) {
     price: Number(item.price || item.basePrice || 4.99),
     mrp: Number(item.mrp || (item.price ? (item.price * 1.25).toFixed(2) : 6.99)),
     unit: item.unit || item.baseUnit || 'kg',
+    stockQuantity,
+    initialStock,
     image: (item.images && item.images.length > 0 ? item.images[0] : item.image) || '/cherry_tomatoes.png',
     vendor: item.vendorName || item.vendor || 'FresVeg Direct Farm',
     organic: item.organic !== undefined ? item.organic : true,
@@ -278,6 +285,18 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(productData)
       });
+    }
+  },
+
+  updateProductStock: async (id, stockData) => {
+    try {
+      return await request(`/api/products/${id}/stock`, {
+        method: 'PATCH',
+        body: JSON.stringify(stockData)
+      });
+    } catch (err) {
+      console.warn('PATCH /api/products/:id/stock failed:', err.message);
+      throw err;
     }
   },
 

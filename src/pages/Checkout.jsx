@@ -56,7 +56,7 @@ export default function Checkout() {
     }
   }, [user, loading, navigate]);
 
-  const [selectedPayment, setSelectedPayment] = React.useState('PhonePe UPI & Online');
+  const [selectedPayment, setSelectedPayment] = React.useState('Paystack (Card, Transfer & USSD)');
   const [isProcessing,    setIsProcessing]    = React.useState(false);
   const [rzpLoading,      setRzpLoading]      = React.useState(false);
   const [rzpError,        setRzpError]        = React.useState('');
@@ -118,7 +118,7 @@ export default function Checkout() {
       id:   'phonepe',
       name: 'PhonePe UPI & Online',
       icon: Smartphone,
-      desc: 'Instant UPI, QR scan, Cards & Net Banking via PhonePe Gateway',
+      desc: 'Cards & Transfer, QR scan, Cards & Net Banking via PhonePe Gateway',
       badge: 'Fast & Secure',
       isPhonePe: true
     },
@@ -160,8 +160,8 @@ export default function Checkout() {
     try {
       const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const firstItem = cartItems[0] || {};
-      const customerPhone = userProfile?.phone || userProfile?.phoneNumber || user?.phoneNumber || '+91 98765 43210';
-      const vendorPhone = firstItem.vendorPhone || firstItem.phone || '+91 98765 43210';
+      const customerPhone = userProfile?.phone || userProfile?.phoneNumber || user?.phoneNumber || '+234 802 345 6789';
+      const vendorPhone = firstItem.vendorPhone || firstItem.phone || '+234 802 345 6789';
 
       const payload = {
         orderType: 'order',
@@ -278,13 +278,13 @@ export default function Checkout() {
 
     setRzpLoading(false);
 
-    // Amount in paise (1 INR = 100 paise)
+    // Amount in kobo (1 NGN = 100 kobo)
     const amountPaise = Math.round(getTotal() * 100);
 
     const options = {
       key:         RAZORPAY_KEY_ID,
       amount:      amountPaise,
-      currency:    'INR',
+      currency: 'NGN',
       name:        'FresVeg',
       description: `Order — ${cartItems.length} item(s) from FresVeg`,
 
@@ -364,18 +364,18 @@ export default function Checkout() {
   const handleConfirm = () => {
     if (selectedPayment === 'Cash on Delivery') {
       handleConfirmCOD();
-    } else if (selectedPayment === 'Direct Vendor Bank / UPI') {
+    } else if (selectedPayment === 'Direct Vendor Bank Transfer') {
       handleVendorBankPayment();
-    } else if (selectedPayment === 'PhonePe UPI & Online') {
+    } else if (selectedPayment === 'Paystack (Card, Transfer & USSD)') {
       handlePhonePePayment();
     } else {
       handleRazorpayPayment();
     }
   };
 
-  const isVendorBank = selectedPayment === 'Direct Vendor Bank / UPI';
-  const isRazorpay = selectedPayment === 'Pay Online (Razorpay)' || selectedPayment === 'Pay Online';
-  const isPhonePe = selectedPayment === 'PhonePe UPI & Online';
+  const isVendorBank = selectedPayment === 'Direct Vendor Bank Transfer';
+  const isRazorpay = selectedPayment === 'Flutterwave (Alternative Online)' || selectedPayment === 'Pay Online';
+  const isPhonePe = selectedPayment === 'Paystack (Card, Transfer & USSD)';
   const canConfirm = cartItems.length > 0 && address && !isProcessing && !rzpLoading && !phonePeLoading && (!isVendorBank || utrNumber.trim().length >= 4);
 
 
@@ -386,7 +386,7 @@ export default function Checkout() {
       const vName = item.vendorName || item.vendor || item.ownerName || 'Verified Vendor';
       const sName = item.shopName || item.farmName || item.storeName || item.vendorName || 'FresVeg Organic Partner Store';
       const loc = item.location || item.shopLocation || item.farmLocation || item.address || '';
-      const phone = item.vendorPhone || item.phone || item.mobile || '+91 98765 43210';
+      const phone = item.vendorPhone || item.phone || item.mobile || '+234 802 345 6789';
       const vendorId = item.vendorId || item.vendor_id || null;
       const key = `${sName}-${vName}`;
       if (!vendorMap.has(key)) {
@@ -477,11 +477,11 @@ export default function Checkout() {
 
                     <div className="flex items-center gap-1.5 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                       <a
-                        href={`tel:${v.phone || '+919876543210'}`}
+                        href={`tel:${v.phone || '+2348023456789'}`}
                         className="p-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all text-[11px] flex items-center gap-1 cursor-pointer font-headings"
                         title="Call Vendor"
                       >
-                        <Phone size={11} /> {v.phone || '+91 98765 43210'}
+                        <Phone size={11} /> {v.phone || '+234 802 345 6789'}
                       </a>
                       <a
                         href={`https://wa.me/${(v.phone || '919876543210').replace(/[^0-9]/g, '')}`}
@@ -508,7 +508,7 @@ export default function Checkout() {
                 />
                 <div className="flex-grow min-w-0">
                   <h3 className="font-bold text-base text-slate-800 font-headings truncate">{item.name}</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Qty: {item.quantity} × ₹{item.price}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Qty: {item.quantity} × ₦{item.price}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
                     <span className="bg-emerald-100/80 text-emerald-800 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
                       <Store size={11} /> {item.shopName || item.farmName || item.vendorName || 'Organic Shop'}
@@ -521,7 +521,7 @@ export default function Checkout() {
                   </div>
                 </div>
                 <p className="font-extrabold text-slate-800 text-base flex-shrink-0 font-sans">
-                  ₹{(item.price * item.quantity).toFixed(2)}
+                  ₦{(item.price * item.quantity).toFixed(2)}
                 </p>
               </div>
             ))}
@@ -531,7 +531,7 @@ export default function Checkout() {
           <div className="mt-8 pt-6 border-t border-slate-100 space-y-3">
             <div className="flex justify-between text-sm text-slate-500 font-medium px-1">
               <span>Subtotal</span>
-              <span>₹{getTotal().toFixed(2)}</span>
+              <span>₦{getTotal().toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm text-slate-500 font-medium px-1">
               <span>Delivery Fee</span>
@@ -539,7 +539,7 @@ export default function Checkout() {
             </div>
             <div className="flex justify-between items-center bg-emerald-50/30 p-4 rounded-2xl border border-emerald-100/50 mt-4">
               <span className="text-slate-700 font-bold text-sm">Total Amount Payable</span>
-              <span className="text-2xl font-black text-emerald-800 font-sans">₹{getTotal().toFixed(2)}</span>
+              <span className="text-2xl font-black text-emerald-800 font-sans">₦{getTotal().toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -639,7 +639,7 @@ export default function Checkout() {
                           )}
                           {method.id === 'phonepe' && !isSelected && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-50 text-[#5f259f] border border-purple-200">
-                              Instant UPI
+                              Cards & Transfer
                             </span>
                           )}
                         </div>
@@ -687,7 +687,7 @@ export default function Checkout() {
                         <div className="bg-white/95 p-3.5 rounded-2xl border border-emerald-100 space-y-2.5 text-xs shadow-2xs">
                           <div className="flex items-center justify-between py-1 border-b border-slate-100">
                             <span className="text-slate-400 font-medium">Bank Name</span>
-                            <span className="font-bold text-slate-800">{vendorBankDetails?.bankName || 'HDFC Bank'}</span>
+                            <span className="font-bold text-slate-800">{vendorBankDetails?.bankName || 'Access Bank'}</span>
                           </div>
 
                           <div className="flex items-center justify-between py-1 border-b border-slate-100">
@@ -699,11 +699,11 @@ export default function Checkout() {
                             <span className="text-slate-400 font-medium">Account Number</span>
                             <div className="flex items-center gap-2 font-mono">
                               <span className="font-bold text-emerald-800 text-sm tracking-wider">
-                                {vendorBankDetails?.accountNumber || '50100492817291'}
+                                {vendorBankDetails?.accountNumber || '0128945678'}
                               </span>
                               <button
                                 type="button"
-                                onClick={() => handleCopyBankField(vendorBankDetails?.accountNumber || '50100492817291', 'acc')}
+                                onClick={() => handleCopyBankField(vendorBankDetails?.accountNumber || '0128945678', 'acc')}
                                 className="p-1 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold transition-all text-[10px] flex items-center gap-1 cursor-pointer font-headings"
                                 title="Copy Account Number"
                               >
@@ -714,16 +714,16 @@ export default function Checkout() {
                           </div>
 
                           <div className="flex items-center justify-between py-1 border-b border-slate-100">
-                            <span className="text-slate-400 font-medium">IFSC Code</span>
+                            <span className="text-slate-400 font-medium">Bank Sort Code</span>
                             <div className="flex items-center gap-2 font-mono">
                               <span className="font-bold text-slate-800 text-xs uppercase tracking-wider">
-                                {vendorBankDetails?.ifscCode || 'HDFC0001234'}
+                                {vendorBankDetails?.ifscCode || '044 (Access Bank)'}
                               </span>
                               <button
                                 type="button"
-                                onClick={() => handleCopyBankField(vendorBankDetails?.ifscCode || 'HDFC0001234', 'ifsc')}
+                                onClick={() => handleCopyBankField(vendorBankDetails?.ifscCode || '044 (Access Bank)', 'ifsc')}
                                 className="p-1 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold transition-all text-[10px] flex items-center gap-1 cursor-pointer font-headings"
-                                title="Copy IFSC Code"
+                                title="Copy Bank Sort Code"
                               >
                                 {copiedBankField === 'ifsc' ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
                                 {copiedBankField === 'ifsc' ? 'Copied' : 'Copy'}
@@ -743,9 +743,9 @@ export default function Checkout() {
                         <div className="bg-white/95 p-3.5 rounded-2xl border border-emerald-100 space-y-3 shadow-2xs">
                           <div className="flex items-center justify-between">
                             <span className="text-[11px] font-black uppercase text-emerald-900 font-headings flex items-center gap-1.5">
-                              <QrCode size={14} className="text-emerald-600" /> Scan or Pay via UPI
+                              <QrCode size={14} className="text-emerald-600" /> Direct Transfer / Scan to Pay
                             </span>
-                            <span className="text-[10px] text-slate-400 font-medium">GPay · PhonePe · Paytm</span>
+                            <span className="text-[10px] text-slate-400 font-medium">OPay · PalmPay · Kuda · All Nigerian Banks</span>
                           </div>
 
                           <div className="flex flex-col sm:flex-row items-center gap-3 bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100">
@@ -754,7 +754,7 @@ export default function Checkout() {
                                 src={
                                   vendorBankDetails?.qrCodeUrl ||
                                   `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                                    `upi://pay?pa=${vendorBankDetails?.upiId || 'greenearth@okhdfcbank'}&pn=${encodeURIComponent(vendorBankDetails?.accountHolderName || 'Vendor')}&am=${getTotal().toFixed(2)}&cu=INR&tn=${encodeURIComponent('FresVeg Order')}`
+                                    `upi://pay?pa=${vendorBankDetails?.upiId || 'greenearth@accessbank'}&pn=${encodeURIComponent(vendorBankDetails?.accountHolderName || 'Vendor')}&am=${getTotal().toFixed(2)}&cu=NGN&tn=${encodeURIComponent('FresVeg Order')}`
                                   )}`
                                 }
                                 alt="Vendor UPI QR"
@@ -763,14 +763,14 @@ export default function Checkout() {
                             </div>
 
                             <div className="min-w-0 flex-grow text-center sm:text-left space-y-1.5">
-                              <span className="text-[10px] text-slate-400 block font-medium">Vendor UPI ID</span>
+                              <span className="text-[10px] text-slate-400 block font-medium">Vendor Bank Reference / Paystack Tag</span>
                               <div className="flex items-center justify-center sm:justify-start gap-1.5">
                                 <span className="font-mono font-bold text-slate-800 text-xs">
-                                  {vendorBankDetails?.upiId || 'greenearth@okhdfcbank'}
+                                  {vendorBankDetails?.upiId || 'greenearth@accessbank'}
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => handleCopyBankField(vendorBankDetails?.upiId || 'greenearth@okhdfcbank', 'upi')}
+                                  onClick={() => handleCopyBankField(vendorBankDetails?.upiId || 'greenearth@accessbank', 'upi')}
                                   className="p-1 px-2 rounded-lg bg-emerald-100/70 hover:bg-emerald-200/70 text-emerald-800 font-bold transition-all text-[10px] flex items-center gap-1 cursor-pointer font-headings"
                                 >
                                   {copiedBankField === 'upi' ? <Check size={10} /> : <Copy size={10} />}
@@ -778,7 +778,7 @@ export default function Checkout() {
                                 </button>
                               </div>
                               <p className="text-[10px] text-slate-500 font-body">
-                                Total to transfer: <strong className="text-emerald-800 font-sans">₹{getTotal().toFixed(2)}</strong>
+                                Total to transfer: <strong className="text-emerald-800 font-sans">₦{getTotal().toFixed(2)}</strong>
                               </p>
                             </div>
                           </div>
@@ -797,7 +797,7 @@ export default function Checkout() {
                         {/* Customer Payment Reference / UTR Input */}
                         <div className="bg-white p-3.5 rounded-2xl border border-emerald-200/80 space-y-2 shadow-2xs">
                           <label className="text-[11px] font-black uppercase text-slate-800 font-headings block">
-                            Enter Bank Transfer UTR / Transaction Reference Number <span className="text-rose-500">*</span>
+                            Enter Bank Transfer Reference / NIP Session ID <span className="text-rose-500">*</span>
                           </label>
                           <input
                             type="text"
@@ -805,10 +805,10 @@ export default function Checkout() {
                             value={utrNumber}
                             onChange={(e) => setUtrNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
                             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold uppercase tracking-wider outline-none focus:border-emerald-500 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400 placeholder:font-normal placeholder:normal-case font-headings"
-                            placeholder="e.g. 423456789012 or UPI Ref ID"
+                            placeholder="e.g. 100004241024123456 or Transfer Ref"
                           />
                           <div className="flex items-center justify-between text-[10px] text-slate-400">
-                            <span>Enter 12-digit UTR from your bank or UPI transaction screen</span>
+                            <span>Enter NIP Session ID or reference from your bank app / USSD receipt</span>
                             {utrNumber.trim().length >= 4 && (
                               <span className="text-emerald-600 font-bold flex items-center gap-0.5">
                                 <CheckCheck size={12} /> Reference entered
@@ -826,7 +826,7 @@ export default function Checkout() {
                           <div className="flex items-center justify-between mb-3">
                             <p className="text-[10px] font-bold text-purple-900 uppercase tracking-widest font-headings flex items-center gap-1.5">
                               <Zap size={12} className="text-amber-500 fill-amber-500" />
-                              PhonePe Instant Gateway Methods
+                              Paystack Instant Payment Channels
                             </p>
                             <span className="bg-purple-100 text-[#5f259f] text-[9px] font-extrabold px-2 py-0.5 rounded-full font-mono">
                               0% Surcharge
@@ -858,8 +858,8 @@ export default function Checkout() {
                             पे
                           </div>
                           <div className="flex-grow min-w-0">
-                            <p className="text-xs font-bold text-slate-800">PhonePe Certified Gateway</p>
-                            <p className="text-[10px] text-slate-400 leading-tight">UPI Apps · Dynamic QR · Net Banking · Cards</p>
+                            <p className="text-xs font-bold text-slate-800">Paystack Certified Gateway</p>
+                            <p className="text-[10px] text-slate-400 leading-tight">Virtual Accounts · Verve / Mastercard · USSD (*737#) · OPay</p>
                           </div>
                           <div className="bg-[#5f259f] text-white text-[9px] font-black px-2 py-0.5 rounded tracking-wider">
                             SECURE
@@ -870,9 +870,9 @@ export default function Checkout() {
                         <div className="flex items-center justify-between bg-gradient-to-r from-[#5f259f] to-indigo-800 text-white rounded-xl px-4 py-3 shadow-md shadow-purple-950/20">
                           <div className="flex items-center gap-2">
                             <Zap size={14} className="text-amber-300 fill-amber-300" />
-                            <span className="text-xs font-bold font-headings">Total Payable via PhonePe</span>
+                            <span className="text-xs font-bold font-headings">Total Payable via Paystack</span>
                           </div>
-                          <span className="text-lg font-black font-sans">₹{getTotal().toFixed(2)}</span>
+                          <span className="text-lg font-black font-sans">₦{getTotal().toFixed(2)}</span>
                         </div>
 
                         {phonePeError && (
@@ -929,7 +929,7 @@ export default function Checkout() {
                             <Zap size={14} className="text-amber-400 fill-amber-400" />
                             <span className="text-xs font-bold font-headings">Total to Pay Online</span>
                           </div>
-                          <span className="text-lg font-black font-sans">₹{getTotal().toFixed(2)}</span>
+                          <span className="text-lg font-black font-sans">₦{getTotal().toFixed(2)}</span>
                         </div>
 
                         {rzpError && (
@@ -969,17 +969,17 @@ export default function Checkout() {
               ) : isPhonePe ? (
                 <>
                   <span className="w-5 h-5 rounded-full bg-white text-[#5f259f] font-black text-xs flex items-center justify-center shadow-xs">पे</span>
-                  Pay ₹{getTotal().toFixed(2)} with PhonePe
+                  Pay ₦{getTotal().toFixed(2)} with PhonePe
                 </>
               ) : isRazorpay ? (
                 <>
                   <Zap size={16} className="text-amber-300 fill-amber-300" />
-                  Pay ₹{getTotal().toFixed(2)} Securely
+                  Pay ₦{getTotal().toFixed(2)} Securely
                 </>
               ) : isVendorBank ? (
                 <>
                   <Landmark size={16} />
-                  Confirm Order & Submit Bank Transfer (₹{getTotal().toFixed(2)})
+                  Confirm Order & Submit Bank Transfer (₦{getTotal().toFixed(2)})
                 </>
               ) : (
                 <>

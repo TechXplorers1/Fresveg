@@ -32,7 +32,7 @@ export default function Home() {
       {
          id: 'green-valley-farm',
          name: 'Green Valley Organic Store',
-         location: 'Karjat, Maharashtra',
+         location: 'Epe, Lagos State',
          distance: '3.5 km away',
          rating: 4.9,
          discountText: '35% OFF SPECIAL',
@@ -43,18 +43,18 @@ export default function Home() {
       {
          id: 'sunshine-produce',
          name: 'Sunshine Organic Market',
-         location: 'Nashik, Maharashtra',
+         location: 'Jos, Plateau State',
          distance: '14.2 km away',
          rating: 4.8,
          discountText: '30% OFF FRUITS',
-         offerTagline: 'Flat 30% OFF on seasonal Alphonso mangoes & organic strawberries.',
+         offerTagline: 'Flat 30% OFF on seasonal Ogbomoso mangoes & organic strawberries.',
          tags: ['Farm Fruits', 'Juices & Jams', 'Certified Organic'],
          image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=600&q=80'
       },
       {
          id: 'root-essentials',
          name: 'Root Essentials Hub',
-         location: 'Pune, Maharashtra',
+         location: 'Ibadan, Oyo State',
          distance: '8.5 km away',
          rating: 4.8,
          discountText: '25% OFF BULK',
@@ -64,8 +64,8 @@ export default function Home() {
       },
       {
          id: 'orchard-farms-store',
-         name: 'Orchard Berry & Honey Store',
-         location: 'Mahabaleshwar, MH',
+         name: 'Jos Berry & Honey Store',
+         location: 'Plateau Highlands, Jos',
          distance: '4.8 km away',
          rating: 4.9,
          discountText: '30% OFF HONEY',
@@ -172,7 +172,7 @@ export default function Home() {
    const displayedOfferMarkets = activeOfferMarkets.filter(m => {
       if (selectedMarketFilter === 'all') return true;
       if (selectedMarketFilter === 'high_discount') return (m.discountText || '').includes('35%') || (m.discountText || '').includes('30%');
-      if (selectedMarketFilter === 'local') return (m.location || '').toLowerCase().includes('karjat') || (m.distance || '').includes('3.5');
+      if (selectedMarketFilter === 'local') return (m.location || '').toLowerCase().includes('epe') || (m.location || '').toLowerCase().includes('lagos') || (m.distance || '').includes('3.5');
       if (selectedMarketFilter === 'top_rated') return (m.rating || 0) >= 4.8;
       return true;
    }).slice(0, 4);
@@ -407,11 +407,11 @@ export default function Home() {
                                  <div>
                                     <div className="flex items-baseline gap-1.5">
                                        <span className="text-lg font-black text-slate-900 font-sans">
-                                          ₹{parseFloat(product.price).toFixed(2)}
+                                          ₦{parseFloat(product.price).toFixed(2)}
                                        </span>
                                        {product.mrp && product.mrp > product.price && (
                                           <span className="text-xs text-slate-400 line-through font-body">
-                                             ₹{parseFloat(product.mrp).toFixed(2)}
+                                             ₦{parseFloat(product.mrp).toFixed(2)}
                                           </span>
                                        )}
                                     </div>
@@ -473,7 +473,7 @@ export default function Home() {
                   {[
                      { id: 'all', label: '🏷️ All Offer Markets' },
                      { id: 'high_discount', label: '🔥 Up to 35% OFF' },
-                     { id: 'local', label: '📍 Near You (Karjat/Local)' },
+                     { id: 'local', label: '📍 Near You (Lagos/Epe)' },
                      { id: 'top_rated', label: '⭐ Top Rated (4.8+)' }
                   ].map(chip => (
                      <button

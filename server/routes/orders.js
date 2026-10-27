@@ -104,6 +104,25 @@ router.post('/', async (req, res) => {
 
     const orderRow = result.rows[0];
 
+    // Deduct inventory stock for purchased products
+    try {
+      const orderItems = Array.isArray(items) ? items : (typeof items === 'string' ? JSON.parse(items) : []);
+      for (const item of orderItems) {
+        const prodId = item.id || item.productId;
+        const qtyOrdered = parseInt(item.quantity || 1);
+        if (prodId && qtyOrdered > 0) {
+          await query(
+            `UPDATE products
+             SET stock_quantity = GREATEST(0, COALESCE(stock_quantity, 100) - $1)
+             WHERE id = $2 OR LOWER(id) = LOWER($2)`,
+            [qtyOrdered, String(prodId)]
+          );
+        }
+      }
+    } catch (stockErr) {
+      console.warn('Notice deducting inventory stock for order:', stockErr.message);
+    }
+
     // Real Notification for Customer
     try {
       await query(
@@ -113,7 +132,7 @@ router.post('/', async (req, res) => {
           `notif_${Date.now()}_oc`,
           resolvedCustomerId,
           '📦 Order Placed Successfully',
-          `Your order #${generatedId} for ₹${parseFloat(total || 0).toFixed(2)} has been placed successfully.`,
+          `Your order #${generatedId} for ₦${parseFloat(total || 0).toFixed(2)} has been placed successfully.`,
           'order',
           '/profile?tab=orders'
         ]
@@ -136,7 +155,7 @@ router.post('/', async (req, res) => {
             `notif_${Date.now()}_vb`,
             targetVendorId,
             '💳 New Bank Transfer Order Received',
-            `Order #${generatedId} of ₹${numTotal.toFixed(2)} received with UTR: ${utr}. Please check your bank account and verify payment.`,
+            `Order #${generatedId} of ₦${numTotal.toFixed(2)} received with UTR: ${utr}. Please check your bank account and verify payment.`,
             'order',
             '/profile?tab=orders'
           ]

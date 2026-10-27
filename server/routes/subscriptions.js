@@ -70,17 +70,17 @@ export const SUBSCRIPTION_PLANS = [
 ];
 
 export const FRESVEG_BILLING_DETAILS = {
-  companyName: 'FresVeg Technologies Private Limited',
-  gstin: '29ABCDE1234F1Z5',
-  pan: 'ABCDE1234F',
-  billingAddress: '42, AgriTech Tower, 100 Feet Road, Indiranagar, Bengaluru, Karnataka 560038',
-  bankName: 'HDFC Bank Ltd',
-  accountName: 'FresVeg Technologies Pvt Ltd',
-  accountNumber: '50200088912345',
-  ifscCode: 'HDFC0001234',
-  accountType: 'Current Account',
-  branch: 'Indiranagar, Bengaluru',
-  upiId: 'fresveg.billing@hdfcbank'
+  companyName: 'FresVeg Nigeria Limited',
+  gstin: 'TIN-20489123-0001',
+  pan: 'RC-1849201',
+  billingAddress: 'Plot 12, Commercial Avenue, Victoria Island, Lagos, Nigeria 101241',
+  bankName: 'Access Bank Plc',
+  accountName: 'FresVeg Nigeria Limited',
+  accountNumber: '0128945678',
+  ifscCode: '044 (Access Bank)',
+  accountType: 'Corporate Current Account',
+  branch: 'Victoria Island Branch, Lagos',
+  upiId: 'fresveg.billing@accessbank'
 };
 
 // Helper to check if subscription object is currently active
@@ -97,8 +97,8 @@ router.get('/plans', (req, res) => {
   res.json({
     plans: SUBSCRIPTION_PLANS,
     billingDetails: FRESVEG_BILLING_DETAILS,
-    currency: 'INR',
-    symbol: '₹'
+    currency: 'NGN',
+    symbol: '₦'
   });
 });
 

@@ -64,7 +64,7 @@ export default function DeliveryOrdersTab({
                                             </div>
                                             <div className="text-xs font-medium">
                                                 <p className="text-slate-400 uppercase font-black tracking-wider mb-0.5 font-headings">Order Total</p>
-                                                <p className="text-emerald-600 font-extrabold font-body">₹{parseFloat(order.total).toFixed(2)}</p>
+                                                <p className="text-emerald-600 font-extrabold font-body">₦{parseFloat(order.total).toFixed(2)}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
@@ -97,10 +97,10 @@ export default function DeliveryOrdersTab({
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 bg-emerald-50/50 p-2 rounded-xl border border-emerald-100/50">
-                                                    <span className="font-bold text-slate-800 font-mono text-xs">{order.vendorPhone || order.items?.[0]?.vendorPhone || '+91 98765 43210'}</span>
+                                                    <span className="font-bold text-slate-800 font-mono text-xs">{order.vendorPhone || order.items?.[0]?.vendorPhone || '+234 802 345 6789'}</span>
                                                     <div className="flex items-center gap-1">
                                                         <a
-                                                            href={`tel:${order.vendorPhone || order.items?.[0]?.vendorPhone || '+919876543210'}`}
+                                                            href={`tel:${order.vendorPhone || order.items?.[0]?.vendorPhone || '+2348023456789'}`}
                                                             className="p-1 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 font-headings cursor-pointer"
                                                             title="Call Vendor"
                                                         >
@@ -131,10 +131,10 @@ export default function DeliveryOrdersTab({
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 bg-blue-50/50 p-2 rounded-xl border border-blue-100/50">
-                                                    <span className="font-bold text-slate-800 font-mono text-xs">{order.customerPhone || '+91 98765 43210'}</span>
+                                                    <span className="font-bold text-slate-800 font-mono text-xs">{order.customerPhone || '+234 802 345 6789'}</span>
                                                     <div className="flex items-center gap-1">
                                                         <a
-                                                            href={`tel:${order.customerPhone || '+919876543210'}`}
+                                                            href={`tel:${order.customerPhone || '+2348023456789'}`}
                                                             className="p-1 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] flex items-center gap-1 font-headings cursor-pointer"
                                                             title="Call Customer"
                                                         >
@@ -269,11 +269,11 @@ export default function DeliveryOrdersTab({
                                                     <div className="flex items-center justify-between gap-2 mt-3 bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-100/60">
                                                         <div>
                                                             <span className="text-[9px] font-black uppercase text-emerald-900 block font-headings">Vendor Phone</span>
-                                                            <span className="font-bold text-slate-800 font-mono text-xs">{order.vendorPhone || order.items?.[0]?.vendorPhone || '+91 98765 43210'}</span>
+                                                            <span className="font-bold text-slate-800 font-mono text-xs">{order.vendorPhone || order.items?.[0]?.vendorPhone || '+234 802 345 6789'}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1">
                                                             <a
-                                                                href={`tel:${order.vendorPhone || order.items?.[0]?.vendorPhone || '+919876543210'}`}
+                                                                href={`tel:${order.vendorPhone || order.items?.[0]?.vendorPhone || '+2348023456789'}`}
                                                                 className="p-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 font-headings cursor-pointer"
                                                             >
                                                                 <Phone size={11} /> Call Vendor
@@ -314,11 +314,11 @@ export default function DeliveryOrdersTab({
                                                     <div className="flex items-center justify-between gap-2 mt-3 bg-blue-50/70 p-2.5 rounded-xl border border-blue-100/60">
                                                         <div>
                                                             <span className="text-[9px] font-black uppercase text-blue-900 block font-headings">Customer Phone</span>
-                                                            <span className="font-bold text-slate-800 font-mono text-xs">{order.customerPhone || '+91 98765 43210'}</span>
+                                                            <span className="font-bold text-slate-800 font-mono text-xs">{order.customerPhone || '+234 802 345 6789'}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1">
                                                             <a
-                                                                href={`tel:${order.customerPhone || '+919876543210'}`}
+                                                                href={`tel:${order.customerPhone || '+2348023456789'}`}
                                                                 className="p-1.5 px-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] flex items-center gap-1 font-headings cursor-pointer"
                                                             >
                                                                 <Phone size={11} /> Call Customer
@@ -349,11 +349,11 @@ export default function DeliveryOrdersTab({
                                         <div className="bg-white/80 rounded-2xl border border-slate-100 shadow-xs p-4 flex items-center justify-between">
                                             <div>
                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-headings">Order Total Value</p>
-                                                <p className="text-lg font-black text-slate-800 mt-0.5 font-body">₹{parseFloat(order.total).toFixed(2)}</p>
+                                                <p className="text-lg font-black text-slate-800 mt-0.5 font-body">₦{parseFloat(order.total).toFixed(2)}</p>
                                             </div>
                                             <div className="bg-emerald-50 text-emerald-800 border border-emerald-100/50 px-4 py-2 rounded-xl text-right">
                                                 <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest font-headings">Est. Earnings</p>
-                                                <p className="text-lg font-black text-emerald-800 mt-0.5 font-body">₹40.00</p>
+                                                <p className="text-lg font-black text-emerald-800 mt-0.5 font-body">₦40.00</p>
                                             </div>
                                         </div>
 
@@ -400,7 +400,7 @@ export default function DeliveryOrdersTab({
                                 </div>
                                 <div className="text-right">
                                     <h3 className="font-bold text-emerald-800 text-sm font-headings">Total Earnings</h3>
-                                    <p className="text-3xl font-black text-emerald-900 mt-1 font-body">₹{orders.filter(o => o.deliveryBoyId === user.uid && o.status === 'delivered').length * 40}.00</p>
+                                    <p className="text-3xl font-black text-emerald-900 mt-1 font-body">₦{orders.filter(o => o.deliveryBoyId === user.uid && o.status === 'delivered').length * 40}.00</p>
                                 </div>
                             </div>
 
@@ -413,7 +413,7 @@ export default function DeliveryOrdersTab({
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <span className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-bold uppercase text-[10px] border border-emerald-100/30 tracking-wider font-headings">Success</span>
-                                            <span className="text-emerald-600 font-black text-sm font-headings">₹40.00 Earned</span>
+                                            <span className="text-emerald-600 font-black text-sm font-headings">₦40.00 Earned</span>
                                         </div>
                                     </div>
                                 ))}

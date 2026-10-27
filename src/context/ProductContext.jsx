@@ -72,11 +72,19 @@ export const ProductProvider = ({ children }) => {
     refreshCategories();
     refreshProducts();
 
+    const handleOrderPlaced = () => {
+      refreshProducts();
+    };
+    window.addEventListener('fresveg_order_placed', handleOrderPlaced);
+
     // Poll backend every 10 seconds to stay updated
     const interval = setInterval(() => {
       refreshProducts();
     }, 10000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('fresveg_order_placed', handleOrderPlaced);
+    };
   }, []);
 
   const addCategory = async (categoryName, categoryImage) => {
@@ -135,6 +143,17 @@ export const ProductProvider = ({ children }) => {
     }
   };
 
+  const updateProductStock = async (id, stockData) => {
+    try {
+      const res = await api.updateProductStock(id, stockData);
+      setProducts(prev => prev.map(p => String(p.id) === String(id) ? { ...p, stockQuantity: res.stockQuantity, initialStock: res.initialStock } : p));
+      return res;
+    } catch (error) {
+      console.error('Error updating stock in PostgreSQL:', error);
+      throw error;
+    }
+  };
+
   const deleteProduct = async (id) => {
     try {
       await api.deleteProduct(id);
@@ -149,8 +168,10 @@ export const ProductProvider = ({ children }) => {
     <ProductContext.Provider value={{ 
       products, 
       loading,
+      refreshProducts,
       addProduct, 
       updateProduct,
+      updateProductStock,
       deleteProduct,
       categories,
       categoriesWithDetails,

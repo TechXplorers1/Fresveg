@@ -421,7 +421,7 @@ export default function Cart() {
                 <div className="flex-grow min-w-0">
                   <h3 className="font-bold text-base text-slate-800 font-headings truncate">{item.name}</h3>
                   <p className="text-xs text-slate-400 mt-0.5">{item.vendor}</p>
-                  <p className="text-sm font-bold text-emerald-600 mt-1 font-sans">₹{item.price}/{item.unit}</p>
+                  <p className="text-sm font-bold text-emerald-600 mt-1 font-sans">₦{item.price}/{item.unit}</p>
                 </div>
 
                 {/* Quantity adjustments */}
@@ -443,7 +443,7 @@ export default function Cart() {
 
                 {/* Subtotal & Action */}
                 <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-0 border-slate-100 mt-2 sm:mt-0 gap-2">
-                  <p className="font-extrabold text-slate-800 text-base font-sans">₹{(item.price * item.quantity).toFixed(2)}</p>
+                  <p className="font-extrabold text-slate-800 text-base font-sans">₦{(item.price * item.quantity).toFixed(2)}</p>
                   <button
                     onClick={() => removeFromCart(item.id)}
                     className="w-8 h-8 rounded-lg flex items-center justify-center text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200"
@@ -459,7 +459,7 @@ export default function Cart() {
           <div className="mt-8 pt-6 border-t border-slate-100">
             <div className="flex justify-between items-center bg-emerald-50/30 p-4 rounded-2xl border border-emerald-100/50">
               <span className="text-slate-600 font-medium text-sm">Cart Total Amount:</span>
-              <span className="text-2xl font-black text-emerald-800 font-sans">₹{getTotal().toFixed(2)}</span>
+              <span className="text-2xl font-black text-emerald-800 font-sans">₦{getTotal().toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -640,7 +640,7 @@ export default function Cart() {
                     className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm ${
                        errors.city ? 'border-red-400 bg-red-50/10' : 'border-slate-200 bg-white/50'
                      }`}
-                    placeholder="Mumbai"
+                    placeholder="Ikeja"
                   />
                   {errors.city && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.city}</p>}
                 </div>
@@ -654,7 +654,7 @@ export default function Cart() {
                     className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm ${
                        errors.state ? 'border-red-400 bg-red-50/10' : 'border-slate-200 bg-white/50'
                      }`}
-                    placeholder="Maharashtra"
+                    placeholder="Lagos State"
                   />
                   {errors.state && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.state}</p>}
                 </div>
@@ -668,7 +668,7 @@ export default function Cart() {
                     className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm ${
                        errors.zipCode ? 'border-red-400 bg-red-50/10' : 'border-slate-200 bg-white/50'
                      }`}
-                    placeholder="400001"
+                    placeholder="100001"
                   />
                   {errors.zipCode && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.zipCode}</p>}
                 </div>
@@ -682,7 +682,7 @@ export default function Cart() {
                     className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm ${
                        errors.country ? 'border-red-400 bg-red-50/10' : 'border-slate-200 bg-white/50'
                      }`}
-                    placeholder="India"
+                    placeholder="Nigeria"
                   />
                   {errors.country && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.country}</p>}
                 </div>

@@ -129,7 +129,7 @@ export default function OrderTrackingMap({
         zoomControl: true,
         scrollWheelZoom: true,
         attributionControl: false
-      }).setView([20.5937, 78.9629], 5); // Default center on India
+      }).setView([9.0820, 8.6753], 6); // Default center on Nigeria
 
       window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19

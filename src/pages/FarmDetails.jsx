@@ -1232,11 +1232,11 @@ export default function FarmDetails() {
           <div className="flex flex-wrap items-center gap-2">
             {isFree ? (
               <span className="bg-emerald-600/90 text-white px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm border border-emerald-400/40 backdrop-blur-md">
-                <Sparkles size={13} className="text-amber-300" /> FREE ENTRY (₹0)
+                <Sparkles size={13} className="text-amber-300" /> FREE ENTRY (₦0)
               </span>
             ) : (
               <span className="bg-emerald-600/90 text-white px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-sm border border-emerald-400/40 backdrop-blur-md">
-                ₹{isEditing ? editForm.costPerPerson : farm.costPerPerson} / GUEST
+                ₦{isEditing ? editForm.costPerPerson : farm.costPerPerson} / GUEST
               </span>
             )}
             <span className="bg-white/10 backdrop-blur-md text-white border border-white/20 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
@@ -2279,7 +2279,7 @@ export default function FarmDetails() {
                       <div className="space-y-2 text-left">
                         <h4 className="font-bold text-slate-800 text-xs font-headings line-clamp-1 group-hover:text-emerald-600 transition-colors">{product.name}</h4>
                         <div className="pt-1 flex items-center justify-between">
-                          <span className="font-extrabold text-slate-900 text-sm font-sans">₹{product.price} <span className="text-[10px] text-slate-400">/{product.unit}</span></span>
+                          <span className="font-extrabold text-slate-900 text-sm font-sans">₦{product.price} <span className="text-[10px] text-slate-400">/{product.unit}</span></span>
                           {isFarmOwner ? (
                             <span className="text-[9px] font-bold text-slate-500 italic bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
                               Owner View
@@ -2616,7 +2616,7 @@ export default function FarmDetails() {
                       : 'border-slate-200 text-slate-600 bg-white'
                       }`}
                   >
-                    <span>🆓 Free (₹0)</span>
+                    <span>🆓 Free (₦0)</span>
                   </button>
 
                   <button
@@ -2633,7 +2633,7 @@ export default function FarmDetails() {
 
                 {(editForm.costType === 'payable' || Number(editForm.costPerPerson) > 0) && (
                   <div className="relative pt-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₦</span>
                     <input
                       type="number"
                       min="1"
@@ -2704,7 +2704,7 @@ export default function FarmDetails() {
                         ...prev,
                         socialLinks: { ...(prev.socialLinks || {}), whatsapp: e.target.value }
                       }))}
-                      placeholder="E.g. +91 9876543210 or https://wa.me/..."
+                      placeholder="E.g. +234 8023456789 or https://wa.me/..."
                       className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -2732,9 +2732,9 @@ export default function FarmDetails() {
                 <div>
                   <p className="text-[10px] text-emerald-700 font-black uppercase tracking-wider font-headings">Entry Ticket</p>
                   {isFree ? (
-                    <p className="text-2xl font-black text-emerald-600 font-headings">FREE ENTRY <span className="text-xs font-normal text-emerald-600/70">(₹0)</span></p>
+                    <p className="text-2xl font-black text-emerald-600 font-headings">FREE ENTRY <span className="text-xs font-normal text-emerald-600/70">(₦0)</span></p>
                   ) : (
-                    <p className="text-2xl font-black text-slate-900 font-headings">₹{farm.costPerPerson} <span className="text-xs font-normal text-slate-400">/ person</span></p>
+                    <p className="text-2xl font-black text-slate-900 font-headings">₦{farm.costPerPerson} <span className="text-xs font-normal text-slate-400">/ person</span></p>
                   )}
                 </div>
                 <span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-emerald-100">
@@ -3009,7 +3009,7 @@ export default function FarmDetails() {
               {/* Selling Price, Quantity & Unit Grid */}
               <div className="grid grid-cols-3 gap-2.5">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Selling Price (₹) *</label>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Selling Price (₦) *</label>
                   <input
                     required
                     type="number"
@@ -3302,14 +3302,14 @@ export default function FarmDetails() {
                 </div>
               </div>
 
-              {/* 4. Stay / Accommodation Price (₹) */}
+              {/* 4. Stay / Accommodation Price (₦) */}
               <div>
                 <label className="text-[11px] font-bold text-slate-700 uppercase font-headings flex items-center justify-between">
-                  <span>Stay / Accommodation Price (₹)</span>
+                  <span>Stay / Accommodation Price (₦)</span>
                   <span className="text-[10px] text-amber-700 font-bold normal-case font-body">(Excluded from visit farm Entry)</span>
                 </label>
                 <div className="relative mt-1">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs pointer-events-none">₹</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs pointer-events-none">₦</span>
                   <input
                     type="text"
                     value={newAcc.price}
@@ -3321,7 +3321,7 @@ export default function FarmDetails() {
                 {/* Price preset chips */}
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   <span className="text-[10px] font-bold text-slate-400 self-center font-headings">Presets:</span>
-                  {['Free', '₹500 / night', '₹1,000 / night', '₹1,500 / night', '₹2,000 / night'].map((preset) => (
+                  {['Free', '₦500 / night', '₦1,000 / night', '₦1,500 / night', '₦2,000 / night'].map((preset) => (
                     <button
                       key={preset}
                       type="button"

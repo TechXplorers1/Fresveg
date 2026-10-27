@@ -9,10 +9,10 @@ import {
 
 // ─── PhonePe Config ───────────────────────────────────────────────────────────
 const PHONEPE_METHODS = [
-  { label: 'PhonePe App', color: '#5f259f', abbr: 'पे' },
-  { label: 'UPI QR Code', color: '#16a34a', abbr: 'QR' },
-  { label: 'GPay · Paytm', color: '#2563eb', abbr: 'UPI' },
-  { label: 'Cards & NB',  color: '#d97706', abbr: 'CARD' },
+  { label: 'Bank Transfer', color: '#09a5db', abbr: 'NIP' },
+  { label: 'Debit Cards',   color: '#00c3f8', abbr: 'CARD' },
+  { label: 'USSD Banking',  color: '#1e293b', abbr: '*737#' },
+  { label: 'OPay / PalmPay',color: '#16a34a', abbr: 'WAL' },
 ];
 
 // ─── Razorpay Config ───────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ export default function FarmCheckout() {
   const navigate = useNavigate();
 
   const [booking, setBooking] = React.useState(null);
-  const [selectedPayment, setSelectedPayment] = React.useState('PhonePe UPI & Online');
+  const [selectedPayment, setSelectedPayment] = React.useState('Paystack (Card, Transfer & USSD)');
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [rzpLoading, setRzpLoading] = React.useState(false);
   const [rzpError, setRzpError] = React.useState('');
@@ -84,9 +84,9 @@ export default function FarmCheckout() {
   const PAYMENT_METHODS = [
     {
       id: 'phonepe',
-      name: 'PhonePe UPI & Online',
+      name: 'Paystack (Card, Transfer & USSD)',
       icon: Smartphone,
-      desc: 'Instant UPI, QR scan, Cards & Net Banking via PhonePe',
+      desc: 'Instant NUBAN Bank Transfer, Debit Cards (Verve/Mastercard), USSD & OPay/PalmPay',
       badge: 'Fast & Secure',
       isPhonePe: true
     },
@@ -98,9 +98,9 @@ export default function FarmCheckout() {
     },
     {
       id: 'razorpay',
-      name: 'Pay Online (Razorpay)',
+      name: 'Flutterwave (Alternative Online)',
       icon: CreditCard,
-      desc: 'Cards · UPI · Net Banking · Wallets via Razorpay',
+      desc: 'Cards · Instant Bank Transfer · Mobile Wallets via Flutterwave',
     },
   ];
 
@@ -110,7 +110,7 @@ export default function FarmCheckout() {
 
     try {
       const bookingId = `book_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      const customerPhone = userProfile?.phone || userProfile?.phoneNumber || user?.phoneNumber || '+91 98765 43210';
+      const customerPhone = userProfile?.phone || userProfile?.phoneNumber || user?.phoneNumber || '+234 802 345 6789';
 
       const payload = {
         orderType: 'farm_booking',
@@ -153,8 +153,8 @@ export default function FarmCheckout() {
       customerName: userProfile?.displayName || user?.displayName || 'Customer',
       userEmail: user.email,
       customerEmail: user.email,
-      userPhone: userProfile?.phone || userProfile?.phoneNumber || user?.phoneNumber || '+91 98765 43210',
-      customerPhone: userProfile?.phone || userProfile?.phoneNumber || user?.phoneNumber || '+91 98765 43210',
+      userPhone: userProfile?.phone || userProfile?.phoneNumber || user?.phoneNumber || '+234 802 345 6789',
+      customerPhone: userProfile?.phone || userProfile?.phoneNumber || user?.phoneNumber || '+234 802 345 6789',
       visitDate: booking.date,
       date: booking.date,
       guests: booking.visitorsCount || 1,
@@ -201,7 +201,7 @@ export default function FarmCheckout() {
     const options = {
       key: RAZORPAY_KEY_ID,
       amount: amountPaise,
-      currency: 'INR',
+      currency: 'NGN',
       name: 'FresVeg',
       description: `Farm Visit — ${booking.farmName} · ${booking.visitorsCount} visitor(s)`,
       prefill: {
@@ -248,7 +248,7 @@ export default function FarmCheckout() {
   const handleConfirm = () => {
     if (selectedPayment === 'Cash on Visit' || selectedPayment === 'Cash on Delivery') {
       handleConfirmCOD();
-    } else if (selectedPayment === 'PhonePe UPI & Online') {
+    } else if (selectedPayment === 'Paystack (Card, Transfer & USSD)') {
       handlePhonePePayment();
     } else {
       handleRazorpayPayment();
@@ -257,7 +257,7 @@ export default function FarmCheckout() {
 
   const canConfirm = !isProcessing && !rzpLoading && !phonePeLoading;
   const isRazorpay = selectedPayment.includes('Razorpay') || selectedPayment === 'Pay Online';
-  const isPhonePe = selectedPayment === 'PhonePe UPI & Online';
+  const isPhonePe = selectedPayment === 'Paystack (Card, Transfer & USSD)';
 
 
   // ── Success Screen ────────────────────────────────────────────────────────
@@ -399,11 +399,11 @@ export default function FarmCheckout() {
               <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-2 bg-white/80 p-2.5 rounded-xl border border-emerald-100/60 mt-1">
                 <div>
                   <span className="text-slate-400 font-bold uppercase tracking-wider block text-[9px] font-headings">Vendor Contact Phone:</span>
-                  <span className="font-extrabold text-slate-800 font-mono text-xs">{booking.vendorPhone || booking.phone || '+91 98765 43210'}</span>
+                  <span className="font-extrabold text-slate-800 font-mono text-xs">{booking.vendorPhone || booking.phone || '+234 802 345 6789'}</span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <a
-                    href={`tel:${booking.vendorPhone || booking.phone || '+919876543210'}`}
+                    href={`tel:${booking.vendorPhone || booking.phone || '+2348023456789'}`}
                     className="p-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all text-[11px] flex items-center gap-1 cursor-pointer font-headings"
                     title="Call Farm Vendor"
                   >
@@ -629,7 +629,7 @@ export default function FarmCheckout() {
                           <div className="flex items-center justify-between mb-3">
                             <p className="text-[10px] font-bold text-purple-900 uppercase tracking-widest font-headings flex items-center gap-1.5">
                               <Zap size={12} className="text-amber-500 fill-amber-500" />
-                              PhonePe Instant Gateway Methods
+                              Paystack Instant Payment Channels
                             </p>
                             <span className="bg-purple-100 text-[#5f259f] text-[9px] font-extrabold px-2 py-0.5 rounded-full font-mono">
                               0% Surcharge
@@ -655,27 +655,27 @@ export default function FarmCheckout() {
                           </div>
                         </div>
 
-                        {/* PhonePe Trust Seal */}
+                        {/* Paystack Trust Seal */}
                         <div className="flex items-center gap-2.5 bg-white/90 border border-purple-100 rounded-xl p-3 shadow-xs">
-                          <div className="w-8 h-8 rounded-lg bg-[#5f259f] text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
-                            पे
+                          <div className="w-8 h-8 rounded-lg bg-[#09a5db] text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
+                            PS
                           </div>
                           <div className="flex-grow min-w-0">
-                            <p className="text-xs font-bold text-slate-800">PhonePe Certified Gateway</p>
-                            <p className="text-[10px] text-slate-400 leading-tight">UPI Apps · Dynamic QR · Net Banking · Cards</p>
+                            <p className="text-xs font-bold text-slate-800">Paystack Certified Gateway</p>
+                            <p className="text-[10px] text-slate-400 leading-tight">Virtual NUBAN Accounts · Verve / Mastercard · USSD (*737#) · OPay</p>
                           </div>
-                          <div className="bg-[#5f259f] text-white text-[9px] font-black px-2 py-0.5 rounded tracking-wider">
+                          <div className="bg-[#09a5db] text-white text-[9px] font-black px-2 py-0.5 rounded tracking-wider">
                             SECURE
                           </div>
                         </div>
 
                         {/* Amount Preview */}
-                        <div className="flex items-center justify-between bg-gradient-to-r from-[#5f259f] to-indigo-800 text-white rounded-xl px-4 py-3 shadow-md shadow-purple-950/20">
+                        <div className="flex items-center justify-between bg-gradient-to-r from-emerald-700 to-teal-800 text-white rounded-xl px-4 py-3 shadow-md shadow-emerald-950/20">
                           <div className="flex items-center gap-2">
                             <Zap size={14} className="text-amber-300 fill-amber-300" />
-                            <span className="text-xs font-bold font-headings">Total Payable via PhonePe</span>
+                            <span className="text-xs font-bold font-headings">Total Payable via Paystack</span>
                           </div>
-                          <span className="text-lg font-black font-sans">₹{booking.totalAmount.toFixed(2)}</span>
+                          <span className="text-lg font-black font-sans">₦{booking.totalAmount.toFixed(2)}</span>
                         </div>
 
                         {phonePeError && (
@@ -732,7 +732,7 @@ export default function FarmCheckout() {
                             <Zap size={14} className="text-amber-400 fill-amber-400" />
                             <span className="text-xs font-bold font-headings">Total to Pay Online</span>
                           </div>
-                          <span className="text-lg font-black font-sans">&#x20B9;{booking.totalAmount.toFixed(2)}</span>
+                          <span className="text-lg font-black font-sans">₦{booking.totalAmount.toFixed(2)}</span>
                         </div>
 
                         {rzpError && (

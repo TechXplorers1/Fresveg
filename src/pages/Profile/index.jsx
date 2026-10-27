@@ -39,7 +39,7 @@ import { getPreciseCurrentPosition, reverseGeocodePrecise, forwardGeocodeAddress
 
 export default function Profile() {
     const { user, userProfile, loading, updateProfile, logout } = useAuth();
-    const { products: allProducts, addProduct, updateProduct, deleteProduct, categories: dynamicCategories } = useProducts();
+    const { products: allProducts, addProduct, updateProduct, updateProductStock, refreshProducts, deleteProduct, categories: dynamicCategories } = useProducts();
     const { openImageModal } = useImageModal();
     const categories = dynamicCategories && dynamicCategories.length > 0 ? dynamicCategories : CATEGORIES;
     const navigate = useNavigate();
@@ -114,8 +114,8 @@ export default function Profile() {
 
     // ─── Add Product State ──────────────────────────────────────────────────────
     const [newProduct, setNewProduct] = useState({
-        name: '', price: '', mrp: '', stockQuantity: '', category: '', image: '', shop: '', unit: 'kg',
-        description: '', origin: '', preference: 'Vegetarian', shelfLife: '',
+        name: '', price: '', mrp: '', stockQuantity: '100', category: '', image: '', shop: '', unit: 'kg',
+        description: '', origin: 'Nigeria', preference: 'Vegetarian', shelfLife: '',
         netWeight: '', returnPolicy: '', offers: '', features: '', harvestDate: '', organicCert: '', storageInfo: ''
     });
 
@@ -296,7 +296,7 @@ export default function Profile() {
         const defaultShop = shopName || (vendorShops[0]?.shopName) || userProfile?.displayName || user?.displayName || 'My Vendor Shop';
         setNewProduct({
             name: '', price: '', mrp: '', stockQuantity: '100', category: '', subCategory: '', image: '', shop: defaultShop, unit: 'kg',
-            description: '', origin: 'India', preference: 'Vegetarian', shelfLife: '7 days',
+            description: '', origin: 'Nigeria', preference: 'Vegetarian', shelfLife: '7 days',
             netWeight: '', returnPolicy: '', offers: '', features: '', harvestDate: '', organicCert: '', storageInfo: ''
         });
         setShowAddForm(true);
@@ -334,9 +334,10 @@ export default function Profile() {
                 vendorId: user.uid,
                 vendorEmail: user.email || '',
                 stockQuantity: newProduct.stockQuantity ? parseInt(newProduct.stockQuantity) : 100,
+                initialStock: newProduct.stockQuantity ? parseInt(newProduct.stockQuantity) : 100,
                 shopLocation: selectedShop?.location || '',
                 description: newProduct.description || '',
-                origin: newProduct.origin || 'India',
+                origin: newProduct.origin || 'Nigeria',
                 preference: newProduct.preference || 'Vegetarian',
                 shelfLife: newProduct.shelfLife || '',
                 netWeight: newProduct.netWeight || '',
@@ -355,12 +356,12 @@ export default function Profile() {
 
             setSuccessModalData({
                 title: 'Product Added Successfully! 🎉',
-                message: `Product "${productData.name}" added to shop "${targetShopName}" successfully!`
+                message: `Product "${productData.name}" added to shop "${targetShopName}" successfully with ${productData.stockQuantity} ${productData.unit} in stock!`
             });
 
             setNewProduct({
-                name: '', price: '', mrp: '', stockQuantity: '', category: '', subCategory: '', image: '', shop: '', unit: 'kg',
-                description: '', origin: '', preference: 'Vegetarian', shelfLife: '',
+                name: '', price: '', mrp: '', stockQuantity: '100', category: '', subCategory: '', image: '', shop: '', unit: 'kg',
+                description: '', origin: 'Nigeria', preference: 'Vegetarian', shelfLife: '',
                 netWeight: '', returnPolicy: '', offers: '', features: '', harvestDate: '', organicCert: '', storageInfo: ''
             });
             setShowAddForm(false);
@@ -753,7 +754,7 @@ export default function Profile() {
         }
 
         const priceNum = newStayForm.price ? Number(newStayForm.price) : 0;
-        const priceStr = priceNum > 0 ? '₹' + priceNum + '/night' : 'Free';
+        const priceStr = priceNum > 0 ? '₦' + priceNum + '/night' : 'Free';
         const stayTitle = newStayForm.name.trim();
 
         const stayObj = {
@@ -778,7 +779,7 @@ export default function Profile() {
 
         setStayList(updatedList);
 
-        const accNames = updatedList.map(s => s.title + (s.rawPrice ? ' (₹' + s.rawPrice + '/night)' : '')).join(', ');
+        const accNames = updatedList.map(s => s.title + (s.rawPrice ? ' (₦' + s.rawPrice + '/night)' : '')).join(', ');
         setNewFarmForm(prev => ({
             ...prev,
             accommodations: accNames,
@@ -801,7 +802,7 @@ export default function Profile() {
     const handleRemoveStay = (indexToRemove) => {
         const updatedList = stayList.filter((_, idx) => idx !== indexToRemove);
         setStayList(updatedList);
-        const accNames = updatedList.map(s => s.title + (s.rawPrice ? ' (₹' + s.rawPrice + '/night)' : '')).join(', ');
+        const accNames = updatedList.map(s => s.title + (s.rawPrice ? ' (₦' + s.rawPrice + '/night)' : '')).join(', ');
         setNewFarmForm(prev => ({ ...prev, accommodations: accNames }));
     };
 
@@ -1083,9 +1084,9 @@ export default function Profile() {
                 if (Array.isArray(str)) return str;
                 const lines = str.split('\n').map(l => l.trim()).filter(Boolean);
                 return lines.map((line, idx) => {
-                    const matchPrice = line.match(/₹?\s*(\d+)/);
+                    const matchPrice = line.match(/₦?\s*(\d+)/);
                     const price = matchPrice ? Number(matchPrice[1]) : 120;
-                    const cleanName = line.replace(/\(.*\)/, '').replace(/₹?\s*\d+.*/, '').trim() || line;
+                    const cleanName = line.replace(/\(.*\)/, '').replace(/₦?\s*\d+.*/, '').trim() || line;
                     return {
                         id: `fp-${Date.now()}-${idx}`,
                         name: cleanName,
@@ -1211,7 +1212,7 @@ export default function Profile() {
                     city: geo.city || prev.city || '',
                     state: geo.state || prev.state || '',
                     zipCode: geo.zipCode || prev.zipCode || '',
-                    country: geo.country || 'India'
+                    country: geo.country || 'Nigeria'
                 }));
             }
         } catch (err) {
@@ -1346,7 +1347,7 @@ export default function Profile() {
                     city: geo.city || prev.city || '',
                     state: geo.state || prev.state || '',
                     zipCode: geo.zipCode || prev.zipCode || '',
-                    country: geo.country || 'India'
+                    country: geo.country || 'Nigeria'
                 }));
             }
         } catch (err) {
@@ -1624,7 +1625,7 @@ export default function Profile() {
                 deliveryStatus: 'accepted',
                 deliveryBoyId: user?.uid,
                 deliveryBoyName: userProfile?.displayName || user?.displayName || 'Delivery Partner',
-                deliveryBoyPhone: userProfile?.phone || user?.phone || '+91 98765 43210'
+                deliveryBoyPhone: userProfile?.phone || user?.phone || '+234 802 345 6789'
             });
             setIsTrackingActive(true);
             setActiveTab('delivery_active');
@@ -2088,6 +2089,7 @@ export default function Profile() {
                         handleEditProductClick={handleEditProductClick}
                         handleDeleteProduct={handleDeleteProduct}
                         updateProduct={updateProduct}
+                        updateProductStock={updateProductStock}
                         navigate={navigate}
                     />
 

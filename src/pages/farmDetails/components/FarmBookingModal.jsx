@@ -286,7 +286,7 @@ export default function FarmBookingModal({
 
                             const isAccSelected = includeStay && !isAccUnavailable && (selectedAccommodation === acc.title || (!selectedAccommodation && idx === 0));
                             const accPriceNum = parseFloat(String(acc.price || '').replace(/[^0-9.]/g, '')) || 0;
-                            const displayPriceStr = accPriceNum > 0 ? `+₹${accPriceNum}/night` : 'Free Stay';
+                            const displayPriceStr = accPriceNum > 0 ? `+₦${accPriceNum}/night` : 'Free Stay';
                             const quantityStr = acc.roomQuantity || '1 Room';
                             const capacityStr = acc.roomCapacity || '2 Persons';
 
@@ -429,11 +429,11 @@ export default function FarmBookingModal({
                       <div className="bg-emerald-50/70 border border-emerald-200/60 p-4 rounded-2xl flex flex-col space-y-1 text-xs">
                         <div className="flex items-center justify-between font-bold text-slate-700 font-headings">
                           <span>Total Payable Amount:</span>
-                          <span className="text-base font-black text-emerald-700 font-sans">₹{totalPayableVal}</span>
+                          <span className="text-base font-black text-emerald-700 font-sans">₦{totalPayableVal}</span>
                         </div>
                         {includeStay && (
                           <p className="text-[10px] text-slate-500 font-medium">
-                            (Admission: ₹{admissionTotalCost} + Stay: ₹{selectedAccPrice} × {selectedRoomsCount} {selectedRoomsCount === 1 ? 'Room' : 'Rooms'})
+                            (Admission: ₦{admissionTotalCost} + Stay: ₦{selectedAccPrice} × {selectedRoomsCount} {selectedRoomsCount === 1 ? 'Room' : 'Rooms'})
                           </p>
                         )}
                       </div>

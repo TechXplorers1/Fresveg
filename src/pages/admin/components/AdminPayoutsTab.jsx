@@ -161,7 +161,7 @@ export default function AdminPayoutsTab({ showToast }) {
           </div>
           <div>
             <div className="text-2xl font-black text-slate-900 font-headings">
-              ₹{summary.totalVolumeProcessed.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ₦{summary.totalVolumeProcessed.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[11px] text-slate-400 font-medium">{summary.payoutCount} total orders</p>
           </div>
@@ -175,7 +175,7 @@ export default function AdminPayoutsTab({ showToast }) {
           </div>
           <div>
             <div className="text-2xl font-black text-purple-900 font-headings">
-              ₹{summary.totalPlatformCommission.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ₦{summary.totalPlatformCommission.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[11px] text-purple-600 font-medium">
               FresVeg {summary.commissionRate}% platform share
@@ -191,7 +191,7 @@ export default function AdminPayoutsTab({ showToast }) {
           </div>
           <div>
             <div className="text-2xl font-black text-emerald-900 font-headings">
-              ₹{summary.totalVendorShare.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ₦{summary.totalVendorShare.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[11px] text-emerald-600 font-medium">Net payable to sellers</p>
           </div>
@@ -205,7 +205,7 @@ export default function AdminPayoutsTab({ showToast }) {
           </div>
           <div>
             <div className="text-2xl font-black text-slate-800 font-headings">
-              ₹{summary.totalDisbursed.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ₦{summary.totalDisbursed.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[11px] text-slate-400 font-medium">Completed bank payouts</p>
           </div>
@@ -219,7 +219,7 @@ export default function AdminPayoutsTab({ showToast }) {
           </div>
           <div>
             <div className="text-2xl font-black text-amber-950 font-headings">
-              ₹{summary.totalPendingDisbursal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ₦{summary.totalPendingDisbursal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[11px] text-amber-700 font-medium">Awaiting bank settlement</p>
           </div>
@@ -355,15 +355,15 @@ export default function AdminPayoutsTab({ showToast }) {
                         </td>
 
                         <td className="py-3.5 px-4 text-right font-bold text-slate-800">
-                          ₹{p.orderAmount.toFixed(2)}
+                          ₦{p.orderAmount.toFixed(2)}
                         </td>
 
                         <td className="py-3.5 px-4 text-right font-semibold text-purple-700">
-                          ₹{p.commissionAmount.toFixed(2)}
+                          ₦{p.commissionAmount.toFixed(2)}
                         </td>
 
                         <td className="py-3.5 px-4 text-right font-extrabold text-emerald-700 font-headings text-sm">
-                          ₹{p.payoutAmount.toFixed(2)}
+                          ₦{p.payoutAmount.toFixed(2)}
                         </td>
 
                         <td className="py-3.5 px-4">
@@ -381,7 +381,7 @@ export default function AdminPayoutsTab({ showToast }) {
                                   {copiedText === `ac_${p.id}` ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
                                 </button>
                               </div>
-                              <div className="font-mono text-slate-500">IFSC: {bank.ifscCode}</div>
+                              <div className="font-mono text-slate-500">Bank Code: {bank.ifscCode}</div>
                               {bank.upiId && (
                                 <div className="text-[10px] text-teal-700 font-mono">UPI: {bank.upiId}</div>
                               )}
@@ -411,7 +411,7 @@ export default function AdminPayoutsTab({ showToast }) {
                               <div className="font-mono text-[10px] text-slate-600">{p.reference || 'Disbursed'}</div>
                               {p.disbursedAt && (
                                 <div className="text-[10px] text-slate-400">
-                                  {new Date(p.disbursedAt).toLocaleDateString('en-IN')}
+                                  {new Date(p.disbursedAt).toLocaleDateString('en-NG')}
                                 </div>
                               )}
                             </div>
@@ -435,10 +435,10 @@ export default function AdminPayoutsTab({ showToast }) {
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                               <div className="space-y-1">
                                 <h5 className="font-bold text-emerald-950 font-headings text-xs">
-                                  Confirm Disbursal of ₹{p.payoutAmount.toFixed(2)} to {p.vendorName || 'Vendor'}
+                                  Confirm Disbursal of ₦{p.payoutAmount.toFixed(2)} to {p.vendorName || 'Vendor'}
                                 </h5>
                                 <p className="text-[11px] text-emerald-800">
-                                  Destination: {bank.bankName || 'Bank'} A/C {bank.accountNumber || 'N/A'} (IFSC: {bank.ifscCode || 'N/A'})
+                                  Destination: {bank.bankName || 'Bank'} A/C {bank.accountNumber || 'N/A'} (Bank Code: {bank.ifscCode || 'N/A'})
                                 </p>
                               </div>
 
@@ -447,7 +447,7 @@ export default function AdminPayoutsTab({ showToast }) {
                                   type="text"
                                   value={utrInput}
                                   onChange={(e) => setUtrInput(e.target.value)}
-                                  placeholder="Bank UTR / Transaction Reference"
+                                  placeholder="NIP Session ID / Transfer Reference"
                                   className="px-3 py-1.5 bg-white border border-emerald-300 rounded-xl text-xs font-mono font-bold text-slate-800 outline-none w-52"
                                 />
 

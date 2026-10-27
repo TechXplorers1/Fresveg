@@ -392,12 +392,12 @@ router.get('/vendor-bank-details', async (req, res) => {
       vendorName: 'FresVeg Partner Vendor',
       bankDetails: {
         accountHolderName: 'FresVeg Certified Vendor',
-        bankName: 'HDFC Bank',
-        accountNumber: '50100492817291',
-        ifscCode: 'HDFC0001234',
+        bankName: 'Access Bank',
+        accountNumber: '0128945678',
+        ifscCode: '044 (Access Bank)',
         accountType: 'Current',
-        branchName: 'Main Branch, Maharashtra',
-        upiId: 'fresveg.vendor@okhdfcbank',
+        branchName: 'Ikeja Branch, Lagos State',
+        upiId: 'fresveg.vendor@accessbank',
         isVerified: true,
         acceptDirectPayments: true,
         paymentInstructions: 'Please add your Order ID in transfer remarks for instant automated verification.'

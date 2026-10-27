@@ -158,7 +158,7 @@ export default function VendorEarningsTab({
           </div>
           <div>
             <div className="text-2xl font-black text-slate-900 font-headings">
-              ₹{data.summary.totalGross.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ₦{data.summary.totalGross.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[11px] text-slate-400 font-medium">
               From {data.summary.orderCount} paid orders
@@ -176,7 +176,7 @@ export default function VendorEarningsTab({
           </div>
           <div>
             <div className="text-2xl font-black text-purple-900 font-headings">
-              ₹{data.summary.totalCommission.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ₦{data.summary.totalCommission.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[11px] text-purple-600 font-medium">
               {data.commissionRate}% FresVeg service charge
@@ -194,7 +194,7 @@ export default function VendorEarningsTab({
           </div>
           <div>
             <div className="text-2xl font-black text-emerald-900 font-headings">
-              ₹{data.summary.totalPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ₦{data.summary.totalPayout.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[11px] text-emerald-600 font-medium">
               Your 90% net earnings
@@ -212,10 +212,10 @@ export default function VendorEarningsTab({
           </div>
           <div>
             <div className="text-2xl font-black text-amber-950 font-headings">
-              ₹{data.summary.pendingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ₦{data.summary.pendingAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[11px] text-amber-700 font-medium">
-              Disbursed so far: ₹{data.summary.disbursedAmount.toFixed(2)}
+              Disbursed so far: ₦{data.summary.disbursedAmount.toFixed(2)}
             </p>
           </div>
         </div>
@@ -249,7 +249,7 @@ export default function VendorEarningsTab({
                   <span className="font-mono text-emerald-300">
                     •••• {String(activeBank.accountNumber).slice(-4)}
                   </span>{' '}
-                  · IFSC: <span className="font-mono text-slate-300">{activeBank.ifscCode || 'N/A'}</span>
+                  · Sort Code: <span className="font-mono text-slate-300">{activeBank.ifscCode || 'N/A'}</span>
                   {activeBank.upiId && (
                     <> · UPI: <span className="font-mono text-teal-300">{activeBank.upiId}</span></>
                   )}
@@ -350,7 +350,7 @@ export default function VendorEarningsTab({
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredPayouts.map((p) => {
                   const isCompleted = p.status === 'completed' || p.status === 'paid';
-                  const dateStr = p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-IN', {
+                  const dateStr = p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-NG', {
                     day: 'numeric',
                     month: 'short',
                     year: 'numeric'
@@ -370,15 +370,15 @@ export default function VendorEarningsTab({
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-bold text-slate-800">
-                        ₹{p.orderAmount.toFixed(2)}
+                        ₦{p.orderAmount.toFixed(2)}
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-semibold text-purple-600">
-                        -₹{p.commissionAmount.toFixed(2)}
+                        -₦{p.commissionAmount.toFixed(2)}
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-extrabold text-emerald-700 font-headings text-sm">
-                        ₹{p.payoutAmount.toFixed(2)}
+                        ₦{p.payoutAmount.toFixed(2)}
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
@@ -399,7 +399,7 @@ export default function VendorEarningsTab({
                             {p.reference}
                             {p.disbursedAt && (
                               <div className="text-[10px] text-slate-400">
-                                {new Date(p.disbursedAt).toLocaleDateString('en-IN')}
+                                {new Date(p.disbursedAt).toLocaleDateString('en-NG')}
                               </div>
                             )}
                           </div>

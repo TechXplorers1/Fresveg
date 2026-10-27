@@ -152,7 +152,7 @@ export const recordOrderPayouts = async (orderId) => {
               `notif_${Date.now()}_po`,
               vendorId,
               '💰 New Payout Recorded (Order Confirmed)',
-              `Order #${order.order_id}: ₹${payoutAmount.toFixed(2)} is credited to your pending payout balance after ₹${commissionAmount.toFixed(2)} (${commissionRate}%) FresVeg platform fee.`,
+              `Order #${order.order_id}: ₦${payoutAmount.toFixed(2)} is credited to your pending payout balance after ₦${commissionAmount.toFixed(2)} (${commissionRate}%) FresVeg platform fee.`,
               '/profile?tab=earnings'
             ]
           );
@@ -374,7 +374,7 @@ router.post('/:payoutId/disburse', async (req, res) => {
           `notif_${Date.now()}_pd`,
           payout.vendor_id,
           '🏦 Bank Payout Disbursed Successfully!',
-          `₹${parseFloat(payout.payout_amount).toFixed(2)} has been transferred to your registered bank account for Order #${payout.order_id}. Reference UTR: ${payoutRef}.`,
+          `₦${parseFloat(payout.payout_amount).toFixed(2)} has been transferred to your registered bank account for Order #${payout.order_id}. Reference UTR: ${payoutRef}.`,
           '/profile?tab=earnings'
         ]
       );
@@ -384,7 +384,7 @@ router.post('/:payoutId/disburse', async (req, res) => {
 
     res.json({
       success: true,
-      message: `₹${parseFloat(payout.payout_amount).toFixed(2)} disbursed to vendor bank account.`,
+      message: `₦${parseFloat(payout.payout_amount).toFixed(2)} disbursed to vendor bank account.`,
       payout: {
         id: updated.id,
         orderId: updated.order_id,

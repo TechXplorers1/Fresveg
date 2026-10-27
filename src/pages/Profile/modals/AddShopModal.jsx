@@ -62,7 +62,7 @@ export default function AddShopModal({
                                         <label className={labelCls}>Shop Location <span className="text-emerald-605 font-bold">*</span></label>
                                         <div className="relative">
                                             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                            <input required type="text" value={newShop.location} onChange={(e) => setNewShop({ ...newShop, location: e.target.value })} className={inputCls} style={{ paddingRight: '160px' }} placeholder="E.g. Andheri West, Mumbai, Maharashtra" />
+                                            <input required type="text" value={newShop.location} onChange={(e) => setNewShop({ ...newShop, location: e.target.value })} className={inputCls} style={{ paddingRight: '160px' }} placeholder="E.g. Ikeja, Lagos State, Nigeria" />
                                             <button
                                                 type="button"
                                                 onClick={() => handleGetCurrentLocation(setNewShop, newShop)}
@@ -82,10 +82,10 @@ export default function AddShopModal({
                                         </p>
                                     </div>
                                     <div>
-                                        <label className={labelCls}>GST Number</label>
+                                        <label className={labelCls}>TIN / CAC RC Number</label>
                                         <div className="relative">
                                             <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                            <input required type="text" value={newShop.gstNumber} onChange={(e) => setNewShop({ ...newShop, gstNumber: e.target.value })} className={inputCls} placeholder="E.g. 22AAAAA0000A1Z5" />
+                                            <input required type="text" value={newShop.gstNumber} onChange={(e) => setNewShop({ ...newShop, gstNumber: e.target.value })} className={inputCls} placeholder="E.g. RC-1849201 or TIN 20489123-0001" />
                                         </div>
                                     </div>
                                     <div>

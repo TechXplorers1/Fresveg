@@ -163,7 +163,7 @@ function isGenericAdminName(name, city, state) {
   if (lower === cityLower || lower === stateLower) return true;
   if (lower.endsWith(' urban') || lower.endsWith(' rural') || lower.endsWith(' district') || lower.endsWith(' division') || lower.endsWith(' mandal')) return true;
   if (lower.startsWith('selected ') || lower.startsWith('detected ') || lower.startsWith('current ') || lower.startsWith('location ')) return true;
-  if (lower === 'india' || lower === 'unnamed road') return true;
+  if (lower === 'nigeria' || lower === 'india' || lower === 'unnamed road') return true;
   return false;
 }
 
@@ -274,7 +274,7 @@ export async function reverseGeocodePrecise(lat, lng) {
     const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || '';
     const state = addr.state || '';
     const zipCode = addr.postcode || '';
-    const country = addr.country || 'India';
+    const country = addr.country || 'Nigeria';
 
     // 3. Street / Road candidates
     let road = addr.road || addr.street || addr.residential || addr.pedestrian || addr.footway || addr.path || '';
@@ -408,7 +408,7 @@ export async function reverseGeocodePrecise(lat, lng) {
       city: '',
       state: '',
       zipCode: '',
-      country: 'India',
+      country: 'Nigeria',
       shortLabel: `${lat.toFixed(3)}°, ${lng.toFixed(3)}°`,
       displayName: fallbackStreet,
       lat,

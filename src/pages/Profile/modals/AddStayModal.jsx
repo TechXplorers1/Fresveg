@@ -221,9 +221,9 @@ export default function AddStayModal({
 
                     {/* 4. Stay / Accommodation Price */}
                     <div>
-                        <label className={labelCls}>Stay Price per Night (₹) <span className="text-slate-400 font-normal text-[11px]">(Leave blank if free)</span></label>
+                        <label className={labelCls}>Stay Price per Night (₦) <span className="text-slate-400 font-normal text-[11px]">(Leave blank if free)</span></label>
                         <div className="relative">
-                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₹</span>
+                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₦</span>
                             <input
                                 type="number"
                                 min="0"
@@ -242,7 +242,7 @@ export default function AddStayModal({
                                     onClick={() => setNewStayForm({ ...newStayForm, price: p === 'Free' ? '' : p })}
                                     className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 px-2.5 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
                                 >
-                                    {p === 'Free' ? 'Free' : `₹${p}`}
+                                    {p === 'Free' ? 'Free' : `₦${p}`}
                                 </button>
                             ))}
                         </div>

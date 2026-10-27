@@ -115,11 +115,11 @@ export default function EditProductModal({
                                             </div>
                                         </div>
 
-                                        {/* 4. M.R.P. / Original Price (₹) */}
+                                        {/* 4. M.R.P. / Original Price (₦) */}
                                         <div>
-                                            <label className={labelCls}>M.R.P. / Original Price (₹)</label>
+                                            <label className={labelCls}>M.R.P. / Original Price (₦)</label>
                                             <div className="relative">
-                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₹</span>
+                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₦</span>
                                                 <input
                                                     type="number"
                                                     step="0.01"
@@ -132,11 +132,11 @@ export default function EditProductModal({
                                             </div>
                                         </div>
 
-                                        {/* 5. Selling Price (₹) * */}
+                                        {/* 5. Selling Price (₦) * */}
                                         <div>
-                                            <label className={labelCls}>Selling Price (₹) <span className="text-emerald-600 font-bold">*</span></label>
+                                            <label className={labelCls}>Selling Price (₦) <span className="text-emerald-600 font-bold">*</span></label>
                                             <div className="relative">
-                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₹</span>
+                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₦</span>
                                                 <input
                                                     required
                                                     type="number"
@@ -269,7 +269,7 @@ export default function EditProductModal({
                                                 value={editProductForm.origin}
                                                 onChange={(e) => setEditProductForm({ ...editProductForm, origin: e.target.value })}
                                                 className={inputCls.replace('pl-10', 'px-4')}
-                                                placeholder="India"
+                                                placeholder="Nigeria"
                                             />
                                         </div>
                                         <div>
@@ -295,14 +295,14 @@ export default function EditProductModal({
                                             />
                                         </div>
                                         <div>
-                                            <label className={labelCls}>FSSAI / Organic Cert. No.</label>
+                                            <label className={labelCls}>NAFDAC / Organic Cert. No.</label>
                                             <input
                                                 type="text"
                                                 name="organicCert"
                                                 value={editProductForm.organicCert}
                                                 onChange={(e) => setEditProductForm({ ...editProductForm, organicCert: e.target.value })}
                                                 className={inputCls.replace('pl-10', 'px-4')}
-                                                placeholder="FSSAI-1002930492"
+                                                placeholder="NAFDAC-01-2345"
                                             />
                                         </div>
                                         <div>

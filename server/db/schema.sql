@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS products (
   price NUMERIC(10, 2) NOT NULL,
   mrp NUMERIC(10, 2),
   unit VARCHAR(50) DEFAULT 'kg',
+  stock_quantity INTEGER DEFAULT 100,
+  initial_stock INTEGER DEFAULT 100,
   category VARCHAR(255) NOT NULL,
   sub_category VARCHAR(255) DEFAULT '',
   image TEXT,

@@ -112,19 +112,19 @@ export default function SavedAddressesTab({
                                         </div>
                                         <div>
                                             <label className={labelCls}>City</label>
-                                            <input required type="text" name="city" value={newAddress.city} onChange={handleAddressInputChange} className={inputCls} placeholder="Mumbai" />
+                                            <input required type="text" name="city" value={newAddress.city} onChange={handleAddressInputChange} className={inputCls} placeholder="Ikeja" />
                                         </div>
                                         <div>
                                             <label className={labelCls}>State</label>
-                                            <input required type="text" name="state" value={newAddress.state} onChange={handleAddressInputChange} className={inputCls} placeholder="Maharashtra" />
+                                            <input required type="text" name="state" value={newAddress.state} onChange={handleAddressInputChange} className={inputCls} placeholder="Lagos State" />
                                         </div>
                                         <div>
                                             <label className={labelCls}>ZIP Code</label>
-                                            <input required type="text" name="zipCode" value={newAddress.zipCode} onChange={handleAddressInputChange} className={inputCls} placeholder="400001" />
+                                            <input required type="text" name="zipCode" value={newAddress.zipCode} onChange={handleAddressInputChange} className={inputCls} placeholder="100001" />
                                         </div>
                                         <div>
                                             <label className={labelCls}>Country</label>
-                                            <input required type="text" name="country" value={newAddress.country} onChange={handleAddressInputChange} className={inputCls} placeholder="India" />
+                                            <input required type="text" name="country" value={newAddress.country} onChange={handleAddressInputChange} className={inputCls} placeholder="Nigeria" />
                                         </div>
                                     </div>
 

@@ -6,7 +6,7 @@ const formatUpdatedTime = (ts) => {
     if (!ts) return '';
     try {
         const date = ts?.toDate ? ts.toDate() : new Date(ts);
-        return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
+        return date.toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch {
         return '';
     }
@@ -77,7 +77,7 @@ export default function VendorShopsTab({
                                             <label className={labelCls}>Shop Location <span className="text-emerald-600 font-bold">*</span></label>
                                             <div className="relative">
                                                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                                <input required type="text" value={shopSetup.location} onChange={(e) => setShopSetup({ ...shopSetup, location: e.target.value })} className={inputCls} style={{ paddingRight: '160px' }} placeholder="E.g. Andheri West, Mumbai, Maharashtra" />
+                                                <input required type="text" value={shopSetup.location} onChange={(e) => setShopSetup({ ...shopSetup, location: e.target.value })} className={inputCls} style={{ paddingRight: '160px' }} placeholder="E.g. Ikeja, Lagos State, Nigeria" />
                                                 <button
                                                     type="button"
                                                     onClick={() => handleGetCurrentLocation(setShopSetup, shopSetup)}
@@ -97,10 +97,10 @@ export default function VendorShopsTab({
                                             </p>
                                         </div>
                                         <div>
-                                            <label className={labelCls}>GST Number</label>
+                                            <label className={labelCls}>TIN / CAC RC Number</label>
                                             <div className="relative">
                                                 <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                                <input required type="text" value={shopSetup.gstNumber} onChange={(e) => setShopSetup({ ...shopSetup, gstNumber: e.target.value })} className={inputCls} placeholder="E.g. 22AAAAA0000A1Z5" />
+                                                <input required type="text" value={shopSetup.gstNumber} onChange={(e) => setShopSetup({ ...shopSetup, gstNumber: e.target.value })} className={inputCls} placeholder="E.g. RC-1849201 or TIN 20489123-0001" />
                                             </div>
                                         </div>
                                         <div>
@@ -131,7 +131,7 @@ export default function VendorShopsTab({
                                                 </div>
                                                 <div>
                                                     <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">WhatsApp</label>
-                                                    <input type="text" value={shopSetup.socialLinks?.whatsapp || ''} onChange={(e) => setShopSetup(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || EMPTY_SOCIAL_LINKS), whatsapp: e.target.value } }))} placeholder="+91 9876543210" className={inputCls} />
+                                                    <input type="text" value={shopSetup.socialLinks?.whatsapp || ''} onChange={(e) => setShopSetup(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || EMPTY_SOCIAL_LINKS), whatsapp: e.target.value } }))} placeholder="+234 8023456789" className={inputCls} />
                                                 </div>
                                             </div>
                                             <div>
@@ -225,7 +225,7 @@ export default function VendorShopsTab({
                                                                         </div>
                                                                     </div>
                                                                     <div>
-                                                                        <label className={labelCls}>GST Number</label>
+                                                                        <label className={labelCls}>TIN / CAC RC Number</label>
                                                                         <div className="relative">
                                                                             <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                                                             <input required type="text" value={editShopForm.gstNumber} onChange={(e) => setEditShopForm({ ...editShopForm, gstNumber: e.target.value })} className={inputCls} />
@@ -262,7 +262,7 @@ export default function VendorShopsTab({
                                                                             </div>
                                                                             <div>
                                                                                 <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">WhatsApp</label>
-                                                                                <input type="text" value={editShopForm.socialLinks?.whatsapp || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), whatsapp: e.target.value } }))} placeholder="+91 9876543210" className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                                                                <input type="text" value={editShopForm.socialLinks?.whatsapp || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), whatsapp: e.target.value } }))} placeholder="+234 8023456789" className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
                                                                             </div>
                                                                         </div>
                                                                         <div>
@@ -310,7 +310,7 @@ export default function VendorShopsTab({
                                                                         <h2 className="text-3xl font-black text-slate-850 font-headings">{shop.shopName}</h2>
                                                                         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500 font-medium font-body">
                                                                             <span className="flex items-center gap-1.5"><MapPin size={16} className="text-emerald-600" />{shop.location || 'No location set'}</span>
-                                                                            <span className="flex items-center gap-1.5"><FileText size={16} className="text-slate-400" />GST: {shop.gstNumber}</span>
+                                                                            <span className="flex items-center gap-1.5"><FileText size={16} className="text-slate-400" />TIN / CAC: {shop.gstNumber}</span>
                                                                             {(shop.updatedAt || shop.createdAt) && (
                                                                                 <span className="flex items-center gap-1 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200/60 px-2.5 py-1 rounded-full font-mono">
                                                                                     <Clock size={13} className="text-emerald-600" />
@@ -399,7 +399,7 @@ export default function VendorShopsTab({
                                                                     <label className={labelCls}>Location <span className="text-emerald-600 font-bold">*</span></label>
                                                                     <div className="relative">
                                                                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                                                        <input required type="text" value={editShopForm.location} onChange={(e) => setEditShopForm({ ...editShopForm, location: e.target.value })} className={inputCls} style={{ paddingRight: '150px' }} placeholder="E.g. Andheri West, Mumbai, Maharashtra" />
+                                                                        <input required type="text" value={editShopForm.location} onChange={(e) => setEditShopForm({ ...editShopForm, location: e.target.value })} className={inputCls} style={{ paddingRight: '150px' }} placeholder="E.g. Ikeja, Lagos State, Nigeria" />
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => handleGetCurrentLocation(setEditShopForm, editShopForm)}
@@ -419,7 +419,7 @@ export default function VendorShopsTab({
                                                                     </p>
                                                                 </div>
                                                                 <div>
-                                                                    <label className={labelCls}>GST Number</label>
+                                                                    <label className={labelCls}>TIN / CAC RC Number</label>
                                                                     <div className="relative">
                                                                         <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                                                         <input required type="text" value={editShopForm.gstNumber} onChange={(e) => setEditShopForm({ ...editShopForm, gstNumber: e.target.value })} className={inputCls} />
@@ -457,7 +457,7 @@ export default function VendorShopsTab({
                                                                         </div>
                                                                         <div>
                                                                             <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">WhatsApp</label>
-                                                                            <input type="text" value={editShopForm.socialLinks?.whatsapp || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), whatsapp: e.target.value } }))} placeholder="+91 9876543210" className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                                                            <input type="text" value={editShopForm.socialLinks?.whatsapp || ''} onChange={(e) => setEditShopForm(prev => ({ ...prev, socialLinks: { ...(prev.socialLinks || {}), whatsapp: e.target.value } }))} placeholder="+234 8023456789" className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
                                                                         </div>
                                                                     </div>
                                                                     <div>
@@ -580,7 +580,7 @@ export default function VendorShopsTab({
                                                                 <div className="flex items-center justify-between gap-2 text-xs text-slate-400 border-b border-slate-100 pb-3 font-body">
                                                                     <div className="flex items-center gap-1.5">
                                                                         <FileText size={12} />
-                                                                        <span>GST: {shop.gstNumber}</span>
+                                                                        <span>TIN / CAC: {shop.gstNumber}</span>
                                                                     </div>
                                                                     {(shop.updatedAt || shop.createdAt) && (
                                                                         <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100/60 px-2 py-0.5 rounded-full font-mono">

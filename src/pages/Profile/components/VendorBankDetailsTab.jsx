@@ -7,16 +7,19 @@ import {
 import ImageUploadField from '../../../components/common/ImageUploadField';
 
 const POPULAR_BANKS = [
-  'State Bank of India',
-  'HDFC Bank',
-  'ICICI Bank',
-  'Axis Bank',
-  'Bank of Baroda',
-  'Kotak Mahindra Bank',
-  'Punjab National Bank',
-  'Canara Bank',
-  'Union Bank of India',
-  'IndusInd Bank'
+  'Access Bank',
+  'Guaranty Trust Bank (GTBank)',
+  'Zenith Bank',
+  'First Bank of Nigeria',
+  'United Bank for Africa (UBA)',
+  'Kuda Bank',
+  'OPay Digital Services',
+  'PalmPay',
+  'Moniepoint Microfinance Bank',
+  'Stanbic IBTC Bank',
+  'Fidelity Bank',
+  'Sterling Bank',
+  'Wema Bank'
 ];
 
 export default function VendorBankDetailsTab({
@@ -33,7 +36,7 @@ export default function VendorBankDetailsTab({
 
   const [formData, setFormData] = useState({
     accountHolderName: existingBank.accountHolderName || userProfile?.displayName || '',
-    bankName: existingBank.bankName || 'HDFC Bank',
+    bankName: existingBank.bankName || 'Access Bank',
     accountNumber: existingBank.accountNumber || '',
     confirmAccountNumber: existingBank.accountNumber || '',
     ifscCode: existingBank.ifscCode || '',
@@ -42,7 +45,7 @@ export default function VendorBankDetailsTab({
     upiId: existingBank.upiId || '',
     qrCodeUrl: existingBank.qrCodeUrl || '',
     acceptDirectPayments: existingBank.acceptDirectPayments !== false,
-    paymentInstructions: existingBank.paymentInstructions || 'Please mention your Order ID in UPI/Bank transfer remarks for fast order processing.'
+    paymentInstructions: existingBank.paymentInstructions || 'Please include your Order ID in the transfer remarks/reference for instant payment verification.'
   });
 
   const [showAccountNumber, setShowAccountNumber] = useState(false);
@@ -90,7 +93,7 @@ export default function VendorBankDetailsTab({
       return;
     }
     if (!formData.ifscCode.trim()) {
-      setErrorMsg('Please enter the Bank IFSC Code (e.g., HDFC0001234).');
+      setErrorMsg('Please enter the Bank Sort Code / CBN Code (e.g., 044 for Access, 058 for GTBank).');
       return;
     }
 
@@ -133,7 +136,7 @@ export default function VendorBankDetailsTab({
 
   // Generated live UPI URL
   const upiPayUrl = formData.upiId
-    ? `upi://pay?pa=${encodeURIComponent(formData.upiId)}&pn=${encodeURIComponent(formData.accountHolderName || 'Vendor')}&cu=INR`
+    ? `upi://pay?pa=${encodeURIComponent(formData.upiId)}&pn=${encodeURIComponent(formData.accountHolderName || 'Vendor')}&cu=NGN`
     : '';
 
   const liveQrCodeUrl = formData.qrCodeUrl || (formData.upiId
@@ -313,15 +316,15 @@ export default function VendorBankDetailsTab({
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[8px] font-mono text-white/50 uppercase tracking-wider block">IFSC CODE</span>
+                  <span className="text-[8px] font-mono text-white/50 uppercase tracking-wider block">SORT CODE</span>
                   <p className="font-mono font-bold text-emerald-300 text-xs flex items-center gap-1 justify-end">
-                    {formData.ifscCode || 'IFSC CODE'}
+                    {formData.ifscCode || 'SORT CODE'}
                     {formData.ifscCode && (
                       <button
                         type="button"
                         onClick={() => handleCopy(formData.ifscCode, 'ifsc')}
                         className="text-white/60 hover:text-white transition-colors cursor-pointer"
-                        title="Copy IFSC"
+                        title="Copy Sort Code"
                       >
                         {copiedField === 'ifsc' ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
                       </button>
@@ -444,7 +447,7 @@ export default function VendorBankDetailsTab({
                 value={formData.bankName}
                 onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
                 className={inputCls}
-                placeholder="E.g., HDFC Bank, State Bank of India"
+                placeholder="E.g., Access Bank, GTBank, Zenith Bank"
               />
               {/* Quick Select Bank Chips */}
               <div className="flex flex-wrap items-center gap-1.5 mt-2">
@@ -478,7 +481,7 @@ export default function VendorBankDetailsTab({
                   value={formData.accountNumber}
                   onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value.replace(/\s+/g, '') })}
                   className={inputCls + " font-mono"}
-                  placeholder="e.g. 50100492817291"
+                  placeholder="e.g. 0128945678 (10-digit NUBAN)"
                 />
               </div>
 
@@ -511,11 +514,11 @@ export default function VendorBankDetailsTab({
               </div>
             </div>
 
-            {/* IFSC Code & Account Type */}
+            {/* Bank Sort Code / CBN Code & Account Type */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>
-                  IFSC Code <span className="text-emerald-600 font-bold">*</span>
+                  Bank Sort Code / CBN Code <span className="text-emerald-600 font-bold">*</span>
                 </label>
                 <input
                   type="text"
@@ -524,7 +527,7 @@ export default function VendorBankDetailsTab({
                   value={formData.ifscCode}
                   onChange={(e) => setFormData({ ...formData, ifscCode: e.target.value.toUpperCase().replace(/\s+/g, '') })}
                   className={inputCls + " font-mono uppercase tracking-wider font-bold"}
-                  placeholder="e.g. HDFC0001234"
+                  placeholder="e.g. 044 (Access) or 058 (GTBank)"
                 />
                 <p className="text-[10px] text-slate-400 mt-1 font-body">11-character bank branch code</p>
               </div>
@@ -558,7 +561,7 @@ export default function VendorBankDetailsTab({
                 value={formData.branchName}
                 onChange={(e) => setFormData({ ...formData, branchName: e.target.value })}
                 className={inputCls}
-                placeholder="e.g. Nashik Main Branch, Igatpuri Road, Maharashtra"
+                placeholder="e.g. Ikeja Branch, Lagos State, Nigeria"
               />
             </div>
 
@@ -686,15 +689,15 @@ export default function VendorBankDetailsTab({
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-50">
                   <span className="text-slate-400">Account Number:</span>
-                  <span className="font-mono font-bold text-emerald-800">{formData.accountNumber || '50100XXXXXXXXX'}</span>
+                  <span className="font-mono font-bold text-emerald-800">{formData.accountNumber || '0128945678'}</span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-50">
-                  <span className="text-slate-400">IFSC Code:</span>
-                  <span className="font-mono font-bold text-slate-800">{formData.ifscCode || 'IFSC000XXXX'}</span>
+                  <span className="text-slate-400">Bank Sort Code / CBN Code:</span>
+                  <span className="font-mono font-bold text-slate-800">{formData.ifscCode || '044'}</span>
                 </div>
                 {formData.upiId && (
                   <div className="flex justify-between items-center py-1">
-                    <span className="text-slate-400">UPI VPA:</span>
+                    <span className="text-slate-400">Transfer Tag / Note:</span>
                     <span className="font-mono font-bold text-emerald-700">{formData.upiId}</span>
                   </div>
                 )}

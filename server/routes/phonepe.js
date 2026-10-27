@@ -201,7 +201,7 @@ router.post('/initiate', async (req, res) => {
     const base64Payload = Buffer.from(JSON.stringify(payPayload)).toString('base64');
     const checksum = generatePayChecksum(base64Payload, '/pg/v1/pay', saltKey, saltIndex);
 
-    console.log(`[PhonePe] Initiating payment for ${orderType} #${targetId}, amount: ₹${numTotal} (${amountInPaise} paise), txnId: ${merchantTransactionId}`);
+    console.log(`[PhonePe] Initiating payment for ${orderType} #${targetId}, amount: ₦${numTotal} (${amountInPaise} paise), txnId: ${merchantTransactionId}`);
 
     const phonePeResponse = await fetch(`${hostUrl}/pg/v1/pay`, {
       method: 'POST',
@@ -338,7 +338,7 @@ const handleRedirect = async (req, res) => {
               `notif_${Date.now()}_pb`,
               b.user_id,
               '🌿 Farm Booking Confirmed via PhonePe!',
-              `Your farm visit booking for ${b.farm_name} (₹${parseFloat(b.total_amount).toFixed(2)}) is confirmed.`,
+              `Your farm visit booking for ${b.farm_name} (₦${parseFloat(b.total_amount).toFixed(2)}) is confirmed.`,
               'booking',
               '/visit-farms'
             ]
@@ -374,7 +374,7 @@ const handleRedirect = async (req, res) => {
                 `notif_${Date.now()}_pp`,
                 customerId,
                 '✅ Payment Received via PhonePe',
-                `Your order #${targetId} of ₹${parseFloat(row.total).toFixed(2)} has been successfully paid via PhonePe and is now being packed.`,
+                `Your order #${targetId} of ₦${parseFloat(row.total).toFixed(2)} has been successfully paid via PhonePe and is now being packed.`,
                 'order',
                 `/order/${targetId}`
               ]

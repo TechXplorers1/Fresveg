@@ -341,7 +341,7 @@ export default function VendorFarmsTab({
                                                                 </div>
                                                                 <div>
                                                                     <p className="text-xs font-black text-slate-800">Free of Cost</p>
-                                                                    <p className="text-[10px] text-slate-400 font-medium">Free open tour (₹0)</p>
+                                                                    <p className="text-[10px] text-slate-400 font-medium">Free open tour (₦0)</p>
                                                                 </div>
                                                             </div>
                                                         </button>
@@ -370,14 +370,14 @@ export default function VendorFarmsTab({
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                     {/* Cost Input */}
                                                     <div className="text-left">
-                                                        <label className={labelCls}>Entry Fee per Visitor (₹)</label>
+                                                        <label className={labelCls}>Entry Fee per Visitor (₦)</label>
                                                         {newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0' ? (
                                                             <div className="px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 text-emerald-700 text-xs font-bold flex items-center gap-1.5">
-                                                                <span>✨ Free Entry (₹0 Entry Fee)</span>
+                                                                <span>✨ Free Entry (₦0 Entry Fee)</span>
                                                             </div>
                                                         ) : (
                                                             <div className="relative">
-                                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₦</span>
                                                                 <input
                                                                     required
                                                                     type="number"
@@ -1463,7 +1463,7 @@ export default function VendorFarmsTab({
                                                                     <h4 className="font-bold text-slate-800 text-xs font-headings line-clamp-1">{product.name}</h4>
                                                                     <div>
                                                                         <span className="font-extrabold text-emerald-700 text-xs font-sans">
-                                                                            ₹{product.price} <span className="text-[10px] text-slate-400 font-normal">/{product.unit}</span>
+                                                                            ₦{product.price} <span className="text-[10px] text-slate-400 font-normal">/{product.unit}</span>
                                                                         </span>
                                                                     </div>
                                                                 </div>
@@ -1506,7 +1506,7 @@ export default function VendorFarmsTab({
                                                     <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-1.5">
                                                         <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">📍 Step 1: Basic Info</span>
                                                         <p className="font-extrabold text-sm text-white truncate">{newFarmForm.farmName || 'Unnamed Farm'}</p>
-                                                        <p className="text-slate-400">Ticket Fee: <span className="text-emerald-400 font-bold">{newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0' ? 'Free Entry (₹0)' : `₹${newFarmForm.costPerPerson} per visitor`}</span></p>
+                                                        <p className="text-slate-400">Ticket Fee: <span className="text-emerald-400 font-bold">{newFarmForm.costType === 'free' || newFarmForm.costPerPerson === '0' ? 'Free Entry (₦0)' : `₦${newFarmForm.costPerPerson} per visitor`}</span></p>
                                                         <p className="text-slate-400">Gallery: <span className="text-emerald-400 font-bold">{farmGalleryList.length} Photos Added</span></p>
                                                         {newFarmForm.visitDays && (
                                                             <p className="text-slate-400">📅 Days: <span className="text-teal-300 font-bold">{newFarmForm.visitDays}</span></p>
@@ -1546,7 +1546,7 @@ export default function VendorFarmsTab({
                                                         <p className="text-slate-300 line-clamp-3">{newFarmForm.accommodations || 'None added'}</p>
                                                         {newFarmForm.accommodationPrice && Number(newFarmForm.accommodationPrice) > 0 && (
                                                             <p className="text-xs font-bold text-amber-400">
-                                                                Stay Price: ₹{newFarmForm.accommodationPrice} / night <span className="text-[10px] font-normal text-slate-400">(Excluded from visit price)</span>
+                                                                Stay Price: ₦{newFarmForm.accommodationPrice} / night <span className="text-[10px] font-normal text-slate-400">(Excluded from visit price)</span>
                                                             </p>
                                                         )}
                                                     </div>
@@ -1562,7 +1562,7 @@ export default function VendorFarmsTab({
                                                         <div className="flex flex-wrap gap-2 pt-1">
                                                             {farmProductList.map((prod, i) => (
                                                                 <span key={i} className="bg-slate-700/80 border border-slate-600 text-slate-200 px-3 py-1 rounded-full text-[11px] font-bold">
-                                                                    {prod.name} (₹{prod.price}/{prod.unit})
+                                                                    {prod.name} (₦{prod.price}/{prod.unit})
                                                                 </span>
                                                             ))}
                                                         </div>
@@ -1746,7 +1746,7 @@ export default function VendorFarmsTab({
                                                                     {(!farm.costPerPerson || Number(farm.costPerPerson) === 0) ? (
                                                                         <span className="font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">FREE OF COST</span>
                                                                     ) : (
-                                                                        <span className="font-black text-slate-800 text-xs">₹{farm.costPerPerson} / guest</span>
+                                                                        <span className="font-black text-slate-800 text-xs">₦{farm.costPerPerson} / guest</span>
                                                                     )}
                                                                 </div>
                                                                 <button
@@ -1786,7 +1786,7 @@ export default function VendorFarmsTab({
                                                     const rawDate = booking.date || booking.visitDate;
                                                     const parsedDate = rawDate ? new Date(rawDate) : null;
                                                     const formattedDate = (parsedDate && !isNaN(parsedDate.getTime()))
-                                                        ? parsedDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                        ? parsedDate.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
                                                         : (rawDate || 'Upcoming Visit');
                                                     const guestCount = booking.visitorsCount || booking.guests || 1;
                                                     const farmTitle = booking.farmName || booking.farm_name || 'Organic Farm';
@@ -1865,7 +1865,7 @@ export default function VendorFarmsTab({
                                                                     </div>
                                                                     <div className="text-right">
                                                                         <span className="text-[9px] font-bold text-slate-400 uppercase block font-headings">Total Amount</span>
-                                                                        <span className="font-black text-emerald-700 text-xs font-sans">₹{Number(booking.totalAmount || booking.totalPrice || 0).toFixed(2)}</span>
+                                                                        <span className="font-black text-emerald-700 text-xs font-sans">₦{Number(booking.totalAmount || booking.totalPrice || 0).toFixed(2)}</span>
                                                                     </div>
                                                                 </div>
                                                             </div>

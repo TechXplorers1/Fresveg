@@ -103,7 +103,7 @@ export default function AddFarmProductModal({
                     <div className="grid grid-cols-2 gap-3">
                         {/* Cost / Price */}
                         <div>
-                            <label className={labelCls}>Price (₹) <span className="text-emerald-600 font-bold">*</span></label>
+                            <label className={labelCls}>Price (₦) <span className="text-emerald-600 font-bold">*</span></label>
                             <input
                                 required
                                 type="number"

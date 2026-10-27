@@ -261,11 +261,11 @@ export default function Marketplace() {
       } catch (err) {
          console.warn('GPS location fetch error:', err.message);
          setUserGpsCoords({
-            lat: 18.9107,
-            lng: 73.3282,
-            label: 'Default Base Location (Karjat)'
+            lat: 6.5244,
+            lng: 3.3792,
+            label: 'Default Base Location (Lagos, Nigeria)'
          });
-         setGpsMessage(`📍 ${err.message || 'Using base reference location (Karjat, Maharashtra).'}`);
+         setGpsMessage(`📍 ${err.message || 'Using base reference location (Lagos, Nigeria).'}`);
       } finally {
          setIsFetchingGps(false);
       }
@@ -430,7 +430,7 @@ export default function Marketplace() {
                   id: key.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
                   name: key,
                   image: s.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&q=80',
-                  location: s.location || 'Local Region, India',
+                  location: s.location || 'Local Region, Nigeria',
                   rating: 4.9,
                   deliveryTime: '25-35 mins',
                   gstNumber: s.gstNumber || '',
@@ -459,33 +459,33 @@ export default function Marketplace() {
 
          if (!targetShop) {
             let image = p.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&q=80';
-            let location = p.shopLocation || 'Karjat, Maharashtra';
+            let location = p.shopLocation || 'Epe, Lagos State';
             let rating = p.rating || 4.8;
             let deliveryTime = '25-35 mins';
 
             if (vendorName.includes('Green Valley')) {
                image = 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&q=80';
-               location = 'Karjat, Maharashtra';
+               location = 'Epe, Lagos State';
                deliveryTime = '20-30 mins';
             } else if (vendorName.includes('Sunshine')) {
                image = 'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?w=600&q=80';
-               location = 'Nashik, Maharashtra';
+               location = 'Ibadan, Oyo State';
                deliveryTime = '30-40 mins';
             } else if (vendorName.includes('Root Essentials')) {
                image = 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&q=80';
-               location = 'Pune, Maharashtra';
+               location = 'Ikeja, Lagos State';
                deliveryTime = '15-25 mins';
             } else if (vendorName.includes('Happy Cows') || vendorName.includes('Dairy')) {
                image = 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=600&q=80';
-               location = 'Satara, Maharashtra';
+               location = 'Abeokuta, Ogun State';
                deliveryTime = '20-35 mins';
             } else if (vendorName.includes('Meadow Farms')) {
                image = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&q=80';
-               location = 'Mahabaleshwar, MH';
+               location = 'Jos, Plateau State';
                deliveryTime = '35-45 mins';
             } else if (vendorName.includes('Orchard')) {
                image = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=600&q=80';
-               location = 'Ratnagiri, Maharashtra';
+               location = 'Benin City, Edo State';
                deliveryTime = '30-45 mins';
             }
 
@@ -872,7 +872,7 @@ export default function Marketplace() {
                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 group-focus-within:text-emerald-700 transition-colors" size={18} />
                            <input
                               type="text"
-                              placeholder="Search markets & farms by name or location address (e.g. Karjat, Mahabaleshwar, Pune)..."
+                              placeholder="Search markets & farms by name or location address (e.g. Lagos, Ibadan, Jos, Epe)..."
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
                               className="w-full pl-11 pr-32 py-3 bg-slate-50 border-2 border-emerald-500/20 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-inner font-body"
@@ -1313,12 +1313,18 @@ export default function Marketplace() {
                                                    <Star size={10} className="mr-0.5 fill-current" /> {product.rating || 5.0}
                                                 </div>
                                              </div>
-                                             <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mb-2">🌾 100% Direct Harvest</p>
+                                             <p className={`text-[9px] font-bold uppercase tracking-wider mb-2 ${product.stockQuantity !== undefined && product.stockQuantity <= 0 ? 'text-rose-600' : product.stockQuantity !== undefined && product.stockQuantity <= 20 ? 'text-amber-600 font-black' : 'text-emerald-600'}`}>
+                                                {product.stockQuantity !== undefined && product.stockQuantity <= 0
+                                                   ? '⚠️ Out of Stock (0 left)'
+                                                   : product.stockQuantity !== undefined && product.stockQuantity <= 20
+                                                   ? `🔥 Only ${product.stockQuantity} ${product.unit || 'units'} left`
+                                                   : `🌾 ${product.stockQuantity ?? 100} ${product.unit || 'units'} in stock`}
+                                             </p>
                                           </div>
 
                                           <div className="flex justify-between items-center pt-1.5 border-t border-slate-100">
                                              <div>
-                                                <span className="text-base font-black text-gray-900 font-sans">₹{product.price}</span>
+                                                <span className="text-base font-black text-gray-900 font-sans">₦{product.price}</span>
                                                 <span className="text-[9px] text-slate-400 font-medium">/{product.unit}</span>
                                              </div>
                                              {(() => {
@@ -1585,12 +1591,18 @@ export default function Marketplace() {
                                                       <Star size={10} className="mr-0.5 fill-current" /> {product.rating}
                                                    </div>
                                                 </div>
-                                                <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mb-2">🌾 100% Direct Harvest</p>
+                                                <p className={`text-[9px] font-bold uppercase tracking-wider mb-2 ${product.stockQuantity !== undefined && product.stockQuantity <= 0 ? 'text-rose-600' : product.stockQuantity !== undefined && product.stockQuantity <= 20 ? 'text-amber-600 font-black' : 'text-emerald-600'}`}>
+                                                {product.stockQuantity !== undefined && product.stockQuantity <= 0
+                                                   ? '⚠️ Out of Stock (0 left)'
+                                                   : product.stockQuantity !== undefined && product.stockQuantity <= 20
+                                                   ? `🔥 Only ${product.stockQuantity} ${product.unit || 'units'} left`
+                                                   : `🌾 ${product.stockQuantity ?? 100} ${product.unit || 'units'} in stock`}
+                                             </p>
                                              </div>
 
                                              <div className="flex justify-between items-center pt-1.5 border-t border-slate-100">
                                                 <div>
-                                                   <span className="text-base font-black text-gray-900 font-sans">₹{product.price}</span>
+                                                   <span className="text-base font-black text-gray-900 font-sans">₦{product.price}</span>
                                                    <span className="text-[9px] text-slate-400 font-medium">/{product.unit}</span>
                                                 </div>
                                                 {(() => {
@@ -1754,7 +1766,7 @@ export default function Marketplace() {
                                                 {(!farm.costPerPerson || Number(farm.costPerPerson) === 0) ? (
                                                    <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">FREE ENTRY</span>
                                                 ) : (
-                                                   <span className="text-xs font-black text-slate-900">₹{farm.costPerPerson}/guest</span>
+                                                   <span className="text-xs font-black text-slate-900">₦{farm.costPerPerson}/guest</span>
                                                 )}
                                              </div>
                                              <p className="text-xs text-slate-500 font-body line-clamp-2 italic">"{farm.description}"</p>
@@ -2102,7 +2114,7 @@ export default function Marketplace() {
                                  </div>
                                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
                                     <div>
-                                       <span className="text-xs font-extrabold text-slate-900">₹{prod.price}</span>
+                                       <span className="text-xs font-extrabold text-slate-900">₦{prod.price}</span>
                                        <span className="text-[10px] text-slate-400 font-medium">/{prod.unit || 'kg'}</span>
                                     </div>
                                     <button

@@ -2,7 +2,7 @@
 // Marketplace Helper Utilities
 // ============================================================================
 
-import { VITAMINS_LIST, CITY_COORDINATES } from './marketplaceConstants';
+import { VITAMINS_LIST, CITY_COORDINATES } from './marketplaceConstants.js';
 
 /**
  * Derives a clean URL slug for a farm object.
@@ -222,13 +222,15 @@ export const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
  * @returns {{ lat: number, lng: number, name: string }}
  */
 export const getLocationCoords = (locationStr, coordinatesMap = CITY_COORDINATES) => {
-  if (!locationStr) return coordinatesMap.karjat;
+  const defaultCoords = coordinatesMap?.lagos || coordinatesMap?.ikeja || (coordinatesMap ? Object.values(coordinatesMap)[0] : null) || { lat: 6.5244, lng: 3.3792, name: 'Lagos' };
+
+  if (!locationStr) return defaultCoords;
   
   if (typeof locationStr === 'object' && locationStr.lat && locationStr.lng) {
     return { lat: Number(locationStr.lat), lng: Number(locationStr.lng), name: locationStr.name || '' };
   }
 
-  // Check if string contains direct lat, lng format e.g. "18.5204, 73.8567"
+  // Check if string contains direct lat, lng format e.g. "6.5244, 3.3792"
   const coordMatch = String(locationStr).trim().match(/^(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)$/);
   if (coordMatch) {
     return { lat: parseFloat(coordMatch[1]), lng: parseFloat(coordMatch[3]), name: String(locationStr) };
@@ -236,12 +238,14 @@ export const getLocationCoords = (locationStr, coordinatesMap = CITY_COORDINATES
 
   const locLower = String(locationStr).toLowerCase();
 
-  for (const [key, coords] of Object.entries(coordinatesMap)) {
-    const normalizedKey = key.replace(/_/g, ' ');
-    if (locLower.includes(normalizedKey) || locLower.includes(key)) return coords;
+  if (coordinatesMap && typeof coordinatesMap === 'object') {
+    for (const [key, coords] of Object.entries(coordinatesMap)) {
+      const normalizedKey = key.replace(/_/g, ' ');
+      if (locLower.includes(normalizedKey) || locLower.includes(key)) return coords;
+    }
   }
 
-  // Deterministic coordinate derivation for unmapped towns
+  // Deterministic coordinate derivation for unmapped Nigerian towns
   let hash = 0;
   for (let i = 0; i < locLower.length; i++) {
     hash = (hash << 5) - hash + locLower.charCodeAt(i);
@@ -249,7 +253,7 @@ export const getLocationCoords = (locationStr, coordinatesMap = CITY_COORDINATES
   }
   const latOffset = Math.abs(hash % 100) / 1000;
   const lngOffset = Math.abs((hash >> 2) % 100) / 1000;
-  return { lat: 18.9107 + latOffset, lng: 73.3282 + lngOffset, name: locationStr };
+  return { lat: 6.5244 + latOffset, lng: 3.3792 + lngOffset, name: locationStr };
 };
 
 /**
@@ -261,8 +265,11 @@ export const getLocationCoords = (locationStr, coordinatesMap = CITY_COORDINATES
  */
 export const getShopDistanceKm = (locationStr, userGpsCoords, coordinatesMap = CITY_COORDINATES) => {
   const targetCoords = getLocationCoords(locationStr, coordinatesMap);
+  if (!targetCoords || typeof targetCoords.lat !== 'number' || typeof targetCoords.lng !== 'number') {
+    return 2.5;
+  }
 
-  if (userGpsCoords && userGpsCoords.lat && userGpsCoords.lng) {
+  if (userGpsCoords && typeof userGpsCoords.lat === 'number' && typeof userGpsCoords.lng === 'number') {
     const dist = calculateHaversineDistance(
       userGpsCoords.lat,
       userGpsCoords.lng,
@@ -272,7 +279,11 @@ export const getShopDistanceKm = (locationStr, userGpsCoords, coordinatesMap = C
     return Math.max(0.8, Number(dist.toFixed(1)));
   }
 
-  const refCoords = coordinatesMap.karjat;
+  const refCoords = coordinatesMap?.lagos || coordinatesMap?.ikeja || (coordinatesMap ? Object.values(coordinatesMap)[0] : null) || { lat: 6.5244, lng: 3.3792 };
+  if (!refCoords || typeof refCoords.lat !== 'number' || typeof refCoords.lng !== 'number') {
+    return 2.5;
+  }
+
   const dist = calculateHaversineDistance(
     refCoords.lat,
     refCoords.lng,

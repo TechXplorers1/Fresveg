@@ -81,12 +81,12 @@ export default function PhonePeStatus() {
         {/* ── SUCCESS STATE ── */}
         {isSuccess && (
           <div className="space-y-6 relative z-10 animate-fade-in">
-            {/* PhonePe Seal Badge */}
-            <div className="inline-flex items-center gap-2 bg-purple-50 text-[#5f259f] border border-purple-200/80 px-4 py-1.5 rounded-full text-xs font-bold font-headings shadow-xs">
-              <span className="w-5 h-5 rounded-full bg-[#5f259f] text-white flex items-center justify-center text-[10px] font-black">
-                पे
+            {/* Paystack Seal Badge */}
+            <div className="inline-flex items-center gap-2 bg-sky-50 text-[#0aa5db] border border-sky-200/80 px-4 py-1.5 rounded-full text-xs font-bold font-headings shadow-xs">
+              <span className="w-5 h-5 rounded-full bg-[#0aa5db] text-white flex items-center justify-center text-[10px] font-black">
+                P
               </span>
-              <span>Paid with PhonePe Payment Gateway</span>
+              <span>Paid with Paystack Gateway</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
             </div>
 
@@ -114,15 +114,15 @@ export default function PhonePeStatus() {
               </div>
               {txnId && (
                 <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                  <span className="text-slate-500">PhonePe Transaction ID:</span>
-                  <span className="font-mono font-bold text-[#5f259f] text-xs truncate max-w-[220px]">{txnId}</span>
+                  <span className="text-slate-500">Paystack Transaction Ref:</span>
+                  <span className="font-mono font-bold text-[#0aa5db] text-xs truncate max-w-[220px]">{txnId}</span>
                 </div>
               )}
               {orderDetails?.total && (
                 <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
                   <span className="text-slate-500">Amount Paid:</span>
                   <span className="font-bold text-slate-800 text-sm font-sans">
-                    ₹{parseFloat(orderDetails.total).toFixed(2)}
+                    ₦{parseFloat(orderDetails.total).toFixed(2)}
                   </span>
                 </div>
               )}
@@ -130,7 +130,7 @@ export default function PhonePeStatus() {
                 <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
                   <span className="text-slate-500">Amount Paid:</span>
                   <span className="font-bold text-slate-800 text-sm font-sans">
-                    ₹{parseFloat(orderDetails.totalAmount).toFixed(2)}
+                    ₦{parseFloat(orderDetails.totalAmount).toFixed(2)}
                   </span>
                 </div>
               )}
@@ -207,9 +207,9 @@ export default function PhonePeStatus() {
               <button
                 type="button"
                 onClick={() => navigate(orderType === 'farm_booking' ? '/farm-checkout' : '/checkout')}
-                className="flex-1 bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 text-white font-bold py-3.5 px-5 rounded-2xl text-xs uppercase tracking-wider transition-all shadow-lg shadow-purple-900/20 active:scale-95 flex items-center justify-center gap-2 cursor-pointer font-headings"
+                className="flex-1 bg-gradient-to-r from-[#0aa5db] to-[#011b33] hover:from-[#0092c3] hover:to-[#011424] text-white font-bold py-3.5 px-5 rounded-2xl text-xs uppercase tracking-wider transition-all shadow-lg shadow-sky-900/20 active:scale-95 flex items-center justify-center gap-2 cursor-pointer font-headings"
               >
-                <RefreshCw size={15} /> Try Again with PhonePe
+                <RefreshCw size={15} /> Try Again with Paystack
               </button>
 
               <button
@@ -232,10 +232,10 @@ export default function PhonePeStatus() {
 
             <div>
               <h1 className="text-2xl font-black text-slate-800 font-headings">
-                Verifying Payment with PhonePe...
+                Verifying Payment with Paystack...
               </h1>
               <p className="text-slate-500 text-xs mt-1 max-w-sm mx-auto">
-                Please wait a moment while we receive confirmation from your bank and PhonePe servers.
+                Please wait a moment while we receive confirmation from your bank and Paystack servers.
               </p>
             </div>
 

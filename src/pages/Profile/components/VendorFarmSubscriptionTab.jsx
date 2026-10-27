@@ -74,17 +74,17 @@ const DEFAULT_PLANS = [
 ];
 
 const DEFAULT_BILLING_DETAILS = {
-    companyName: 'FresVeg Technologies Private Limited',
-    gstin: '29ABCDE1234F1Z5',
-    pan: 'ABCDE1234F',
-    billingAddress: '42, AgriTech Tower, 100 Feet Road, Indiranagar, Bengaluru, Karnataka 560038',
-    bankName: 'HDFC Bank Ltd',
-    accountName: 'FresVeg Technologies Pvt Ltd',
-    accountNumber: '50200088912345',
-    ifscCode: 'HDFC0001234',
-    accountType: 'Current Account',
-    branch: 'Indiranagar, Bengaluru',
-    upiId: 'fresveg.billing@hdfcbank'
+    companyName: 'FresVeg Nigeria Limited',
+    gstin: 'TIN-20489123-0001',
+    pan: 'RC-1849201',
+    billingAddress: 'Plot 12, Commercial Avenue, Victoria Island, Lagos, Nigeria 101241',
+    bankName: 'Access Bank Plc',
+    accountName: 'FresVeg Nigeria Limited',
+    accountNumber: '0128945678',
+    ifscCode: '044 (Access Bank)',
+    accountType: 'Corporate Current Account',
+    branch: 'Victoria Island Branch, Lagos',
+    upiId: 'fresveg.billing@accessbank'
 };
 
 export default function VendorFarmSubscriptionTab({
@@ -242,8 +242,8 @@ export default function VendorFarmSubscriptionTab({
         const end = new Date();
         end.setDate(end.getDate() + (months * 30));
         return {
-            startFormatted: start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-            endFormatted: end.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+            startFormatted: start.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }),
+            endFormatted: end.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
         };
     };
 
@@ -349,7 +349,7 @@ export default function VendorFarmSubscriptionTab({
                                     {currentSub.daysRemaining || 0} <span className="text-xs font-normal text-emerald-200">days</span>
                                 </p>
                                 <p className="text-[11px] text-slate-300 mt-1 font-body">
-                                    Valid until: {currentSub.endDate ? new Date(currentSub.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                    Valid until: {currentSub.endDate ? new Date(currentSub.endDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
                                 </p>
 
                                 <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 justify-end">
@@ -435,11 +435,11 @@ export default function VendorFarmSubscriptionTab({
                                     {/* Price */}
                                     <div className="mt-4 flex items-baseline gap-2">
                                         <span className="text-3xl sm:text-4xl font-black font-headings text-slate-900">
-                                            ₹{plan.price}
+                                            ₦{plan.price}
                                         </span>
                                         {plan.originalPrice && (
                                             <span className="text-sm font-bold text-slate-400 line-through">
-                                                ₹{plan.originalPrice}
+                                                ₦{plan.originalPrice}
                                             </span>
                                         )}
                                         {plan.discount && (
@@ -449,7 +449,7 @@ export default function VendorFarmSubscriptionTab({
                                         )}
                                     </div>
                                     <p className="text-[11px] text-slate-500 font-semibold mt-1">
-                                        {plan.monthlyEquivalent ? `Just ₹${plan.monthlyEquivalent}/month • ${plan.billingCycle}` : plan.billingCycle}
+                                        {plan.monthlyEquivalent ? `Just ₦${plan.monthlyEquivalent}/month • ${plan.billingCycle}` : plan.billingCycle}
                                     </p>
                                 </div>
 
@@ -563,14 +563,14 @@ export default function VendorFarmSubscriptionTab({
                                             {item.durationMonths} Month{item.durationMonths > 1 ? 's' : ''} ({item.days} Days)
                                         </td>
                                         <td className="py-3.5 px-4 font-bold font-mono text-slate-900">
-                                            ₹{item.amount}
+                                            ₦{item.amount}
                                         </td>
                                         <td className="py-3.5 px-4">
                                             <p className="font-semibold text-slate-700">{item.paymentMethod}</p>
                                             <p className="text-[10px] text-slate-400 font-mono">{item.paymentReference}</p>
                                         </td>
                                         <td className="py-3.5 px-4 text-slate-500">
-                                            {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                            {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
                                         </td>
                                         <td className="py-3.5 px-4">
                                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase font-headings ${
@@ -664,15 +664,15 @@ export default function VendorFarmSubscriptionTab({
                             <div className="border-t border-slate-200/60 pt-2 space-y-1.5 text-slate-600">
                                 <div className="flex justify-between">
                                     <span>Plan Base Amount:</span>
-                                    <span className="font-mono">₹{(selectedPlan.price / 1.18).toFixed(2)}</span>
+                                    <span className="font-mono">₦{(selectedPlan.price / 1.075).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span>GST (18% inclusive):</span>
-                                    <span className="font-mono">₹{(selectedPlan.price - (selectedPlan.price / 1.18)).toFixed(2)}</span>
+                                    <span>VAT (7.5% inclusive):</span>
+                                    <span className="font-mono">₦{(selectedPlan.price - (selectedPlan.price / 1.075)).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-base font-black text-slate-900 font-headings border-t border-slate-200/80 pt-2">
                                     <span>Total Billing Amount:</span>
-                                    <span className="text-emerald-700 font-mono">₹{selectedPlan.price}</span>
+                                    <span className="text-emerald-700 font-mono">₦{selectedPlan.price}</span>
                                 </div>
                             </div>
                         </div>
@@ -742,20 +742,20 @@ export default function VendorFarmSubscriptionTab({
                                                 </button>
                                             </div>
                                             <p className="text-[10px] text-slate-500">
-                                                Bank: {billingInfo.bankName} • A/C: {billingInfo.accountNumber} • IFSC: {billingInfo.ifscCode}
+                                                Bank: {billingInfo.bankName} • A/C: {billingInfo.accountNumber} • Code: {billingInfo.ifscCode}
                                             </p>
                                         </div>
                                     </div>
 
                                     <div>
                                         <label className="text-[11px] font-bold text-slate-700 block mb-1 font-headings">
-                                            Enter 12-Digit Bank UTR / Reference ID:
+                                            Enter Bank Transfer Reference / NIP Session ID:
                                         </label>
                                         <input
                                             type="text"
                                             value={utrNumber}
                                             onChange={(e) => setUtrNumber(e.target.value)}
-                                            placeholder="e.g. UTR123456789012"
+                                            placeholder="e.g. NIP-SESSION-1002930492"
                                             className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold outline-none focus:border-emerald-500"
                                         />
                                     </div>
@@ -839,7 +839,7 @@ export default function VendorFarmSubscriptionTab({
                                 <div className="p-3 space-y-2">
                                     <div className="flex justify-between">
                                         <span>{selectedInvoice.planName} ({selectedInvoice.durationMonths} Month{selectedInvoice.durationMonths > 1 ? 's' : ''})</span>
-                                        <span className="font-mono font-bold">₹{selectedInvoice.amount}</span>
+                                        <span className="font-mono font-bold">₦{selectedInvoice.amount}</span>
                                     </div>
                                     <div className="flex justify-between text-[11px] text-slate-400">
                                         <span>Reference: {selectedInvoice.paymentReference}</span>
@@ -850,7 +850,7 @@ export default function VendorFarmSubscriptionTab({
 
                             <div className="pt-2 flex justify-between font-black text-base text-slate-900 border-t border-slate-100">
                                 <span>Total Paid:</span>
-                                <span className="text-emerald-600 font-mono">₹{selectedInvoice.amount}</span>
+                                <span className="text-emerald-600 font-mono">₦{selectedInvoice.amount}</span>
                             </div>
                         </div>
 

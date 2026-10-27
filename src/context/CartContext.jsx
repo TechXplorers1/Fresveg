@@ -123,6 +123,17 @@ export const CartProvider = ({ children }) => {
       return false;
     }
 
+    if (product.stockQuantity !== undefined && product.stockQuantity <= 0) {
+      alert("⚠️ Sorry, this product is currently out of stock.");
+      return false;
+    }
+
+    const currentInCart = cartItems.find(item => item.id === product.id);
+    if (product.stockQuantity !== undefined && currentInCart && currentInCart.quantity >= product.stockQuantity) {
+      alert(`⚠️ You already have all ${product.stockQuantity} available ${product.unit || 'units'} in your cart.`);
+      return false;
+    }
+
     setCartItems(prev => {
       const existing = prev.find(item => item.id === product.id);
       let newItems;
@@ -166,6 +177,11 @@ export const CartProvider = ({ children }) => {
       removeFromCart(id);
       return;
     }
+    const targetItem = cartItems.find(item => item.id === id);
+    if (targetItem && targetItem.stockQuantity !== undefined && quantity > targetItem.stockQuantity) {
+      alert(`⚠️ Only ${targetItem.stockQuantity} ${targetItem.unit || 'units'} available in stock.`);
+      quantity = targetItem.stockQuantity;
+    }
     const newItems = cartItems.map(item =>
       item.id === id ? { ...item, quantity } : item
     );
@@ -201,9 +217,9 @@ export const CartProvider = ({ children }) => {
     
     try {
       const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      const customerPhone = user?.phoneNumber || user?.phone || '+91 98765 43210';
+      const customerPhone = user?.phoneNumber || user?.phone || '+234 802 345 6789';
       const firstItem = cartItems[0] || {};
-      const vendorPhone = firstItem.vendorPhone || firstItem.phone || '+91 98765 43210';
+      const vendorPhone = firstItem.vendorPhone || firstItem.phone || '+234 802 345 6789';
 
       const orderData = {
         orderId: orderId,
@@ -225,6 +241,9 @@ export const CartProvider = ({ children }) => {
       console.log('Order successfully placed in PostgreSQL database:', res?.orderId || orderId);
       
       clearCart();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('fresveg_order_placed', { detail: { orderId } }));
+      }
       return orderId;
     } catch (error) {
       console.error('CRITICAL: Error placing order in PostgreSQL:', error);

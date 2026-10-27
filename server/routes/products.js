@@ -13,6 +13,8 @@ router.get('/', async (req, res) => {
       price: parseFloat(row.price),
       mrp: row.mrp ? parseFloat(row.mrp) : parseFloat((parseFloat(row.price) * 1.25).toFixed(2)),
       unit: row.unit,
+      stockQuantity: row.stock_quantity !== null && row.stock_quantity !== undefined ? parseInt(row.stock_quantity) : 100,
+      initialStock: row.initial_stock !== null && row.initial_stock !== undefined ? parseInt(row.initial_stock) : 100,
       category: row.category,
       subCategory: row.sub_category,
       image: row.image,
@@ -35,17 +37,19 @@ router.get('/', async (req, res) => {
 
 // 2. Add New Product
 router.post('/', async (req, res) => {
-  const { name, price, mrp, unit, category, subCategory, image, vendor, vendorId, vendorPhone, shopLocation, rating, isDeliverable, fulfillmentType } = req.body;
+  const { name, price, mrp, unit, stockQuantity, initialStock, category, subCategory, image, vendor, vendorId, vendorPhone, shopLocation, rating, isDeliverable, fulfillmentType } = req.body;
   if (!name || price === undefined) {
     return res.status(400).json({ error: 'Name and price are required' });
   }
 
   const id = `prod_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+  const parsedStock = stockQuantity !== undefined && stockQuantity !== '' ? parseInt(stockQuantity) : 100;
+  const parsedInitial = initialStock !== undefined && initialStock !== '' ? parseInt(initialStock) : parsedStock;
 
   try {
     const result = await query(
-      `INSERT INTO products (id, name, price, mrp, unit, category, sub_category, image, vendor, vendor_id, vendor_phone, shop_location, rating, is_deliverable, fulfillment_type)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      `INSERT INTO products (id, name, price, mrp, unit, stock_quantity, initial_stock, category, sub_category, image, vendor, vendor_id, vendor_phone, shop_location, rating, is_deliverable, fulfillment_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        RETURNING *`,
       [
         id,
@@ -53,6 +57,8 @@ router.post('/', async (req, res) => {
         price,
         mrp || parseFloat((price * 1.25).toFixed(2)),
         unit || 'kg',
+        parsedStock,
+        parsedInitial,
         category || 'General',
         subCategory || '',
         image || 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500&q=80',
@@ -74,6 +80,8 @@ router.post('/', async (req, res) => {
       price: parseFloat(row.price),
       mrp: parseFloat(row.mrp),
       unit: row.unit,
+      stockQuantity: row.stock_quantity !== null ? parseInt(row.stock_quantity) : parsedStock,
+      initialStock: row.initial_stock !== null ? parseInt(row.initial_stock) : parsedInitial,
       category: row.category,
       subCategory: row.sub_category,
       image: row.image,
@@ -104,6 +112,11 @@ router.put('/:id', async (req, res) => {
     }
 
     const current = existing.rows[0];
+    const newStock = fields.stockQuantity !== undefined && fields.stockQuantity !== '' ? parseInt(fields.stockQuantity) : current.stock_quantity;
+    let newInitial = fields.initialStock !== undefined && fields.initialStock !== '' ? parseInt(fields.initialStock) : current.initial_stock;
+    if (newStock > (newInitial || 0)) {
+      newInitial = newStock;
+    }
 
     const updated = await query(
       `UPDATE products
@@ -118,8 +131,10 @@ router.put('/:id', async (req, res) => {
            shop_location = COALESCE($9, shop_location),
            rating = COALESCE($10, rating),
            is_deliverable = COALESCE($11, is_deliverable),
-           fulfillment_type = COALESCE($12, fulfillment_type)
-       WHERE id = $13
+           fulfillment_type = COALESCE($12, fulfillment_type),
+           stock_quantity = COALESCE($13, stock_quantity),
+           initial_stock = COALESCE($14, initial_stock)
+       WHERE id = $15
        RETURNING *`,
       [
         fields.name !== undefined ? fields.name : current.name,
@@ -134,6 +149,8 @@ router.put('/:id', async (req, res) => {
         fields.rating !== undefined ? fields.rating : current.rating,
         fields.isDeliverable !== undefined ? fields.isDeliverable : current.is_deliverable,
         fields.fulfillmentType !== undefined ? fields.fulfillmentType : current.fulfillment_type,
+        newStock,
+        newInitial,
         id
       ]
     );
@@ -145,11 +162,18 @@ router.put('/:id', async (req, res) => {
       price: parseFloat(row.price),
       mrp: parseFloat(row.mrp),
       unit: row.unit,
+      stockQuantity: row.stock_quantity !== null ? parseInt(row.stock_quantity) : 100,
+      initialStock: row.initial_stock !== null ? parseInt(row.initial_stock) : 100,
       category: row.category,
       subCategory: row.sub_category,
       image: row.image,
       vendor: row.vendor,
-      rating: parseFloat(row.rating)
+      shop: row.vendor,
+      vendorId: row.vendor_id,
+      shopLocation: row.shop_location,
+      rating: parseFloat(row.rating),
+      isDeliverable: row.is_deliverable,
+      fulfillmentType: row.fulfillment_type
     });
   } catch (err) {
     console.error('Error updating product:', err);
@@ -251,6 +275,8 @@ router.get('/:id', async (req, res) => {
       price: parseFloat(row.price),
       mrp: row.mrp ? parseFloat(row.mrp) : parseFloat((parseFloat(row.price) * 1.25).toFixed(2)),
       unit: row.unit,
+      stockQuantity: row.stock_quantity !== null && row.stock_quantity !== undefined ? parseInt(row.stock_quantity) : 100,
+      initialStock: row.initial_stock !== null && row.initial_stock !== undefined ? parseInt(row.initial_stock) : 100,
       category: row.category,
       subCategory: row.sub_category,
       image: row.image,
@@ -267,6 +293,54 @@ router.get('/:id', async (req, res) => {
   } catch (err) {
     console.error('Error fetching product by ID:', err);
     res.status(500).json({ error: 'Failed to fetch product' });
+  }
+});
+
+// 10. Quick Stock Update / Restock
+router.patch('/:id/stock', async (req, res) => {
+  const { id } = req.params;
+  const { stockQuantity, delta, initialStock } = req.body;
+
+  try {
+    const existing = await query('SELECT * FROM products WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    const current = existing.rows[0];
+    let newStock = current.stock_quantity !== null ? parseInt(current.stock_quantity) : 100;
+    if (stockQuantity !== undefined && stockQuantity !== '') {
+      newStock = Math.max(0, parseInt(stockQuantity));
+    } else if (delta !== undefined && delta !== '') {
+      newStock = Math.max(0, newStock + parseInt(delta));
+    }
+
+    let newInitial = current.initial_stock !== null ? parseInt(current.initial_stock) : 100;
+    if (initialStock !== undefined && initialStock !== '') {
+      newInitial = Math.max(newStock, parseInt(initialStock));
+    } else if (newStock > newInitial) {
+      newInitial = newStock;
+    }
+
+    const updated = await query(
+      `UPDATE products
+       SET stock_quantity = $1,
+           initial_stock = $2
+       WHERE id = $3
+       RETURNING *`,
+      [newStock, newInitial, id]
+    );
+
+    const row = updated.rows[0];
+    res.json({
+      id: row.id,
+      name: row.name,
+      stockQuantity: parseInt(row.stock_quantity),
+      initialStock: parseInt(row.initial_stock)
+    });
+  } catch (err) {
+    console.error('Error updating product stock:', err);
+    res.status(500).json({ error: 'Failed to update stock' });
   }
 });
 

@@ -390,7 +390,7 @@ export default function OrderTracking() {
               <div className="flex items-center justify-between py-2 border-b border-slate-100/50">
                 <span className="text-slate-400">Placed On</span>
                 <span className="text-slate-700 font-bold">
-                  {new Date(order.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {new Date(order.timestamp).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
               </div>
               <div className="flex items-center justify-between py-2 border-b border-slate-100/50">
@@ -432,9 +432,9 @@ export default function OrderTracking() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-slate-100/50 gap-2">
                 <span className="text-slate-400">Vendor Contact Phone</span>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-slate-700 font-mono font-bold">{order.vendorPhone || order.items?.[0]?.vendorPhone || '+91 98765 43210'}</span>
+                  <span className="text-slate-700 font-mono font-bold">{order.vendorPhone || order.items?.[0]?.vendorPhone || '+234 802 345 6789'}</span>
                   <a
-                    href={`tel:${order.vendorPhone || order.items?.[0]?.vendorPhone || '+919876543210'}`}
+                    href={`tel:${order.vendorPhone || order.items?.[0]?.vendorPhone || '+2348023456789'}`}
                     className="p-1 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer font-headings"
                     title="Call Vendor"
                   >
@@ -462,7 +462,7 @@ export default function OrderTracking() {
             {/* Total */}
             <div className="bg-emerald-500/[0.03] border border-emerald-500/10 rounded-2xl p-4 flex items-center justify-between mt-4">
               <span className="font-bold text-emerald-800 text-sm font-headings">Total Cost Amount</span>
-              <span className="text-2xl font-black text-emerald-800 font-sans">₹{parseFloat(order.total).toFixed(2)}</span>
+              <span className="text-2xl font-black text-emerald-800 font-sans">₦{parseFloat(order.total).toFixed(2)}</span>
             </div>
           </div>
 
@@ -487,11 +487,11 @@ export default function OrderTracking() {
                       <p className="text-[10px] text-slate-400 font-semibold">Merchant: {item.vendor}</p>
                       <div className="flex items-center gap-3 mt-1.5">
                         <span className="text-[10px] font-black bg-emerald-50 text-emerald-850 px-2 py-0.5 rounded border border-emerald-100/30 font-sans">Qty: {item.quantity}</span>
-                        <span className="text-xs font-bold text-slate-650">₹{item.price}</span>
+                        <span className="text-xs font-bold text-slate-650">₦{item.price}</span>
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="font-extrabold text-slate-800 text-sm font-sans">₹{(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="font-extrabold text-slate-800 text-sm font-sans">₦{(item.price * item.quantity).toFixed(2)}</p>
                     </div>
                   </div>
                 ))}
@@ -569,7 +569,7 @@ export default function OrderTracking() {
                     Ordered Items Summary ({order.items?.length || 0})
                   </h2>
                   <span className="bg-emerald-50 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200/60 font-mono">
-                    Total: ₹{parseFloat(order.total).toFixed(2)}
+                    Total: ₦{parseFloat(order.total).toFixed(2)}
                   </span>
                 </div>
 
@@ -587,12 +587,12 @@ export default function OrderTracking() {
                         <p className="text-xs text-slate-500 font-medium mt-0.5">Merchant: <strong className="text-slate-700">{item.vendor}</strong></p>
                         <div className="flex items-center gap-3 mt-1.5">
                           <span className="text-xs font-extrabold bg-emerald-100/80 text-emerald-800 px-2.5 py-0.5 rounded-lg border border-emerald-200/60 font-sans">
-                            Qty: {item.quantity} × ₹{item.price}
+                            Qty: {item.quantity} × ₦{item.price}
                           </span>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-black text-slate-900 text-base font-sans">₹{(item.price * item.quantity).toFixed(2)}</p>
+                        <p className="font-black text-slate-900 text-base font-sans">₦{(item.price * item.quantity).toFixed(2)}</p>
                       </div>
                     </div>
                   ))}
@@ -665,12 +665,12 @@ export default function OrderTracking() {
                     <div>
                       <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wider font-headings">Assigned Rider</p>
                       <p className="font-extrabold text-slate-805 text-sm mt-0.5 font-headings">{order.deliveryBoyName}</p>
-                      <p className="text-xs text-slate-500 font-mono font-bold">{order.deliveryBoyPhone || '+91 98765 43210'}</p>
+                      <p className="text-xs text-slate-500 font-mono font-bold">{order.deliveryBoyPhone || '+234 802 345 6789'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <a
-                      href={`tel:${order.deliveryBoyPhone || '+919876543210'}`}
+                      href={`tel:${order.deliveryBoyPhone || '+2348023456789'}`}
                       className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer font-headings shadow-2xs"
                     >
                       <Phone size={12} /> Call Rider

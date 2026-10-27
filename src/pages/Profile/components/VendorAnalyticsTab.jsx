@@ -51,7 +51,7 @@ export default function VendorAnalyticsTab({
                         </div>
                     </div>
                     <div>
-                        <h3 className="text-2xl font-black text-slate-900 font-sans">₹{grandTotalRevenue.toFixed(2)}</h3>
+                        <h3 className="text-2xl font-black text-slate-900 font-sans">₦{grandTotalRevenue.toFixed(2)}</h3>
                         <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
                             <TrendingUp size={12} /> Combined Market & Farm Income
                         </p>
@@ -67,7 +67,7 @@ export default function VendorAnalyticsTab({
                         </div>
                     </div>
                     <div>
-                        <h3 className="text-2xl font-black text-slate-900 font-sans">₹{totalShopSalesRevenue.toFixed(2)}</h3>
+                        <h3 className="text-2xl font-black text-slate-900 font-sans">₦{totalShopSalesRevenue.toFixed(2)}</h3>
                         <p className="text-[11px] text-blue-600 font-bold flex items-center gap-1 mt-0.5">
                             <span>{totalShopOrdersCount} Total Customer Orders</span>
                         </p>
@@ -83,7 +83,7 @@ export default function VendorAnalyticsTab({
                         </div>
                     </div>
                     <div>
-                        <h3 className="text-2xl font-black text-slate-900 font-sans">₹{vendorFarmBookingsRevenue.toFixed(2)}</h3>
+                        <h3 className="text-2xl font-black text-slate-900 font-sans">₦{vendorFarmBookingsRevenue.toFixed(2)}</h3>
                         <p className="text-[11px] text-amber-600 font-bold flex items-center gap-1 mt-0.5">
                             <span>{vendorFarmBookingsCount} Confirmed Visits</span>
                         </p>
@@ -148,7 +148,7 @@ export default function VendorAnalyticsTab({
                                             <p className="text-[10px] text-slate-400">{new Date(order.timestamp).toLocaleDateString()} • {order.items.length} items</p>
                                         </div>
                                         <div className="text-right">
-                                            <span className="font-black text-emerald-700 font-mono">₹{parseFloat(order.total).toFixed(2)}</span>
+                                            <span className="font-black text-emerald-700 font-mono">₦{parseFloat(order.total).toFixed(2)}</span>
                                             <span className="block text-[9px] font-extrabold text-emerald-600 uppercase">{order.status}</span>
                                         </div>
                                     </div>
@@ -193,10 +193,10 @@ export default function VendorAnalyticsTab({
                                     <div key={b.id} className="bg-white/80 p-3.5 rounded-2xl border border-slate-100 flex items-center justify-between text-xs">
                                         <div>
                                             <p className="font-bold text-slate-800 line-clamp-1">{b.customerName}</p>
-                                            <p className="text-[10px] text-slate-400">{b.farmName} • {new Date(b.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+                                            <p className="text-[10px] text-slate-400">{b.farmName} • {new Date(b.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}</p>
                                         </div>
                                         <div className="text-right">
-                                            <span className="font-black text-amber-700 font-mono">{b.isFree ? 'FREE' : `₹${b.totalAmount || b.costPerPerson}`}</span>
+                                            <span className="font-black text-amber-700 font-mono">{b.isFree ? 'FREE' : `₦${b.totalAmount || b.costPerPerson}`}</span>
                                             <span className="block text-[9px] font-extrabold text-teal-600 uppercase">{b.visitorsCount} Guest{b.visitorsCount !== 1 ? 's' : ''}</span>
                                         </div>
                                     </div>

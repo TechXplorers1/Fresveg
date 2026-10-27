@@ -4,7 +4,7 @@ import { useProducts } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { Instagram, Facebook, Youtube, Globe, MessageCircle, ShoppingCart, Target, ShieldCheck, Truck, Star, Info, Tag, ArrowLeft, ArrowRight, Store, RefreshCw, BadgePercent, Leaf, Zap, Minus, Plus } from 'lucide-react';
+import { Instagram, Facebook, Youtube, Globe, MessageCircle, ShoppingCart, Target, ShieldCheck, Truck, Star, Info, Tag, ArrowLeft, ArrowRight, Store, RefreshCw, BadgePercent, Leaf, Zap, Minus, Plus, AlertTriangle, Package } from 'lucide-react';
 
 export function getProductSlug(product) {
    if (!product) return '';
@@ -174,7 +174,12 @@ export default function ProductDetails() {
                            <Store size={18} className="text-amber-600 shrink-0" />
                            <span>🚜 Farm Pickup Only: Visit Farm In-Person to Buy</span>
                         </div>
-                     ) : (
+                     ) : (product.stockQuantity !== undefined && Number(product.stockQuantity) <= 0) ? (
+                         <div className="flex-1 bg-rose-50 border-2 border-rose-300 text-rose-800 p-3.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 text-center font-headings shadow-sm">
+                            <AlertTriangle size={18} className="text-rose-600 shrink-0" />
+                            <span>⚠️ Out of Stock (0 available)</span>
+                         </div>
+                      ) : (
                         <>
                            {cartItem ? (
                               <div className="flex-1 flex items-center justify-between bg-slate-50/50 border-2 border-slate-200/60 rounded-2xl p-1 font-bold h-[48px]">
@@ -237,6 +242,21 @@ export default function ProductDetails() {
                            <Truck size={11} /> Home Delivery Available 🚚
                         </span>
                      )}
+                     {product.stockQuantity !== undefined && (
+                        Number(product.stockQuantity) <= 0 ? (
+                           <span className="bg-rose-100 text-rose-800 border border-rose-300 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 font-mono">
+                              <AlertTriangle size={11} /> Out of Stock (0 left)
+                           </span>
+                        ) : Number(product.stockQuantity) <= 20 ? (
+                           <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 font-mono animate-pulse">
+                              🔥 Only {product.stockQuantity} {product.unit} left!
+                           </span>
+                        ) : (
+                           <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 font-mono">
+                              <Package size={11} /> In Stock ({product.stockQuantity} {product.unit} left)
+                           </span>
+                        )
+                     )}
                      {isOrganic && (
                         <span className="bg-green-50 text-green-700 border border-green-100 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
                            <Leaf size={10} /> Organic
@@ -257,9 +277,9 @@ export default function ProductDetails() {
                   </div>
 
                   <div className="flex flex-col">
-                     <span className="text-[11px] text-slate-400 line-through mb-0.5">M.R.P: ₹{parseFloat(product.mrp || (product.price * 1.25)).toFixed(2)}</span>
+                     <span className="text-[11px] text-slate-400 line-through mb-0.5">M.R.P: ₦{parseFloat(product.mrp || (product.price * 1.25)).toFixed(2)}</span>
                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl sm:text-3xl font-black text-slate-800 font-sans">₹{parseFloat(product.price).toFixed(2)}</span>
+                        <span className="text-2xl sm:text-3xl font-black text-slate-800 font-sans">₦{parseFloat(product.price).toFixed(2)}</span>
                         <span className="text-xs text-slate-400 font-semibold font-headings">/ {product.unit}</span>
                      </div>
                      <span className="text-emerald-600 font-bold text-[11px] mt-0.5 flex items-center gap-1">
@@ -295,7 +315,7 @@ export default function ProductDetails() {
                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-left">
                   <div className="bg-slate-50/80 border border-slate-200/60 p-2 sm:p-2.5 rounded-xl">
                      <p className="text-[9px] text-slate-400 uppercase font-black tracking-wider mb-0.5">Origin</p>
-                     <p className="font-extrabold text-slate-800 text-[11px] truncate">{product.origin || 'India'}</p>
+                     <p className="font-extrabold text-slate-800 text-[11px] truncate">{product.origin || 'Nigeria'}</p>
                   </div>
                   <div className="bg-slate-50/80 border border-slate-200/60 p-2 sm:p-2.5 rounded-xl">
                      <p className="text-[9px] text-slate-400 uppercase font-black tracking-wider mb-0.5">Diet Type</p>
@@ -428,7 +448,7 @@ export default function ProductDetails() {
                               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                                  <div className="bg-white border border-slate-100 p-2.5 rounded-xl text-center shadow-2xs">
                                     <p className="text-[9px] text-slate-400 uppercase font-black tracking-wider mb-0.5">Origin</p>
-                                    <p className="font-bold text-slate-800 text-[11px] font-headings truncate">{product.origin || 'India'}</p>
+                                    <p className="font-bold text-slate-800 text-[11px] font-headings truncate">{product.origin || 'Nigeria'}</p>
                                  </div>
                                  <div className="bg-white border border-slate-100 p-2.5 rounded-xl text-center shadow-2xs">
                                     <p className="text-[9px] text-slate-400 uppercase font-black tracking-wider mb-0.5">Diet Type</p>
@@ -519,8 +539,8 @@ export default function ProductDetails() {
 
                            <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
                               <div>
-                                 <span className="text-xs text-slate-400 line-through block">₹{parseFloat(item.mrp || (item.price * 1.25)).toFixed(2)}</span>
-                                 <span className="font-black text-slate-800 text-base font-sans">₹{parseFloat(item.price).toFixed(2)}</span>
+                                 <span className="text-xs text-slate-400 line-through block">₦{parseFloat(item.mrp || (item.price * 1.25)).toFixed(2)}</span>
+                                 <span className="font-black text-slate-800 text-base font-sans">₦{parseFloat(item.price).toFixed(2)}</span>
                                  <span className="text-[10px] text-slate-400 font-medium"> / {item.unit || 'kg'}</span>
                               </div>
 

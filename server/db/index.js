@@ -57,6 +57,10 @@ export async function initDb() {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS farm_subscription JSONB DEFAULT '{}'::jsonb;`);
     await pool.query(`ALTER TABLE shops ADD COLUMN IF NOT EXISTS bank_details JSONB DEFAULT '{}'::jsonb;`);
     await pool.query(`ALTER TABLE farms ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT true;`);
+    await pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_quantity INTEGER DEFAULT 100;`);
+    await pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS initial_stock INTEGER DEFAULT 100;`);
+    await pool.query(`UPDATE products SET stock_quantity = 100 WHERE stock_quantity IS NULL;`);
+    await pool.query(`UPDATE products SET initial_stock = 100 WHERE initial_stock IS NULL;`);
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_status VARCHAR(50);`);
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_id VARCHAR(255);`);
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_name VARCHAR(255);`);

@@ -163,10 +163,10 @@ export default function MarketplaceSidebarFilters({
           </div>
           <div className="space-y-2.5 font-body">
             {[
-              { id: 'under5', label: 'Under ₹50' },
-              { id: '5to10', label: '₹50 - ₹100' },
-              { id: '10to20', label: '₹100 - ₹200' },
-              { id: 'over20', label: 'Over ₹200' }
+              { id: 'under5', label: 'Under ₦50' },
+              { id: '5to10', label: '₦50 - ₦100' },
+              { id: '10to20', label: '₦100 - ₦200' },
+              { id: 'over20', label: 'Over ₦200' }
             ].map(({ id, label }) => (
               <label key={id} className="flex items-center cursor-pointer group">
                 <input

@@ -510,9 +510,9 @@ export default function VisitFarms() {
                         <div className="text-right">
                           <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider font-headings">Visit Fee</p>
                           {isFree ? (
-                            <p className="font-black text-emerald-600 text-sm">FREE ENTRY <span className="text-[10px] text-emerald-600/70 font-bold">(₹0)</span></p>
+                            <p className="font-black text-emerald-600 text-sm">FREE ENTRY <span className="text-[10px] text-emerald-600/70 font-bold">(₦0)</span></p>
                           ) : (
-                            <p className="font-black text-slate-900 text-sm">₹{farm.costPerPerson} <span className="text-[10px] text-slate-400 font-semibold">/ guest</span></p>
+                            <p className="font-black text-slate-900 text-sm">₦{farm.costPerPerson} <span className="text-[10px] text-slate-400 font-semibold">/ guest</span></p>
                           )}
                         </div>
                       </div>
@@ -607,7 +607,7 @@ export default function VisitFarms() {
                         <h4 className="font-extrabold text-slate-800 text-xs truncate font-headings">{booking.farmName}</h4>
                         <div className="flex items-center gap-1 text-[10px] text-slate-455 font-semibold mt-1">
                           <Calendar size={11} className="text-emerald-600" />
-                          <span>{new Date(booking.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          <span>{new Date(booking.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                         </div>
                       </div>
                       <button
@@ -755,16 +755,16 @@ export default function VisitFarms() {
                               {isFreeTicket ? (
                                 <p className="text-xs text-emerald-600 font-bold mt-0.5">FREE Ticket</p>
                               ) : (
-                                <p className="text-xs text-slate-500 font-semibold mt-0.5">₹{selectedFarm.costPerPerson} / visitor</p>
+                                <p className="text-xs text-slate-500 font-semibold mt-0.5">₦{selectedFarm.costPerPerson} / visitor</p>
                               )}
                             </div>
                             <div className="text-right">
                               <p className="text-[9px] text-slate-455 font-black uppercase tracking-wider font-headings">Estimated Total</p>
                               {estimatedCostVal === 0 ? (
-                                <p className="text-base font-black text-emerald-600 font-sans mt-0.5">FREE (₹0)</p>
+                                <p className="text-base font-black text-emerald-600 font-sans mt-0.5">FREE (₦0)</p>
                               ) : (
                                 <p className="text-base font-black text-slate-850 font-sans mt-0.5">
-                                  ₹{estimatedCostVal}
+                                  ₦{estimatedCostVal}
                                 </p>
                               )}
                             </div>
@@ -848,7 +848,7 @@ export default function VisitFarms() {
                               {accList.map((acc, idx) => {
                                 const isAccSelected = includeStay && (selectedAccommodation === acc.title || (!selectedAccommodation && idx === 0));
                                 const accPriceNum = parseFloat(String(acc.price || '').replace(/[^0-9.]/g, '')) || 0;
-                                const displayPriceStr = accPriceNum > 0 ? `+₹${accPriceNum}/night` : 'Free Stay';
+                                const displayPriceStr = accPriceNum > 0 ? `+₦${accPriceNum}/night` : 'Free Stay';
                                 const quantityStr = acc.roomQuantity || '1 Room';
                                 const capacityStr = acc.roomCapacity || '2 Persons';
                                 const maxAvailableRooms = Math.max(1, parseInt(String(acc.roomQuantity || '').replace(/[^0-9]/g, '')) || 1);

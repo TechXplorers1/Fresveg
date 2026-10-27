@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, Store, User, Menu, X, Leaf, LogOut, Bike, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Store, User, Menu, X, Leaf, LogOut, Bike, ShieldCheck, ArrowLeft, ChevronRight } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import NotificationDrawer from '../common/NotificationDrawer';
@@ -117,11 +117,19 @@ export default function Navbar() {
               
               {user ? (
                 <div className="flex items-center gap-2">
-                  <div className="flex flex-col text-left justify-center bg-slate-100/80 px-3 py-1 rounded-xl border border-slate-200/60 leading-tight">
-                    <span className="text-xs font-bold text-slate-800 max-w-[110px] truncate">{userProfile?.displayName || user?.displayName || 'User'}</span>
-                    <span className="text-[9px] font-black text-emerald-600 uppercase tracking-wider">{getRoleLabel(userProfile?.role)}</span>
-                  </div>
-                  <button onClick={() => setShowSignoutConfirm(true)} className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-xl hover:bg-red-50" title="Sign Out">
+                  <Link
+                    to="/profile"
+                    className="flex flex-col text-left justify-center bg-slate-100/80 hover:bg-emerald-50 px-3 py-1 rounded-xl border border-slate-200/60 hover:border-emerald-300 leading-tight transition-all duration-200 group cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
+                    title="View Profile"
+                  >
+                    <span className="text-xs font-bold text-slate-800 group-hover:text-emerald-800 max-w-[110px] truncate transition-colors">
+                      {userProfile?.displayName || user?.displayName || 'User'}
+                    </span>
+                    <span className="text-[9px] font-black text-emerald-600 group-hover:text-emerald-700 uppercase tracking-wider transition-colors">
+                      {getRoleLabel(userProfile?.role)}
+                    </span>
+                  </Link>
+                  <button onClick={() => setShowSignoutConfirm(true)} className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-xl hover:bg-red-50 cursor-pointer" title="Sign Out">
                     <LogOut size={18} />
                   </button>
                 </div>
@@ -146,12 +154,25 @@ export default function Navbar() {
       {isMenuOpen && (
          <div className="md:hidden bg-white/95 backdrop-blur-xl border-t border-slate-100 p-4 space-y-2.5 shadow-xl absolute w-full left-0 z-50">
             {user && (
-              <div className="px-4 py-2.5 bg-emerald-50/60 rounded-xl flex items-center justify-between border border-emerald-100 mb-2">
+              <Link
+                to="/profile"
+                onClick={() => setIsMenuOpen(false)}
+                className="px-4 py-2.5 bg-emerald-50/70 hover:bg-emerald-100/70 rounded-xl flex items-center justify-between border border-emerald-200/80 mb-2 transition-all cursor-pointer group shadow-2xs"
+                title="View Profile"
+              >
                 <div>
-                  <span className="font-bold text-slate-900 text-sm block">{userProfile?.displayName || user?.displayName || 'User'}</span>
-                  <span className="text-[10px] text-emerald-600 block font-extrabold uppercase tracking-wider">{getRoleLabel(userProfile?.role)}</span>
+                  <span className="font-bold text-slate-900 group-hover:text-emerald-950 text-sm block transition-colors">
+                    {userProfile?.displayName || user?.displayName || 'User'}
+                  </span>
+                  <span className="text-[10px] text-emerald-600 block font-extrabold uppercase tracking-wider">
+                    {getRoleLabel(userProfile?.role)}
+                  </span>
                 </div>
-              </div>
+                <div className="text-xs font-bold text-emerald-600 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>Profile</span>
+                  <ChevronRight size={14} />
+                </div>
+              </Link>
             )}
             <Link to="/" onClick={() => setIsMenuOpen(false)} className={getMobileLinkStyle('/')}>Home</Link>
             {userProfile?.role !== 'vendor' && userProfile?.role !== 'delivery_person' && (

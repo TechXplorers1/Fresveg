@@ -148,16 +148,16 @@ export default function AddProductModal({
                                             </div>
                                         )}
                                         <div>
-                                            <label className={labelCls}>M.R.P. / Original Price (₹)</label>
+                                            <label className={labelCls}>M.R.P. / Original Price (₦)</label>
                                             <div className="relative">
-                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₹</span>
+                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₦</span>
                                                 <input type="number" step="0.01" name="mrp" value={newProduct.mrp} onChange={handleInputChange} className={inputCls} placeholder="6.50" />
                                             </div>
                                         </div>
                                         <div>
-                                            <label className={labelCls}>Selling Price (₹) <span className="text-emerald-600 font-bold">*</span></label>
+                                            <label className={labelCls}>Selling Price (₦) <span className="text-emerald-600 font-bold">*</span></label>
                                             <div className="relative">
-                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₹</span>
+                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">₦</span>
                                                 <input required type="number" step="0.01" name="price" value={newProduct.price} onChange={handleInputChange} className={inputCls} placeholder="4.99" />
                                             </div>
                                         </div>
@@ -256,7 +256,7 @@ export default function AddProductModal({
                                         </div>
                                         <div>
                                             <label className={labelCls}>Country of Origin</label>
-                                            <input type="text" name="origin" value={newProduct.origin} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="India" />
+                                            <input type="text" name="origin" value={newProduct.origin} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="Nigeria" />
                                         </div>
                                         <div>
                                             <label className={labelCls}>Max Shelf Life</label>
@@ -267,8 +267,8 @@ export default function AddProductModal({
                                             <input type="text" name="harvestDate" value={newProduct.harvestDate} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="Harvested Today" />
                                         </div>
                                         <div>
-                                            <label className={labelCls}>FSSAI / Organic Cert. No.</label>
-                                            <input type="text" name="organicCert" value={newProduct.organicCert} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="FSSAI-1002930492" />
+                                            <label className={labelCls}>NAFDAC / Organic Cert. No.</label>
+                                            <input type="text" name="organicCert" value={newProduct.organicCert} onChange={handleInputChange} className={inputCls.replace('pl-10', 'px-4')} placeholder="NAFDAC-01-2345" />
                                         </div>
                                         <div>
                                             <label className={labelCls}>Storage & Handling Info</label>

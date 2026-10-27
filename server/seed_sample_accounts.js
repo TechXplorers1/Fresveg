@@ -27,18 +27,18 @@ async function main() {
     // ─────────────────────────────────────────────────────────────
     const customerId = 'c0570001-0000-0000-0000-000000000001';
     const customerEmail = 'customer@fresveg.com';
-    const customerName = 'Ananya Patel';
-    const customerPhone = '+91 98765 11223';
+    const customerName = 'Chioma Adebayo';
+    const customerPhone = '+234 802 345 1122';
     const customerAddress = [
       {
         id: 1789500001,
         label: 'Home',
         recipientName: customerName,
-        street: 'Flat 402, Green Acre Heights, Bandra West',
-        city: 'Mumbai',
-        state: 'Maharashtra',
-        zipCode: '400050',
-        country: 'India',
+        street: 'Flat 4, Palmview Court, Lekki Phase 1',
+        city: 'Lagos',
+        state: 'Lagos State',
+        zipCode: '105102',
+        country: 'Nigeria',
         phone: customerPhone
       }
     ];
@@ -102,20 +102,20 @@ async function main() {
     // ─────────────────────────────────────────────────────────────
     const vendorId = 'be4d0002-0000-0000-0000-000000000002';
     const vendorEmail = 'vendor@fresveg.com';
-    const vendorName = 'Vikram Singh';
-    const vendorPhone = '+91 98765 99887';
+    const vendorName = 'Emeka Okonkwo';
+    const vendorPhone = '+234 803 765 9988';
     const vendorShopId = `shop_${vendorId}_green_earth_organics`;
     const vendorShop = {
       id: vendorShopId,
       shopName: 'Green Earth Organics',
-      location: 'Nashik Highway, Igatpuri, Maharashtra',
-      gstNumber: '27ABCDE1234F1Z5',
+      location: 'Epe Express Road, Lekki-Epe Axis, Lagos State',
+      gstNumber: 'RC-1849201',
       image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&q=80',
       socialLinks: {
         instagram: 'https://instagram.com/greenearthorganics',
         facebook: 'https://facebook.com/greenearthorganics',
-        whatsapp: '+91 98765 99887',
-        website: 'https://greenearthorganics.in'
+        whatsapp: '+234 803 765 9988',
+        website: 'https://greenearthorganics.ng'
       }
     };
 
@@ -207,18 +207,18 @@ async function main() {
     // ─────────────────────────────────────────────────────────────
     const deliveryId = 'de710003-0000-0000-0000-000000000003';
     const deliveryEmail = 'delivery@fresveg.com';
-    const deliveryName = 'Arjun Kumar';
-    const deliveryPhone = '+91 98765 33445';
+    const deliveryName = 'Ibrahim Musa';
+    const deliveryPhone = '+234 805 123 3344';
     const deliveryAddress = [
       {
         id: 1789500003,
         label: 'Delivery Hub Base',
         recipientName: deliveryName,
-        street: 'FresVeg Hub #4, MG Road, Shivaji Nagar',
-        city: 'Pune',
-        state: 'Maharashtra',
-        zipCode: '411005',
-        country: 'India',
+        street: 'FresVeg Hub #1, Allen Avenue, Ikeja',
+        city: 'Ikeja',
+        state: 'Lagos State',
+        zipCode: '100001',
+        country: 'Nigeria',
         phone: deliveryPhone
       }
     ];

@@ -3,15 +3,15 @@ import { api } from './api';
 export const INITIAL_FARMS_MAP = {
   'mock-farm-1': {
     id: 'mock-farm-1',
-    name: 'Strawberry Fields & Orchards',
-    location: 'Mahabaleshwar, Maharashtra',
-    description: 'Pick fresh organic strawberries, stroll through our beautiful fruit orchards, and enjoy fresh strawberry milkshakes made on-site! Perfect weekend getaway for families and nature lovers.',
+    name: 'Jos Highland Berry & Fruit Orchards',
+    location: 'Jos, Plateau State, Nigeria',
+    description: 'Pick fresh organic strawberries and mountain fruits, stroll through our beautiful plateau orchards, and enjoy fresh fruit smoothies made on-site! Perfect weekend getaway for families and nature lovers.',
     image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=1200&q=80',
     pricePerPerson: 350,
     ownerId: 'mock-vendor-1',
     rating: 4.9,
     crops: ['Sweet Corn', 'Organic Wheat'],
-    fruits: ['Organic Strawberries', 'Mahabaleshwar Strawberries'],
+    fruits: ['Organic Strawberries', 'Highland Strawberries'],
     activities: ['Self Berry-Picking', 'Guided Tour', 'Organic Breakfast', 'Tractor Ride', 'Pet Friendly', 'Free Parking'],
     cropPhotos: [
       { id: 'cp1', url: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=800&q=80', caption: 'Strawberry Harvest Patch' },
@@ -32,8 +32,8 @@ export const INITIAL_FARMS_MAP = {
   },
   'mock-farm-2': {
     id: 'mock-farm-2',
-    name: 'Green Valley Organic Haven',
-    location: 'Karjat, Maharashtra',
+    name: 'Epe Green Valley Organic Haven',
+    location: 'Epe, Lagos State, Nigeria',
     description: 'Learn about sustainable agriculture, witness our bio-gas plant, pick fresh organic leafy greens, and enjoy open field walks along river streams.',
     image: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1200&q=80',
     pricePerPerson: 0,
@@ -44,7 +44,7 @@ export const INITIAL_FARMS_MAP = {
       { id: 'cp1', url: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=800&q=80', caption: 'Organic Leafy Greens & Spinach Field' }
     ],
     livestockPhotos: [
-      { id: 'lp1', url: 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=800&q=80', caption: 'Desi Gir Cows Shelter' }
+      { id: 'lp1', url: 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=800&q=80', caption: 'Fulani & Dairy Cattle Shelter' }
     ],
     accommodationPhotos: [
       { id: 'ap1', url: 'https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=800&q=80', caption: 'Eco Solar-Powered Rooms' }
